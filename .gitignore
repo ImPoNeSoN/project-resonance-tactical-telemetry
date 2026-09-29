@@ -1,0 +1,98 @@
+# ------------------------------------------------------------
+# Project Resonance: Tactical Telemetry — Godot 4.x (C#/.NET)
+# ------------------------------------------------------------
+
+# --- Godot 4 editor and import cache ---
+.godot/
+# Godot 3 legacy import folder (harmless if absent)
+.import/
+# Local editor data folders created by exports / running from editor
+*.translation
+# Godot crash / log artifacts
+logs/
+godot.log
+
+# --- Godot export presets and signing secrets ---
+# export_presets.cfg can hold keystore paths, passwords and platform credentials.
+# Commit export_presets.template.cfg (sanitized) instead and copy it locally.
+export_presets.cfg
+export_credentials.cfg
+*.keystore
+*.jks
+*.p12
+*.pfx
+*.pem
+*.key
+*.mobileprovision
+*.provisionprofile
+*.cer
+notarization*.json
+
+# --- Godot C# / .NET build output ---
+.mono/
+bin/
+obj/
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+[Aa]rm64/
+*.user
+*.suo
+*.userprefs
+*.DotSettings.user
+mono_crash.*.json
+*.nupkg
+*.snupkg
+project.lock.json
+project.fragment.lock.json
+artifacts/
+
+# --- IDEs ---
+.vs/
+.idea/
+*.sln.iml
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
+# --- Test, benchmark and coverage output ---
+TestResults/
+BenchmarkDotNet.Artifacts/
+coverage/
+*.coverage
+*.coveragexml
+coverage.cobertura.xml
+
+# --- Exported game builds ---
+/builds/
+/export/
+*.pck
+*.exe
+*.x86_64
+*.app/
+*.dmg
+
+# --- Backend secrets and local config (Resonance.Api / Validator / RaidHost) ---
+.env
+.env.*
+!.env.example
+appsettings.Development.json
+appsettings.Local.json
+appsettings.*.local.json
+secrets.json
+*.secrets.json
+
+# --- Steam local dev ---
+steam_appid.txt
+
+# --- Local saves, profiles and user data copied into the repo by accident ---
+user_data/
+*.sav
+
+# --- OS clutter ---
+.DS_Store
+Thumbs.db
+desktop.ini
