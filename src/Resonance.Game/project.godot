@@ -1,0 +1,30 @@
+; Engine configuration file.
+; Project Resonance: Tactical Telemetry — combat-math pilot (Godot 4.7, C#).
+
+config_version=5
+
+[application]
+
+config/name="Project Resonance"
+config/description="Tactical Telemetry combat-math debug skeleton"
+run/main_scene="res://scenes/battle/DebugBattle.tscn"
+config/features=PackedStringArray("4.7", "C#")
+
+[autoload]
+
+SimBridge="*res://autoloads/SimBridge.cs"
+
+[display]
+
+window/size/viewport_width=1280
+window/size/viewport_height=800
+window/stretch/mode="canvas_items"
+
+[dotnet]
+
+project/assembly_name="Resonance.Game"
+
+[rendering]
+
+renderer/rendering_method="gl_compatibility"
+textures/vram_compression/import_etc2_astc=true

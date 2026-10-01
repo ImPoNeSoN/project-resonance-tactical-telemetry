@@ -1,0 +1,10 @@
+T:System.Single;Resonance.Sim is integer-only. Use basis points (10_000 = 100%) and centi-AP.
+T:System.Double;Resonance.Sim is integer-only. Use basis points (10_000 = 100%) and centi-AP.
+M:System.Math.Pow(System.Double,System.Double);Use integer exponentiation on basis points.
+M:System.Math.Ceiling(System.Decimal);Use integer ceil division.
+M:System.Math.Ceiling(System.Double);Use integer ceil division.
+M:System.Math.Floor(System.Decimal);Floor with integer division.
+M:System.Math.Floor(System.Double);Floor with integer division.
+M:System.Math.Round(System.Double);Use integer half-up rounding.
+M:System.Math.Round(System.Double,System.Int32);Use integer half-up rounding.
+M:System.Math.Round(System.Double,System.MidpointRounding);Use integer half-up rounding.
