@@ -13,6 +13,7 @@ public partial class DebugBattle : Control
     private readonly List<UnitCard> _cards = new();
     private RichTextLabel _log = null!;
     private Label _boss = null!;
+    private Label _resonance = null!;
     private Label _status = null!;
     private Button _auto = null!;
 
@@ -68,6 +69,9 @@ public partial class DebugBattle : Control
         _boss = new Label { AutowrapMode = TextServer.AutowrapMode.WordSmart };
         root.AddChild(_boss);
 
+        _resonance = new Label { AutowrapMode = TextServer.AutowrapMode.WordSmart };
+        root.AddChild(_resonance);
+
         var buttons = new HBoxContainer();
         buttons.AddThemeConstantOverride("separation", 8);
         root.AddChild(buttons);
@@ -97,6 +101,7 @@ public partial class DebugBattle : Control
 
         _bridge.LogLine += OnLogLine;
         _bridge.LogCleared += OnLogCleared;
+        _bridge.ResonanceChanged += OnResonance;
         _bridge.StateChanged += Refresh;
         Refresh();
     }
@@ -104,6 +109,11 @@ public partial class DebugBattle : Control
     private void OnLogCleared()
     {
         _log.Clear();
+    }
+
+    private void OnResonance(string summary)
+    {
+        _resonance.Text = summary;
     }
 
     private void OnLogLine(string line)
@@ -144,8 +154,9 @@ public partial class DebugBattle : Control
             2 => $"L2 {corePart.Resonance} until {corePart.ChainExpires}",
             _ => "empty",
         };
-        string burst = corePart.BurstActive ? $"Ice/burst until {corePart.BurstExpires}" : "no burst";
+        string burst = corePart.BurstActive ? $"{corePart.BurstMask} until {corePart.BurstExpires}" : "no burst";
         _boss.Text = $"{sim.Boss.Name}    Core {corePart.Hp}/{corePart.MaxHp}    Arm {arm.Hp}/{arm.MaxHp}    Chain {chain}    {burst}";
+        _resonance.Text = ResonanceReadout.Summarize(sim);
     }
 
     private sealed class UnitCard

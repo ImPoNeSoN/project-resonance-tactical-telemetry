@@ -95,6 +95,55 @@ public static class ResonanceTable
         _ => new BurstProfile(0, 0, ElementMask.None),
     };
 
+    /// <summary>
+    /// Properties that advance the current window. Anything else restarts the chain at L1.
+    /// </summary>
+    public static string NextLinks(int tier, ChainProperty open, ResonanceId resonance)
+    {
+        if (tier <= 0)
+        {
+            return "any property opens L1";
+        }
+
+        var text = new System.Text.StringBuilder();
+        for (int i = 0; i <= (int)ChainProperty.Darkness; i++)
+        {
+            var incoming = (ChainProperty)i;
+            if (tier == 1)
+            {
+                ResonanceId next = LookupL2(open, incoming);
+                if (next == ResonanceId.None)
+                {
+                    continue;
+                }
+
+                if (text.Length > 0)
+                {
+                    text.Append(", ");
+                }
+
+                text.Append(incoming).Append("→").Append(next);
+            }
+            else
+            {
+                ApexId next = LookupL3(resonance, incoming);
+                if (next == ApexId.None)
+                {
+                    continue;
+                }
+
+                if (text.Length > 0)
+                {
+                    text.Append(", ");
+                }
+
+                text.Append(incoming).Append("→").Append(next);
+            }
+        }
+
+        return text.Length == 0 ? "no continuation (next property restarts L1)" : text.ToString();
+    }
+
     public static int CountL2Routes()
     {
         int count = 0;

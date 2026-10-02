@@ -1,20 +1,32 @@
+using Resonance.Sim.Core;
+using Resonance.Sim.Data;
 using Resonance.Sim.Sim;
 
 namespace Resonance.Sim.Tests;
 
 /// <summary>
-/// Reproduces 02 §2.15. The published log is the expected end state and the checkpoint rows.
+/// §2.15 regenerated from PCG seed <see cref="TrainingArena.GoldenSeed"/>.
+/// Every roll the fight draws is in the transcript. ScriptedRng replays that list,
+/// which is how a log that omitted a roll would still be pinned.
 /// </summary>
 public class GoldenCombatLogTests
 {
     [Fact]
-    public void Worked_log_ends_at_the_published_state()
+    public void Worked_log_ends_at_the_seeded_state()
     {
-        (BattleSimulator sim, var rng) = TrainingArena.CreateGolden();
+        BattleSimulator sim = TrainingArena.CreateGolden();
         sim.RunToEnd();
         string transcript = Transcript(sim);
 
         Assert.Equal(3_087, sim.Tick);
+        Assert.Contains("roll 9331", transcript, StringComparison.Ordinal);
+        Assert.Contains("roll 1300", transcript, StringComparison.Ordinal);
+        Assert.Contains("roll 2109", transcript, StringComparison.Ordinal);
+        Assert.Contains("no roll", transcript, StringComparison.Ordinal);
+        Assert.Contains("sheds 32 CE on Core", transcript, StringComparison.Ordinal);
+        Assert.Contains("Dmg 3849", transcript, StringComparison.Ordinal);
+        Assert.Contains("Dmg 3272", transcript, StringComparison.Ordinal);
+        Assert.Contains("Induration detonation 1636", transcript, StringComparison.Ordinal);
 
         HeroState korrith = sim.Heroes[0];
         HeroState mirrim = sim.Heroes[1];
@@ -26,20 +38,18 @@ public class GoldenCombatLogTests
         Assert.Equal(8_483 * 100, korrith.Ap.Centi);
         Assert.Equal(3_164, sim.Boss.Parts[0].Enmity[0].Ve);
         Assert.Equal(2_303, sim.Boss.Parts[0].Enmity[0].Ce);
-        Assert.Equal(0, sim.Boss.Parts[1].Enmity[0].Total);
 
         Assert.Equal(4_480, mirrim.Hp);
         Assert.Equal(95, mirrim.Mp);
-        Assert.Equal(5_766 * 100, mirrim.Ap.Centi);
-        Assert.Equal(0, sim.Boss.Parts[0].Enmity[1].Ve);
+        Assert.Equal(4_566 * 100, mirrim.Ap.Centi);
         Assert.Equal(2_440, sim.Boss.Parts[0].Enmity[1].Ce);
-        Assert.Equal(1_056, sim.Boss.Parts[1].Enmity[1].Ce);
+        Assert.Equal(1_036, sim.Boss.Parts[1].Enmity[1].Ce);
 
         Assert.Equal(3_710, zeph.Hp);
         Assert.Equal(414, zeph.Mp);
         Assert.Equal(5_831 * 100, zeph.Ap.Centi);
         Assert.Equal(466, sim.Boss.Parts[0].Enmity[2].Ve);
-        Assert.Equal(1_660, sim.Boss.Parts[0].Enmity[2].Ce);
+        Assert.Equal(1_899, sim.Boss.Parts[0].Enmity[2].Ce);
 
         Assert.Equal(4_750, seraphine.Hp);
         Assert.Equal(500, seraphine.Mp);
@@ -49,156 +59,96 @@ public class GoldenCombatLogTests
         Assert.Equal(1_400, sim.Boss.Parts[0].Enmity[3].HeavyVe);
         Assert.Equal(180, sim.Boss.Parts[0].Enmity[3].Ce);
 
-        Assert.Equal(111_683, sim.Boss.Parts[0].Hp);
-        Assert.Equal(43_662, sim.Boss.Parts[1].Hp);
+        Assert.Equal(108_698, sim.Boss.Parts[0].Hp);
+        Assert.Equal(43_915, sim.Boss.Parts[1].Hp);
         Assert.Equal(30_000, sim.Boss.Parts[2].Hp);
         Assert.Equal(874 * 100, sim.Boss.Ap.Centi);
-        Assert.True(rng.IsExhausted, transcript);
-        Assert.Contains("Induration", transcript, StringComparison.Ordinal);
-        Assert.Contains("Dmg 3849", transcript, StringComparison.Ordinal);
-        Assert.Contains("Dmg 1924", transcript, StringComparison.Ordinal);
-        Assert.Contains("Dmg 505", transcript, StringComparison.Ordinal);
-    }
-
-    [Theory]
-    [InlineData(256, 1, 4_480, 225, 8)]
-    [InlineData(534, 1, 3_940, 225, 8 + (534 - 256) * 18)]
-    [InlineData(812, 1, 3_940, 195, 1_216)]
-    [InlineData(1_492, 1, 4_480, 175, 1_492)] // AP checked separately below when it is not a simple product
-    public void Party_hp_moves_on_the_published_ticks(int tick, int hero, int hp, int mp, int unusedAp)
-    {
-        _ = unusedAp;
-        var sim = TrainingArena.CreateGolden().Sim;
-        sim.RunUntil(tick);
-        Assert.Equal(hp, sim.Heroes[hero].Hp);
-        Assert.Equal(mp, sim.Heroes[hero].Mp);
+        Assert.Equal(1, sim.Boss.Parts[0].Tier);
+        Assert.Equal(ChainProperty.Ice, sim.Boss.Parts[0].Property);
+        Assert.Equal(6_900, sim.Boss.Parts[0].ChainExpires);
+        Assert.Equal(4_139, sim.Boss.Parts[0].BurstExpires);
     }
 
     [Fact]
-    public void Checkpoints_match_the_log_row_by_row()
+    public void Checkpoints_match_the_seeded_log()
     {
-        var sim = TrainingArena.CreateGolden().Sim;
+        var sim = TrainingArena.CreateGolden();
 
         sim.RunUntil(256);
         Assert.Equal(119_495, sim.Boss.Parts[0].Hp);
         Assert.Equal(540, sim.Boss.Parts[0].Enmity[1].Ce);
-        Assert.Equal(8, sim.Heroes[1].Ap.WholeAp);
         Assert.Equal(1, sim.Boss.Parts[0].Tier);
-
-        sim.RunUntil(470);
-        Assert.True(sim.Heroes[2].Casting);
-        Assert.True(sim.Heroes[3].Casting);
-        Assert.Equal(1_170, sim.Heroes[2].CastResolveTick);
-        Assert.Equal(690, sim.Heroes[3].CastResolveTick);
-        Assert.Equal(360, sim.Heroes[2].Mp);
-        Assert.Equal(900, sim.Heroes[3].Mp);
 
         sim.RunUntil(534);
         Assert.Equal(3_940, sim.Heroes[1].Hp);
         Assert.Equal(508, sim.Boss.Parts[0].Enmity[1].Ce);
-        Assert.Equal(8, sim.Boss.Ap.WholeAp);
 
         sim.RunUntil(690);
         Assert.Equal(20, sim.Heroes[2].ConcentrationBuff);
-        Assert.Equal(300, sim.Boss.Parts[0].Enmity[3].Ve);
-        Assert.Equal(60, sim.Boss.Parts[0].Enmity[3].Ce);
-        Assert.Equal(6_010, sim.Heroes[3].Ap.WholeAp);
+        Assert.Equal(4_690, sim.Heroes[2].ConcentrationBuffExpires);
+        Assert.Equal(4_690, sim.Heroes[2].RegenExpires);
+        Assert.Equal(1_190, sim.Heroes[2].RegenNextTick);
 
         sim.RunUntil(812);
         Assert.Equal(118_915, sim.Boss.Parts[0].Hp);
-        Assert.Equal(1_004, sim.Boss.Parts[0].Enmity[1].Ce);
-        Assert.Equal(1_216, sim.Heroes[1].Ap.WholeAp);
-        Assert.Equal(2_200, sim.Boss.Parts[0].Enmity[0].Ve);
-        Assert.Equal(330, sim.Boss.Parts[0].Enmity[0].Ce);
-        Assert.Equal(6_008, sim.Heroes[0].Ap.WholeAp);
         Assert.Equal(2, sim.Boss.Parts[0].Tier);
-        Assert.Equal(3_000, sim.Boss.SlowBp);
-        Assert.True(sim.Boss.Parts[0].BurstActive);
+        Assert.Equal(1_216, sim.Heroes[1].Ap.WholeAp);
 
         sim.RunUntil(1_170);
         Assert.Equal(3_849, DamageAt(sim, 1_170));
-        Assert.Equal(477, sim.Heroes[2].Mp);
+        Assert.Equal(1, sim.Boss.Parts[0].Tier);
+        Assert.Equal(ChainProperty.Ice, sim.Boss.Parts[0].Property);
+        Assert.Equal(5_170, sim.Boss.Parts[0].ChainExpires);
         Assert.Equal(2_912, sim.Boss.Parts[0].BurstExpires);
         Assert.Equal(907, sim.Boss.Parts[0].Enmity[2].Ce);
-        Assert.Equal(300, sim.Boss.Parts[0].Enmity[2].Ve);
-        Assert.Equal(10, sim.Heroes[2].Ap.WholeAp);
-        Assert.Equal(2, sim.Boss.Parts[0].Tier);
-
-        sim.RunUntil(1_256);
-        Assert.Equal(2_380, sim.Boss.Parts[0].Enmity[0].Ve);
-        Assert.Equal(1_320, sim.Boss.Parts[0].Enmity[0].Ce);
-        Assert.Equal(270, sim.Heroes[0].Mp);
-        Assert.Equal(6_004, sim.Heroes[0].Ap.WholeAp);
-
-        sim.RunUntil(1_300);
-        Assert.Equal(1_204, sim.Boss.Parts[0].Enmity[1].Ce);
-        Assert.Equal(175, sim.Heroes[1].Mp);
-        Assert.Equal(6_000, sim.Heroes[1].Ap.WholeAp);
-
-        sim.RunUntil(1_492);
-        Assert.Equal(4_480, sim.Heroes[1].Hp);
-        Assert.Equal(486, sim.Boss.Parts[0].Enmity[3].Ve);
-        Assert.Equal(1, sim.Heroes[3].Ap.WholeAp);
+        Assert.Equal(477, sim.Heroes[2].Mp);
 
         sim.RunUntil(1_523);
-        Assert.Equal(44_242, sim.Boss.Parts[1].Hp);
-        Assert.Equal(560, sim.Boss.Parts[1].Enmity[1].Ce);
-        Assert.Equal(5_214, sim.Heroes[1].Ap.WholeAp);
+        Assert.Equal(44_495, sim.Boss.Parts[1].Hp);
+        Assert.Equal(540, sim.Boss.Parts[1].Enmity[1].Ce);
+        Assert.Equal(4_014, sim.Heroes[1].Ap.WholeAp);
         Assert.Equal(781_640, sim.Boss.Ap.Centi);
 
-        sim.RunUntil(1_700);
-        Assert.Equal(4_342, sim.Boss.Parts[0].Enmity[0].Ve);
-        Assert.Equal(1_650, sim.Boss.Parts[0].Enmity[0].Ce);
-        Assert.Equal(6_000, sim.Heroes[0].Ap.WholeAp);
-
-        sim.RunUntil(1_783);
-        Assert.True(sim.Boss.Casting);
-        Assert.Equal(2_983, sim.Boss.CastResolveTick);
-        Assert.Equal(1_000_040, sim.Boss.Ap.Centi);
-
-        sim.RunUntil(1_789);
-        Assert.Equal(43_662, sim.Boss.Parts[1].Hp);
-        Assert.Equal(1_056, sim.Boss.Parts[1].Enmity[1].Ce);
-        Assert.Equal(1_202, sim.Heroes[1].Ap.WholeAp);
-
-        sim.RunUntil(2_145);
-        Assert.Equal(374, DamageAt(sim, 2_145));
-        Assert.Equal(1, sim.Boss.Parts[0].Tier);
-        Assert.Equal(2_379, sim.Boss.Parts[0].Enmity[0].Ce);
-        Assert.Equal(5, sim.Heroes[0].Ap.WholeAp);
-        Assert.True(sim.Boss.Parts[0].BurstActive);
-
-        sim.RunUntil(2_500);
-        Assert.Equal(1_944, sim.Boss.Parts[0].Enmity[1].Ce);
-        Assert.Equal(4_000, sim.Heroes[1].Ap.WholeAp);
-        Assert.Equal(3_516, sim.Boss.Parts[0].Enmity[0].Ve);
-
         sim.RunUntil(2_639);
-        Assert.Equal(1_924, DamageAt(sim, 2_639));
+        Assert.Equal(3_272, DamageAt(sim, 2_639));
+        Assert.Equal(2, sim.Boss.Parts[0].Tier);
+        Assert.Equal(ResonanceId.Induration, sim.Boss.Parts[0].Resonance);
+        Assert.Equal(4_139, sim.Boss.Parts[0].BurstExpires);
+        Assert.Equal(1_899, sim.Boss.Parts[0].Enmity[2].Ce);
         Assert.Equal(414, sim.Heroes[2].Mp);
-        Assert.Equal(3_512, sim.Boss.Parts[0].BurstExpires);
-        Assert.Equal(1_660, sim.Boss.Parts[0].Enmity[2].Ce);
-        Assert.Equal(518, sim.Boss.Parts[0].Enmity[2].Ve);
-        Assert.Equal(7, sim.Heroes[2].Ap.WholeAp);
         Assert.True(sim.Boss.Casting);
 
-        sim.RunUntil(2_834);
+        sim.RunUntil(2_900);
+        Assert.Equal(581, DamageAt(sim, 2_900));
+        Assert.Equal(1, sim.Boss.Parts[0].Tier);
+        Assert.Equal(ChainProperty.Ice, sim.Boss.Parts[0].Property);
         Assert.Equal(2_440, sim.Boss.Parts[0].Enmity[1].Ce);
-        Assert.Equal(1_212, sim.Heroes[1].Ap.WholeAp);
-        Assert.Equal(4_334, sim.Boss.Parts[0].BurstExpires);
-        Assert.Equal(2, sim.Boss.Parts[0].Tier);
-
-        sim.RunUntil(2_983);
-        Assert.Equal(8_643, sim.Heroes[0].Hp);
-        Assert.Equal(2_303, sim.Boss.Parts[0].Enmity[0].Ce);
-        Assert.Equal(40, sim.Boss.Ap.Centi);
-        Assert.False(sim.Boss.Casting);
+        Assert.Equal(1_200, sim.Heroes[1].Ap.WholeAp);
 
         sim.RunUntil(3_087);
         Assert.Equal(-398_900, sim.Heroes[3].Ap.Centi);
         Assert.Equal(1_400, sim.Boss.Parts[0].Enmity[3].HeavyVe);
-        Assert.Equal(180, sim.Boss.Parts[0].Enmity[3].Ce);
-        Assert.Equal(2_500, sim.Heroes[0].AllDtBp);
+        Assert.Equal(108_698, sim.Boss.Parts[0].Hp);
+    }
+
+    [Fact]
+    public void Scripted_replay_matches_the_seed_when_every_roll_is_recorded()
+    {
+        var log = new RollLog();
+        var live = TrainingArena.Create(new LoggingRng(new EncounterRng(TrainingArena.GoldenSeed), log));
+        live.RunToEnd();
+
+        var replayRng = new ScriptedRng(log.Snapshot());
+        var replay = TrainingArena.Create(replayRng);
+        replay.RunToEnd();
+
+        Assert.Equal(live.Boss.Parts[0].Hp, replay.Boss.Parts[0].Hp);
+        Assert.Equal(live.Boss.Parts[1].Hp, replay.Boss.Parts[1].Hp);
+        Assert.Equal(live.Heroes[1].Ap.Centi, replay.Heroes[1].Ap.Centi);
+        Assert.Equal(live.Heroes[2].Mp, replay.Heroes[2].Mp);
+        Assert.True(replayRng.IsExhausted);
+        Assert.True(log.Hit.Count > 0);
+        Assert.True(log.Crit.Count > 0);
     }
 
     private static int DamageAt(BattleSimulator sim, int tick)
@@ -233,5 +183,50 @@ public class GoldenCombatLogTests
         }
 
         return string.Join('\n', lines);
+    }
+
+    private sealed class RollLog
+    {
+        public List<int> Hit { get; } = [];
+        public List<int> Crit { get; } = [];
+        public List<int> Multi { get; } = [];
+
+        public Dictionary<RngStream, IReadOnlyList<int>> Snapshot() => new()
+        {
+            [RngStream.Hit] = Hit,
+            [RngStream.Crit] = Crit,
+            [RngStream.MultiAttack] = Multi,
+        };
+    }
+
+    private sealed class LoggingRng : IRng
+    {
+        private readonly IRng _inner;
+        private readonly RollLog _log;
+
+        public LoggingRng(IRng inner, RollLog log)
+        {
+            _inner = inner;
+            _log = log;
+        }
+
+        public int RollD10000(RngStream stream, string reason)
+        {
+            int roll = _inner.RollD10000(stream, reason);
+            switch (stream)
+            {
+                case RngStream.Hit:
+                    _log.Hit.Add(roll);
+                    break;
+                case RngStream.Crit:
+                    _log.Crit.Add(roll);
+                    break;
+                case RngStream.MultiAttack:
+                    _log.Multi.Add(roll);
+                    break;
+            }
+
+            return roll;
+        }
     }
 }

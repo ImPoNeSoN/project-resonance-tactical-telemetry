@@ -5,17 +5,15 @@ using Resonance.Sim.Data;
 namespace Resonance.Sim.Sim;
 
 /// <summary>
-/// The 02 §2.15 training-arena party, boss, loadouts, scripted actions, and published d10000 rolls.
-/// Rolls the log does not print (boss crits, later double-attack checks, the last Frostfang) are
-/// failing or non-crit values so the printed results stay intact.
+/// The 02 §2.15 training-arena party, boss, loadouts, and scripted actions.
+/// Dice come from <see cref="GoldenSeed"/> (PCG-XSH-RR). <see cref="ScriptedRng"/> remains for logs that omit a roll.
 /// </summary>
 public static class TrainingArena
 {
-    public static (BattleSimulator Sim, ScriptedRng Rng) CreateGolden()
-    {
-        var rng = new ScriptedRng(GoldenRolls());
-        return (Create(rng), rng);
-    }
+    /// <summary>PCG-XSH-RR seed for the regenerated §2.15 log. Every roll that log prints comes from this seed.</summary>
+    public const ulong GoldenSeed = 20261002UL;
+
+    public static BattleSimulator CreateGolden() => Create(new EncounterRng(GoldenSeed));
 
     public static BattleSimulator Create(IRng rng)
     {
@@ -59,6 +57,7 @@ public static class TrainingArena
             Agi = 12,
             Concentration = 40,
             Ap = new ApGauge { Centi = ApGauge.InitialCenti(12, ambushed: false) },
+            ResistBp = Resist(),
             Parts =
             [
                 Part("Core", 120_000, heroes.Length),
@@ -101,48 +100,6 @@ public static class TrainingArena
         return new BattleSimulator(heroes, boss, plans, bossPlan, rng);
     }
 
-    public static Dictionary<RngStream, IReadOnlyList<int>> GoldenRolls()
-    {
-        return new Dictionary<RngStream, IReadOnlyList<int>>
-        {
-            [RngStream.Hit] =
-            [
-                3_121, // Mirrim Talon Lance
-                8_870, // Piston Sweep
-                1_450, // Frostfang Pounce
-                5_530, // Talon Lance (arm)
-                2_006, // Frostfang (arm)
-                4_410, // Seismic Maul
-                3_888, // Talon Lance (core)
-                4_200, // Frostfang (core); roll not printed, must hit
-                2_210, // Overpressure Lance
-            ],
-            [RngStream.Crit] =
-            [
-                6_204, // Talon Lance
-                9_999, // Piston Sweep crit omitted by the log; 6.85% fails
-                9_120, // Frostfang
-                4_102, // Blizzard II crit
-                1_502, // Talon Lance crit
-                8_800, // Frostfang
-                3_380, // Seismic Maul
-                6_410, // Talon Lance
-                7_310, // second Blizzard II
-                9_000, // last Frostfang crit omitted; must miss the 17.9% check
-                9_999, // Overpressure Lance crit omitted; 5% fails
-            ],
-            [RngStream.MultiAttack] =
-            [
-                7_713, // Talon Lance double attack
-                9_999, // later weapon skills, omitted, must fail 10%
-                9_999,
-                9_999,
-                9_999,
-                9_999,
-            ],
-        };
-    }
-
     private static HeroState Hero(
         int slot,
         string name,
@@ -161,6 +118,7 @@ public static class TrainingArena
         return new HeroState
         {
             Slot = slot,
+            IsAnchor = slot == 0,
             Name = name,
             Race = race,
             MaxHp = hp,
@@ -191,4 +149,12 @@ public static class TrainingArena
     }
 
     private static BattleAction Act(int ability, int part) => new(ability, part, -1);
+
+    private static int[] Resist()
+    {
+        var resist = new int[8];
+        resist[(int)ElementId.Ice] = 1_000;
+        resist[(int)ElementId.Fire] = 3_000;
+        return resist;
+    }
 }

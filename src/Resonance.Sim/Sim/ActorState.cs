@@ -44,6 +44,9 @@ public sealed class HeroState
     public int RegenExpires;
     public int RegenNextTick;
     public int Absorb;
+    public int Heat;
+    public int HeatDecayTick;
+    public bool IsAnchor;
 
     public bool IsAlive => Hp > 0;
 
@@ -72,6 +75,10 @@ public sealed class BossPartState
     public ElementMask BurstMask;
     public int BurstBucketBp;
     public int BurstTrueBp;
+    public int BurnPulse;
+    public int BurnNextTick;
+    public int BurnExpires;
+    public bool BurnIii;
     public EnmitySlot[] Enmity = [];
 }
 
@@ -96,6 +103,10 @@ public sealed class BossState
     public int SlowBp;
     public int SlowExpires;
     public bool PounceAvailable = true;
+    public int ShatterBp;
+    public int ShatterExpires;
+    public int[] ResistBp = new int[8];
+    public List<string> Beneficial = [];
     public BossPartState[] Parts = [];
 
     public int SlowNow(int tick) => tick < SlowExpires ? SlowBp : 0;

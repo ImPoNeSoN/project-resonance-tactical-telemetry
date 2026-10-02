@@ -91,7 +91,7 @@ DEX additionally adds +1 ACC per point and +0.04 percentage points of crit chanc
 Within a single tick the simulation processes steps in exactly this order:
 
 1. **AP gain** for every unit that is not casting and not stunned.
-2. **Global timers:** VE decay if `tick % 500 == 0`; DoT and regen pulses whose 500-tick phase lands on this tick; status expirations; Resonance window and burst window expirations; Aether Density Meter updates (dungeon only).
+2. **Global timers:** VE decay if `tick % 500 == 0`; status expirations; Resonance window and burst window expirations; Aether Density Meter updates (dungeon only). DoT and regen pulses are **not** tied to that global phase. Each effect pulses every 500 ticks measured from its own start (`start + 500`, `start + 1,000`, …) until its duration ends. Circuit Benediction's +20 Concentration lasts for the whole regen, and expires on the same tick the regen expires.
 3. **Chant resolutions** due this tick, ordered by chant start tick, then party slot, then enemies.
 4. **Action selection:** every unit with AP ≥ 10,000 that is not casting acts, ordered by:
    1. higher AP first,
@@ -385,6 +385,8 @@ CE      = CE − CE_shed
 
 So a hit for 10% of Max HP sheds 5% of that hero's CE on that table, and no single hit can shed more than 25%. Tanks protect their CE lead by staying mitigated; damage dealers who get hit shed CE and naturally drop down the table.
 
+**Which table.** CE is shed from the table that **selected** the target. That is the acting sub-target's own table when it has any threat, and the **Core** table when that part's table is empty (the same fallback as 2.9.1). A Weapon Arm hit that fell back to Core sheds Core CE, not an empty Arm row.
+
 ### 2.9.5 Target selection
 
 ```
@@ -422,6 +424,7 @@ Each boss sub-target has one chain state: `Empty`, `L1(property)`, `L2(resonance
 - When a window expires, the state becomes `Empty`.
 - Chain participants (distinct heroes who applied a property that is still part of the current chain) are tracked for Lyr Aurelis-7's Ensemble Gain.
 - A **physical chain link** (for Cadence Surge) is a Physical or Elemental-Physical ability whose property produces a valid L2 or L3 transition. Opening a window is not a link.
+- A **Magic Burst also takes the chain step.** A magical ability whose element is in the open burst window deals its burst damage against that window, then applies its property as the next chain step (2.11.2). A valid transition detonates and opens the next resonance level. Any other combination restarts the chain at `L1(that property)`. A restart does not close the burst window. A detonation still replaces it (extensions on the old window do not carry over).
 
 ### 2.10.3 Level 2 matrix (L1 window → incoming property)
 
@@ -461,8 +464,8 @@ Ice, Lightning, Light and Darkness are **closer-only** properties at Level 1: op
 |---|---|---|---|---|
 | Solar Apex | Fragmentation → Light (user-specified); Radiance → Slashing | Light, Wind, all Physical / Elemental-Physical | +120% of burst damage added as True Damage | Boss VE reset onto active tank (2.9.6) |
 | Umbral Zero | Distortion → Ice; Induration → Darkness | Darkness, Ice | +110% of burst damage added as True Damage | Boss AP −3,000; −30% MEVA for 6,000 ticks |
-| Magma Core | Liquefaction → Earth; Tectonic Shear → Fire | Fire, Earth | +110% Fire/Earth Burst | Burn III DoT; −30% DEF for 6,000 ticks |
-| Tempest Crown | Fragmentation → Lightning; Conduction → Wind | Wind, Lightning | +110% Wind/Lightning Burst | 100% interrupt of any chant on that sub-target; every living ally +2,000 AP |
+| Magma Core | Liquefaction → Earth; Tectonic Shear → Fire | Fire, Earth | +110% of burst damage added as True Damage (not BurstBucket) | Burn III DoT; −30% DEF for 6,000 ticks |
+| Tempest Crown | Fragmentation → Lightning; Conduction → Wind | Wind, Lightning | +110% of burst damage added as True Damage (not BurstBucket) | 100% interrupt of any chant on that sub-target; every living ally +2,000 AP |
 
 Full L2 × incoming lookup (blank = chain restarts at the incoming property as L1):
 
@@ -521,6 +524,8 @@ L3 DetonationDmg = floor(1.00 × ClosingHitFinalDamage)   True Damage
 ### 2.11.2 Qualifying
 
 A **Magic Burst** happens when a Magical ability whose element is in the window's set **resolves** on that sub-target while the window is open. The start tick of the chant does not matter; resolution tick does. This is what makes chant timing the core skill of Spike DPS play.
+
+That same resolution **also applies the spell's chain property**. Burst damage is computed against the window that was open at the start of the resolution (100% hit, burst crit, BurstBucket or true component, diminish index, MP refund). The property is applied after that, using the spell's step-9 damage as the closing hit. If the matrix detonates, the new detonation closes the window this spell just burst (a Kith-Lir extension applied to that old window does not carry onto the new one) and opens a fresh 1,500-tick window. If the matrix does not detonate, the chain restarts at `L1(property)` and the current burst window stays open, extension included. The spell does not also count as a burst of a window it just opened.
 
 A **Physical Burst** happens when a Physical or Elemental-Physical ability resolves inside a window whose set includes Physical (Fragmentation and Solar Apex only). Elemental-Physical weapon skills do not burst in purely elemental windows (Frostfang Pounce into an Induration window is a normal hit); this keeps linkers from double-dipping on windows they just opened.
 
@@ -593,6 +598,10 @@ The forced detonation is the Ash-Dravan hero's own action, so it never triggers 
 ### 2.12.5 Aethel-Born: Phase Dampener
 
 See 2.9.2 for the two-bucket VE model. Additionally, all Aethel-Born have innate +15% Fast Cast and CE generation × 0.60.
+
+### 2.12.6 Shelter of the Chanters (Korrith Vael-Dun)
+
+Kept as implemented. While the formation anchor (party slot 0) is the **Core-table** argmax and at least two other heroes are casting, that anchor's DEF is multiplied by 1.25 and that anchor's flat CE generation is multiplied by 1.30. The CE multiplier is applied after Enmity+ and before the Aethel-Born ×0.60, and it does not apply to anyone else's CE. The check is the Core table only, not each part's table. The condition is re-checked when chants start and resolve; the bonus ends on the tick it stops being true.
 
 ---
 
@@ -671,41 +680,43 @@ Loadouts used:
 
 Initial AP (`min(6,000, AGI × 300)`): Korrith 2,700; Mirrim 5,400; Zeph 3,900; Seraphine 3,900; Boss 3,600.
 
-Constants referenced: boss physical DR = 420 / 920 = 45.65%; boss magical DR = 300 / 900 = 33.33%. RNG rolls are shown as d10000 values from the seeded stream (roll < threshold × 10,000 succeeds).
+Constants referenced: boss physical DR = 420 / 920 = 45.65%; boss magical DR = 300 / 900 = 33.33%.
+
+**RNG.** PCG-XSH-RR encounter seed `20261002`, one stream each for hit, crit, multi-attack, interrupt, proc, and AI. Every roll this fight draws is printed below (`roll N`). A Magic Burst does not draw a hit roll (`no roll`). A 0% interrupt does not draw an interrupt roll. `ScriptedRng` remains the replay tool when some future excerpt omits a roll; this log does not omit any.
 
 ### 2.15.2 Log
 
 | Tick | Actor | Event | Math | Result |
 |---|---|---|---|---|
-| 256 | Mirrim | Ready (AP 5,400 + 256 × 18 = 10,008). Talon Lance on Core. WS set on. | ATK_eff = 415 + 50 DEX = 465. ACC_eff = 308 + 50 = 358. Hit% = clamp(0.75 + (358 − 140)/200) = 0.95; roll 3,121 hit. Crit = 0.05 + 218/2,000 + 50 × 0.0004 = 17.9%; roll 6,204 no. DA 10%; roll 7,713 no. Dmg = 465 × 2.00 × (1 − 0.4565) = 505.43 | **505** Piercing to Core. Core chain: L1(Piercing), window 256 → 4,256. Mirrim Core CE = 500 + floor(505 × 0.08) = **540**. AP 10,008 − 10,000 = 8. Boss AP 6,672: Pounce on the Upbeat not triggered (needs 8,000–9,999). |
+| 256 | Mirrim | Ready (AP 5,400 + 256 × 18 = 10,008). Talon Lance on Core. WS set on. | ATK_eff = 415 + 50 DEX = 465. ACC_eff = 308 + 50 = 358. Hit% = clamp(0.75 + (358 − 140)/200) = 0.95; roll 9,331 hit. Crit = 0.05 + 218/2,000 + 50 × 0.0004 = 17.9%; roll 3,082 no. DA 10%; roll 9,647 no. Dmg = 465 × 2.00 × (1 − 0.4565) = 505.43 | **505** Piercing to Core. Core chain: L1(Piercing), window 256 → 4,256. Mirrim Core CE = 500 + floor(505 × 0.08) = **540**. AP 10,008 − 10,000 = 8. Boss AP 6,672: Pounce on the Upbeat not triggered (needs 8,000–9,999). |
 | 470 | Zeph | Ready (3,900 + 470 × 13 = 10,010). Starts Blizzard II on Core. | FC set: CT_eff = ceil(1,000 × (1 − 0.30)) = 700. Interrupt node placed at tick 1,170. Swap to Mid-Cast. MP 540 − 180 = 360. | Casting; AP frozen at 10,010. |
 | 470 | Seraphine | Ready (10,010, same tick; slot 4 after slot 3). Circuit Benediction on Zeph. | CT_eff = ceil(400 × (1 − 0.45)) = 220 → node at 690. MP 990 − 90 = 900. | Casting. |
 | 500 | — | VE decay step. | No hero holds VE yet. | No change. |
-| 534 | Boss (Weapon Arm) | Ready (3,600 + 534 × 12 = 10,008). Piston Sweep. Arm table empty → falls back to Core table: argmax = Mirrim (540). | Hit% = 0.75 + (300 − 263)/200 = 0.935; roll 8,870 hit. Dmg = 520 × 1.60 × (1 − 270/770) = 540.26 | **540** to Mirrim (4,480 → 3,940). Unmitigated direct hit: CE_shed = floor(540 × min(0.25, 0.5 × 540 / 4,480)) = floor(540 × 0.0603) = 32. Mirrim Core CE **508**. Boss AP 8. |
-| 690 | Seraphine | Circuit Benediction resolves on Zeph. | Regen 0.15 × 373 = 55 HP per 500 ticks for 4,000 ticks; Zeph Concentration +20. Seraphine Core VE +300; CE 100 × 0.60 = 60. AP 10,010 − 4,000 = 6,010. | Zeph Concentration 20 (his Blizzard II chant is now safer). |
-| 812 | Mirrim | Ready (8 + 556 × 18 = 10,016; higher AP than Korrith's 10,008, so first). Frostfang Pounce on Core. | ATK_eff (Elemental-Physical) = 415 + 0.5 × 50 = 440. Hit roll 1,450 hit; crit roll 9,120 no. Dmg = 440 × 1.80 × (1 − 0.4565) × (1 − 0.10 Ice res) = 387.39 | **387** Ice. Piercing → Ice = **Induration (L2)**. Detonation = floor(387 × 0.50) = **193** Ice. Boss −30% AGI for 8,000 ticks (AGI 12 → 8.4). Core burst window (Ice) 812 → 2,312. Core chain: L2(Induration), window 812 → 4,812. CE +450 + floor(580 × 0.08) = +496 → **1,004**. Physical chain link → Cadence Surge: AP 10,016 − 10,000 + 1,200 = **1,216**. |
+| 534 | Boss (Weapon Arm) | Ready (3,600 + 534 × 12 = 10,008). Piston Sweep. Arm table empty → falls back to Core table: argmax = Mirrim (540). | Hit% = 0.75 + (300 − 263)/200 = 0.935; roll 9,185 hit. Crit 6.85%; roll 3,338 no. Dmg = 520 × 1.60 × (1 − 270/770) = 540.26 | **540** to Mirrim (4,480 → 3,940). Unmitigated direct hit sheds the **selecting** table (Core): CE_shed = floor(540 × min(0.25, 0.5 × 540 / 4,480)) = floor(540 × 0.0603) = 32. Mirrim Core CE **508**. Boss AP 8. |
+| 690 | Seraphine | Circuit Benediction resolves on Zeph. | Regen 0.15 × 373 = 55 HP per 500 ticks for 4,000 ticks, measured from this resolution (pulses at 1,190, 1,690, …). Zeph Concentration +20 lasts the same window and expires with the regen at 4,690. Seraphine Core VE +300; CE 100 × 0.60 = 60. AP 10,010 − 4,000 = 6,010. | Zeph Concentration 20 (his Blizzard II chant is now safer). |
+| 812 | Mirrim | Ready (8 + 556 × 18 = 10,016; higher AP than Korrith's 10,008, so first). Frostfang Pounce on Core. | ATK_eff (Elemental-Physical) = 415 + 0.5 × 50 = 440. Hit roll 1,100 hit; crit roll 6,847 no. DA roll 8,244 no. Dmg = 440 × 1.80 × (1 − 0.4565) × (1 − 0.10 Ice res) = 387.39 | **387** Ice. Piercing → Ice = **Induration (L2)**. Detonation = floor(387 × 0.50) = **193** Ice. Boss −30% AGI for 8,000 ticks (AGI 12 → 8.4). Core burst window (Ice) 812 → 2,312. Core chain: L2(Induration), window 812 → 4,812. CE +450 + floor(580 × 0.08) = +496 → **1,004**. Physical chain link → Cadence Surge: AP 10,016 − 10,000 + 1,200 = **1,216**. |
 | 812 | Korrith | Ready (2,700 + 812 × 9 = 10,008). Lattice Provoke on Core (Idle set, Enmity+ 10%). | VE +2,200; CE 300 × 1.10 = 330. | Korrith Core total 2,530 → new argmax. AP 10,008 − 4,000 = 6,008. |
 | 997 | Seraphine | Ready (6,010 + 307 × 13 = 10,001). Starts Cure Cascade on Mirrim. | CT_eff = ceil(900 × 0.55) = 495 → node 1,492. MP 900 − 140 = 760. | Two allies casting (Zeph, Seraphine) and Korrith is target → **Shelter of the Chanters active** (Korrith DEF 790 → 987, CE gen +30%) from 997. |
 | 1,000 | — | VE decay. | Korrith 2,200 → 1,980. Seraphine 300 → 270. | |
-| 1,170 | Zeph | Blizzard II resolves on Core. Mid-Cast set: INT 606 + 60 = 666. Core has an open Ice burst window (812 → 2,312) → **Magic Burst**. | Elapsed in window 358 > 300 → Early-Window Cartography not triggered. Base = 666 × 3.00 = 1,998. × (1 − 0.3333) = 1,332.0. Ice res bypassed. Crit = 5% + 50% = 55%; roll 4,102 **crit** × (1.50 + 0.20) = 1.70. BurstBucket = 0.50 Induration + 0.20 MBD = 0.70. 1,332.0 × 1.70 × 1.70 = 3,849.48 | **3,849** Ice. MP refund 65% (Kith-Lir replaces the 50%) = 117 → MP 477. Window extended +600 → ends **2,912**. Zeph Core VE +300; CE 600 + floor(3,849 × 0.08) = 907. AP 10,010 − 10,000 = 10. Shelter of the Chanters ends (only Seraphine still casting). |
+| 1,170 | Zeph | Blizzard II resolves on Core. Mid-Cast set: INT 606 + 60 = 666. Core has an open Ice burst window (812 → 2,312) → **Magic Burst**, and the spell also takes the chain step. | Elapsed in window 358 > 300 → Early-Window Cartography not triggered. No hit roll (Magic Burst). Base = 666 × 3.00 = 1,998. × (1 − 0.3333) = 1,332.0. Ice res bypassed. Crit = 5% + 50% = 55%; roll 1,300 **crit** × (1.50 + 0.20) = 1.70. BurstBucket = 0.50 Induration + 0.20 MBD = 0.70. 1,332.0 × 1.70 × 1.70 = 3,849.48. Chain was L2(Induration); Ice is not an Umbral Zero closer. | **3,849** Ice. Chain **restarts** L1(Ice), window 1,170 → 5,170. No detonation. Burst window stays open and extends +600 → ends **2,912**. MP refund 65% = 117 → MP 477. Zeph Core VE +300; CE 600 + floor(3,849 × 0.08) = 907. AP 10,010 − 10,000 = 10. Shelter of the Chanters ends (only Seraphine still casting). |
 | 1,256 | Korrith | Ready (6,008 + 444 × 9 = 10,004). Keratin Bastion. | −35% physical damage taken for 3,000 ticks (until 4,256). VE +400; CE 900 × 1.10 = 990. MP 300 − 30 = 270. | Core: Korrith VE 2,380, CE 1,320. AP 6,004. |
 | 1,300 | Mirrim | Ready (1,216 + 488 × 18 = 10,000). Timeline Stalk. | Next ability recovery −4,000. CE +200 (Core). MP 225 − 30 − 20 = 175. | Mirrim Core CE 1,204. AP 6,000. |
 | 1,492 | Seraphine | Cure Cascade resolves on Mirrim. | Heal = 3.20 × 373 = 1,193; Mirrim missing 540 → restores 540. VE = floor(540 × 0.40) = 216 (under 1,500, so not heavy-tagged). | Mirrim 4,480 / 4,480. Seraphine Core VE 486. AP 10,001 − 10,000 = 1. |
 | 1,500 | — | VE decay. | Korrith 2,380 → 2,142. Seraphine 486 → 437. Zeph 300 → 270. | |
-| 1,523 | Mirrim | Ready (6,000 + 223 × 18 = 10,014). Talon Lance on **Weapon Arm** (separate chain state: Arm is Empty). | Boss AP = 3,344 + (1,523 − 812) × 8.4 = 9,316.4 → **Pounce on the Upbeat**: boss AP −1,500 → 7,816.4. Hit roll 5,530 hit; crit roll 1,502 < 1,790 **crit** ×1.50. Dmg = 505.43 × 1.50 = 758.15 | **758** Piercing to Arm. Arm chain: L1(Piercing), 1,523 → 5,523. Arm table: Mirrim CE 500 + 60 = **560**. Crit → Cadence Surge. Recovery 6,000 (Stalk): AP 10,014 − 6,000 + 1,200 = **5,214**. |
+| 1,523 | Mirrim | Ready (6,000 + 223 × 18 = 10,014). Talon Lance on **Weapon Arm** (separate chain state: Arm is Empty). | Boss AP = 3,344 + (1,523 − 812) × 8.4 = 9,316.4 → **Pounce on the Upbeat**: boss AP −1,500 → 7,816.4. Hit roll 1,013 hit; crit roll 4,309 no (17.9%). DA roll 9,947 no. Dmg = 505.43 | **505** Piercing to Arm. Arm chain: L1(Piercing), 1,523 → 5,523. Arm table: Mirrim CE 500 + floor(505 × 0.08) = **540**. No crit, no link → no Cadence Surge. Recovery 6,000 (Stalk): AP 10,014 − 6,000 = **4,014**. |
 | 1,700 | Korrith | Ready (6,004 + 444 × 9 = 10,000). Lattice Provoke on Core. | VE +2,200; CE +330. | Korrith Core VE 4,342, CE 1,650. AP 6,000. |
 | 1,783 | Boss (Core) | Ready (7,816.4 + 260 × 8.4 = 10,000.4). Starts Overpressure Lance. Core table argmax: Korrith 5,992 vs Mirrim 1,204, Zeph 1,177, Seraphine 497. | CT 1,200 → interrupt node at 2,983. | Boss casting; AP frozen. |
-| 1,789 | Mirrim | Ready (5,214 + 266 × 18 = 10,002). Frostfang Pounce on Weapon Arm. | Hit roll 2,006 hit; crit roll 8,800 no. Dmg = 387 (same math as tick 812). | **387** Ice. Arm: Piercing → Ice = **Induration**. Detonation **193**. Slow refreshed to 8,000 ticks (until 9,789). Arm burst window (Ice) 1,789 → 3,289. Arm CE +496 → **1,056**. Cadence Surge: AP 2 + 1,200 = 1,202. |
+| 1,856 | Mirrim | Ready (4,014 + 333 × 18 = 10,008). Frostfang Pounce on Weapon Arm. | Hit roll 5,828 hit; crit roll 5,015 no. DA roll 4,493 no. Dmg = 387 (same math as tick 812). MP 175 − 30 = 145. | **387** Ice. Arm: Piercing → Ice = **Induration**. Detonation **193**. Slow refreshed until 9,856. Arm burst window (Ice) 1,856 → 3,356. Arm CE 540 + 496 = **1,036**. Physical link → Cadence Surge: AP 8 + 1,200 = **1,208**. |
 | 1,939 | Zeph | Ready (10 + 769 × 13 = 10,007). Starts Blizzard II on Core. | CT_eff 700 → node 2,639 (inside the Core burst window ending 2,912). MP 477 − 180 = 297. | Casting. |
 | 2,000 | — | VE decay. | Korrith 4,342 → 3,907. Seraphine 437 → 393. Zeph 270 → 243. | |
-| 2,145 | Korrith | Ready (6,000 + 445 × 9 = 10,005). Seismic Maul on Core. **WS set on: Idle Enmity+ does not apply.** | ATK_eff = 273 + 40 STR = 313. Hit 0.95; roll 4,410 hit. Crit 9%; roll 3,380 no. Dmg = 313 × 2.20 × (1 − 0.4565) = 374.24 | **374** Blunt. Core chain was L2(Induration); Blunt has no route from Induration → **chain restarts** at L1(Blunt), 2,145 → 6,145 (deliberate: this party has no Darkness source for Umbral Zero). The Core Ice burst window stays open to 2,912. CE 700 + 29 = 729 → Korrith Core CE 2,379. AP 5. |
+| 2,145 | Korrith | Ready (6,000 + 445 × 9 = 10,005). Seismic Maul on Core. **WS set on: Idle Enmity+ does not apply.** | ATK_eff = 273 + 40 STR = 313. Hit 0.95; roll 2,524 hit. Crit 9%; roll 2,740 no. Double Attack 0%: no roll. Dmg = 313 × 2.20 × (1 − 0.4565) = 374.24 | **374** Blunt. Core chain was L1(Ice) from the burst at 1,170; Blunt has no route from Ice → **chain restarts** at L1(Blunt), 2,145 → 6,145. The Core Ice burst window stays open to 2,912. CE 700 + 29 = 729 → Korrith Core CE 2,379. AP 5. Core HP 114,692. |
 | 2,262 | Seraphine | Ready (1 + 770 × 13 = 10,011). Starts Phase Sanctuary. | CT_eff = ceil(1,500 × 0.55) = 825 → node 3,087. MP 760 − 260 = 500. | Zeph + Seraphine casting, Korrith is target → Shelter of the Chanters active again. |
-| 2,278 | Mirrim | Ready (1,202 + 489 × 18 = 10,004). Timeline Stalk. | CE +200 (Core) → 1,404. | AP 6,004. |
+| 2,345 | Mirrim | Ready (1,208 + 489 × 18 = 10,010). Timeline Stalk. | CE +200 (Core) → 1,404. MP 145 − 20 = 125. | AP 6,010. |
 | 2,500 | — | VE decay (processed before actions on this tick). | Korrith 3,907 → 3,516. Seraphine 393 → 353. Zeph 243 → 218. | |
-| 2,500 | Mirrim | Ready (6,004 + 222 × 18 = 10,000). Talon Lance on Core. | Boss is casting (AP frozen above 10,000) → no Pounce. Hit roll 3,888; crit roll 6,410 no. Dmg 505. | **505** Piercing. Core chain L1(Blunt) → Piercing: no route → restarts at L1(Piercing), 2,500 → 6,500. CE +540 → 1,944. Recovery 6,000 (Stalk): AP 4,000. |
-| 2,639 | Zeph | Blizzard II resolves on Core; burst window still open (ends 2,912) → **second Magic Burst in this window**. | 1,332.0 × (1 + 0.70) = 2,264.4; crit roll 7,310 ≥ 5,500 no. BurstDiminish 0.85 → 1,924.74. Boss chanting: Interrupt% = (1,924 / 120,000) × 2.5 − 40 × 0.01 = 0.040 − 0.40 → clamp **0%**. | **1,924** Ice. MP +117 → 414. Window extended +600 → ends 3,512 (extension cap +1,200 reached). CE 600 + 153 = 753 → Zeph Core CE 1,660; VE +300 → 518. AP 7. Shelter of the Chanters ends. |
-| 2,834 | Mirrim | Ready (4,000 + 334 × 18 = 10,012). Frostfang Pounce on Core. | Dmg 387. | Core: Piercing → Ice = **Induration** again. Detonation **193**. The new detonation closes the old Core burst window (2,912/3,512) and opens a fresh one 2,834 → 4,334. Slow refreshed to 10,834. CE +496 → 2,440. Cadence Surge: AP 12 + 1,200 = 1,212. |
-| 2,983 | Boss (Core) | Overpressure Lance resolves on Korrith. Korrith in Idle set. | MACC = 0.5 × 380 + 0.5 × 300 = 340; MagicHit = 0.75 + (340 − 240)/200 = 1.25 → 0.95; roll 2,210 hit. Dmg = 836 × (1 − 240/840) = 597.14; Fire res 0. | **597** to Korrith (9,240 → 8,643). Keratin Bastion covers physical only → **unmitigated**: CE_shed = floor(2,379 × min(0.25, 0.5 × 597 / 9,240)) = floor(2,379 × 0.0323) = **76** → Korrith Core CE 2,303. Magical, so no Chitinous Grounding VE. Boss AP 0.4. |
+| 2,567 | Mirrim | Ready (6,010 + 222 × 18 = 10,006). Talon Lance on Core. | Boss is casting (AP frozen above 10,000) → no Pounce. Hit roll 9,012 hit; crit roll 7,738 no. DA roll 1,871 vs 1,000 no. Dmg 505. | **505** Piercing. Core chain L1(Blunt) → Piercing: no route → restarts at L1(Piercing), 2,567 → 6,567. CE +540 → 1,944. Recovery 6,000 (Stalk): AP 4,006. Core HP 114,187. |
+| 2,639 | Zeph | Blizzard II resolves on Core. The Ice burst window is still open (ends 2,912) → **Magic Burst #2**, and the spell takes the chain step. | Same pre-burst base as tick 1,170: 1,332.0. No hit roll. Crit 55%; roll 2,109 **crit** ×1.70 → 2,264.4. BurstBucket 0.70 → 3,849.48. BurstDiminish 0.85 → floor **3,272**. Chain is L1(Piercing), so Ice closes **Induration**. Detonation = floor(3,272 × 0.50) = **1,636**. Interrupt% = (3,272 / 120,000) × 2.5 − 0.40 = 0.068 − 0.40 → clamp **0%** (no interrupt roll). | **3,272** Ice plus detonation **1,636**. The detonation **replaces** the burst window: the would-be +600 extension is discarded, and a fresh Ice window runs 2,639 → **4,139**. Chain L2(Induration) until 6,639. Slow refreshed until 10,639. MP refund 117 → 414. CE 600 + floor(4,908 × 0.08) = 992 → Zeph Core CE **1,899**; VE 218 + 300 = 518. AP 7. Shelter of the Chanters ends. Core HP 109,279. |
+| 2,900 | Mirrim | Ready (4,006 + 333 × 18 = 10,000). Frostfang Pounce on Core. Boss still casting → no Pounce. | Hit roll 8,959 hit. Crit 17.9%; roll 24 **crit** ×1.50. DA roll 8,567 no. 387.39 × 1.50 = 581.08. The open window is Ice only, so this elemental-physical hit is not a Physical Burst. MP 125 − 30 = 95. | **581** Ice. Chain was L2(Induration); Ice is not an Umbral Zero closer → **restarts** L1(Ice), 2,900 → 6,900. Detonation 0. The burst window from 2,639 stays open until 4,139. CE 450 + floor(581 × 0.08) = 496 → **2,440**. Crit → Cadence Surge: AP 0 + 1,200 = **1,200**. Core HP 108,698. |
+| 2,983 | Boss (Core) | Overpressure Lance resolves on Korrith. Korrith in Idle set. | MACC = 0.5 × 380 + 0.5 × 300 = 340; MagicHit = 0.75 + (340 − 240)/200 = 1.25 → 0.95; roll 6,667 hit. Crit 5%; roll 2,596 no. Dmg = 836 × (1 − 240/840) = 597.14; Fire res 0. | **597** to Korrith (9,240 → 8,643). Keratin Bastion covers physical only → **unmitigated**: CE_shed = floor(2,379 × min(0.25, 0.5 × 597 / 9,240)) = floor(2,379 × 0.0323) = **76** → Korrith Core CE 2,303. Magical, so no Chitinous Grounding VE. Boss AP 0.4. |
 | 3,000 | — | VE decay. | Korrith 3,516 → 3,164. Seraphine 353 → 317. Zeph 518 → 466. | |
 | 3,087 | Seraphine | Phase Sanctuary resolves. | Party −25% damage taken until 6,087. VE +1,400 into the **heavy bucket** (decays 20% per 500 ticks); CE 200 × 0.60 = 120. AP 10,011 − 14,000 = −3,989 (debt). | Seraphine Core VE 317 + 1,400 = 1,717. |
 
@@ -714,18 +725,20 @@ Constants referenced: boss physical DR = 420 / 920 = 45.65%; boss magical DR = 3
 | Unit | HP | MP | AP | Core VE | Core CE | Core total | Arm table |
 |---|---|---|---|---|---|---|---|
 | Korrith | 8,643 / 9,240 | 270 | 8,483 | 3,164 | 2,303 | **5,467** | 0 |
-| Mirrim | 4,480 / 4,480 | 95 | 5,766 | 0 | 2,440 | 2,440 | **1,056** |
-| Zeph | 3,710 / 3,710 | 414 | 5,831 | 466 | 1,660 | 2,126 | 0 |
+| Mirrim | 4,480 / 4,480 | 95 | 4,566 | 0 | 2,440 | 2,440 | **1,036** |
+| Zeph | 3,710 / 3,710 | 414 | 5,831 | 466 | 1,899 | 2,365 | 0 |
 | Seraphine | 4,750 / 4,750 | 500 | −3,989 | 1,717 | 180 | 1,897 | 0 |
-| Boss | Core 111,683 / 120,000; Arm 43,662 / 45,000 | — | 874 (slowed, 8.4 AP per tick) | | | | |
+| Boss | Core 108,698 / 120,000; Arm 43,915 / 45,000 | — | 874 (slowed, 8.4 AP per tick) | | | | |
+
+Core chain is L1(Ice) until 6,900. The Core Ice burst window is open until 4,139. Induration slow lasts until 10,639. The Weapon Arm chain is L2(Induration) until 5,856, and its Ice burst window is still open until 3,356. Shield is untouched at 30,000.
 
 ### 2.15.4 What the log teaches (tutorial callouts)
 
 1. **Chant timing beats reaction:** Zeph started Blizzard II at tick 470, before the chain even existed, so it would resolve inside the burst window Mirrim was about to open.
-2. **Per-part enmity:** the Weapon Arm table is owned by Mirrim (1,056 vs 0). The next Piston Sweep hits Mirrim unless Korrith uses Tessellate-style all-parts provocation or hits the Arm. The HUD's per-part threat bars flag this in amber.
+2. **Per-part enmity:** the Weapon Arm table is owned by Mirrim (1,036 vs 0). The next Piston Sweep hits Mirrim unless Korrith uses Tessellate-style all-parts provocation or hits the Arm. The HUD's per-part threat bars flag this in amber.
 3. **Gear swap trade-off:** Korrith's Seismic Maul generated 729 CE instead of 799 because his WS set carries no Enmity+.
 4. **Mitigation is typed:** Keratin Bastion did not stop the magical Lance from shedding CE.
-5. **Boss interrupts need Stuns:** 1,924 damage produced 0% interrupt chance against Concentration 40.
+5. **Boss interrupts need Stuns:** 3,272 damage produced 0% interrupt chance against Concentration 40. The detonation is not part of that interrupt check.
 
 ---
 
@@ -737,7 +750,8 @@ The combat rules live in a pure C# class library, `Resonance.Sim` (net8.0, no `G
 
 - All stats are `int`. Percentages are **basis points** (`int`, 10,000 = 100%).
 - AP is stored in **centi-AP** (`int`, 1,000,000 = 10,000 AP) so fractional AGI from Haste/Slow (8.4 AGI → 840 centi-AP per tick) is exact.
-- Ratios such as `DEF / (DEF + 500)` are computed as `DEF * 10000 / (DEF + 500)` in `long`, giving basis points. Products are accumulated in `long` and floored once at pipeline end (step 9).
+- **Division truncates** (floor toward zero) everywhere a formula does not explicitly say ceil. Odd inputs of `(INT + ACC) / 2` and `0.5 × STR` or `0.5 × DEX` drop the fraction. Chant time and Heat gain still ceil, because those formulas say ceil.
+- Ratios such as `DEF / (DEF + 500)` are computed as `DEF * 10000 / (DEF + 500)`, giving basis points. The damage product is floored **once** at pipeline end (step 9). Ten basis-point factors overflow `Int128` if multiplied before that division, so the pipeline currently multiplies in `BigInteger`. That is a known performance risk for the later zero-alloc pass; it is not a float.
 - No `float`/`double` anywhere in `Resonance.Sim`. A Roslyn analyzer rule (banned API list) fails the build if `System.Single`, `System.Double` or `System.Math` floating overloads appear in the Sim assembly.
 - RNG: `Pcg32` struct seeded per encounter; separate streams for hit, crit, multi-attack, interrupt, proc and AI so adding a new roll type never shifts other streams.
 

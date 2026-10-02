@@ -59,20 +59,4 @@ public static class FixedMath
 
         return (int)value;
     }
-
-    /// <summary>Round half up for a non-negative rational.</summary>
-    public static int RoundHalfUp(long numerator, long denominator)
-    {
-        if (denominator <= 0)
-        {
-            throw new ArgumentOutOfRangeException(nameof(denominator));
-        }
-
-        if (numerator <= 0)
-        {
-            return 0;
-        }
-
-        return (int)((numerator + (denominator / 2)) / denominator);
-    }
 }
