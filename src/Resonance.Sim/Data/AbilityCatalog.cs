@@ -27,6 +27,8 @@ public static class AbilityCatalog
     public const int Attack = 31;
     public const int PyreLattice = 32;
     public const int HexLance = 33;
+    public const int KilnVent = 40;
+    public const int EarthBolt = 42;
 
     private static readonly Dictionary<int, AbilityDef> ById = Build();
     private static readonly Dictionary<string, AbilityDef> ByName = IndexNames();
@@ -92,6 +94,8 @@ public static class AbilityCatalog
             New(Attack, "Attack", AbilityKind.Physical, ChainProperty.None, ElementId.None, 10_000, 0, 0, 0, 100, 10_000, SupportEffect.None),
             New(PyreLattice, "Pyre Lattice", AbilityKind.Magical, ChainProperty.Fire, ElementId.Fire, 14_000, 1_400, 320, 700, 1_000, 44_000, SupportEffect.None),
             New(HexLance, "Hex Lance", AbilityKind.Magical, ChainProperty.Lightning, ElementId.Lightning, 10_000, 600, 140, 200, 500, 24_000, SupportEffect.None),
+            New(KilnVent, "Kiln Vent", AbilityKind.Magical, ChainProperty.Fire, ElementId.Fire, 10_000, 800, 0, 0, 200, 15_000, SupportEffect.None, appliesBurn: true),
+            New(EarthBolt, "Earth Bolt", AbilityKind.Magical, ChainProperty.Earth, ElementId.Earth, 10_000, 0, 0, 0, 0, 10_000, SupportEffect.None),
         ];
 
         var map = new Dictionary<int, AbilityDef>(all.Length);
@@ -127,7 +131,8 @@ public static class AbilityCatalog
         int ce,
         int multiplier,
         SupportEffect effect,
-        int flatInterruptBp = 0)
+        int flatInterruptBp = 0,
+        bool appliesBurn = false)
     {
         return new AbilityDef
         {
@@ -144,6 +149,7 @@ public static class AbilityCatalog
             MultiplierBp = multiplier,
             Effect = effect,
             FlatInterruptBp = flatInterruptBp,
+            AppliesBurn = appliesBurn,
         };
     }
 }

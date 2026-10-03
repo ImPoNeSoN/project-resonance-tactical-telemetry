@@ -97,4 +97,17 @@ public static class SimConst
     public const int SpendHeatCost = 20;
     public const int WaitMitigationBp = 2_000;
     public const int ShieldBashInterruptBp = 3_500;
+
+    public const int ShockRatioBp = 2_500;
+    public const int ShockDuration = 3_000;
+    public const int ConductionDelayAp = 1_500;
+    public const int TectonicMevaDownBp = 2_000;
+    public const int TectonicMevaTicks = 6_000;
+    public const int RadianceHealBp = 200;
+    public const int RadianceDuration = 3_000;
+    public const int UmbralDelayAp = 3_000;
+    public const int UmbralMevaDownBp = 3_000;
+    public const int UmbralMevaTicks = 6_000;
+    public const int TempestGrantAp = 2_000;
+    public const int HeroBurnRatioBp = 2_000;
 }

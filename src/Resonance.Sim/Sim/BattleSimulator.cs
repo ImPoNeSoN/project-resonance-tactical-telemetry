@@ -19,6 +19,9 @@ public sealed class BattleSimulator
     private readonly Queue<BattleAction>[] _heroPlans;
     private readonly Queue<BattleAction> _bossPlan;
     private readonly IRng _rng;
+    private readonly BossScript? _script;
+    private readonly bool _scoreOutcome;
+    private FightOutcome _outcome;
     private readonly List<CombatEvent> _events = new();
     private readonly List<int> _turnOrder = new();
     private readonly List<RecordedCommand> _commands = new();
@@ -34,14 +37,25 @@ public sealed class BattleSimulator
 
     public int GlobalBurstMask;
 
-    public BattleSimulator(HeroState[] heroes, BossState boss, Queue<BattleAction>[] heroPlans, Queue<BattleAction> bossPlan, IRng rng)
+    public BattleSimulator(
+        HeroState[] heroes,
+        BossState boss,
+        Queue<BattleAction>[] heroPlans,
+        Queue<BattleAction> bossPlan,
+        IRng rng,
+        BossScript? script = null,
+        bool scoreOutcome = false)
     {
         _heroes = heroes;
         _boss = boss;
         _heroPlans = heroPlans;
         _bossPlan = bossPlan;
         _rng = rng;
+        _script = script;
+        _scoreOutcome = scoreOutcome;
     }
+
+    public FightOutcome Outcome => _outcome;
 
     public int Tick => _tick;
 
@@ -212,15 +226,22 @@ public sealed class BattleSimulator
         {
             Consider(_boss.CastResolveTick);
         }
-        else if (_bossPlan.Count > 0)
+        else if (_bossPlan.Count > 0 || (_script != null && CoreAlive() && AnyHeroAlive()))
         {
             int need = ApGauge.TicksUntilReady(_boss.Ap.Centi, BossGain());
             if (need <= 0)
             {
-                throw new InvalidOperationException($"Boss is still ready after tick {_tick}.");
-            }
+                if (_bossPlan.Count > 0 && _script == null)
+                {
+                    throw new InvalidOperationException($"Boss is still ready after tick {_tick}.");
+                }
 
-            Consider(_tick + need);
+                Consider(_tick + 1);
+            }
+            else
+            {
+                Consider(_tick + need);
+            }
         }
 
         Consider(_boss.SlowExpires);
@@ -246,6 +267,19 @@ public sealed class BattleSimulator
             {
                 Consider(part.BurnNextTick);
             }
+
+            if (part.ShockPulse > 0)
+            {
+                Consider(part.ShockNextTick);
+            }
+        }
+
+        for (int i = 0; i < _heroes.Length; i++)
+        {
+            if (_heroes[i].RadiancePulse > 0)
+            {
+                Consider(_heroes[i].RadianceNextTick);
+            }
         }
 
         if (_commandCursor < _commands.Count)
@@ -259,6 +293,21 @@ public sealed class BattleSimulator
 
     private bool HasWork()
     {
+        if (_outcome != FightOutcome.Ongoing)
+        {
+            return false;
+        }
+
+        if (_script != null && CoreAlive() && AnyHeroAlive())
+        {
+            return true;
+        }
+
+        if (_scoreOutcome && DamagingDotPending())
+        {
+            return true;
+        }
+
         if (_boss.Casting || _bossPlan.Count > 0 || _commandCursor < _commands.Count)
         {
             return true;
@@ -268,6 +317,12 @@ public sealed class BattleSimulator
         {
             HeroState hero = _heroes[i];
             if (hero.Casting || _heroPlans[i].Count > 0 || (hero.IsAlive && hero.Deck != null))
+            {
+                return true;
+            }
+
+            // Radiance is a party HoT, not the Circuit Benediction regen the golden excerpt leaves scheduled.
+            if (hero.IsAlive && hero.RadiancePulse > 0)
             {
                 return true;
             }
@@ -311,12 +366,15 @@ public sealed class BattleSimulator
 
         PulseRegen();
         PulseBurns();
+        PulseShock();
         PulseHeroBurns();
+        PulseRadiance();
         DecayHeat();
         ExpireStatuses();
         ResolveChants();
         ResolveReadyActions();
         NoteShelter();
+        NoteOutcome();
         _ticked = true;
     }
 
@@ -393,6 +451,12 @@ public sealed class BattleSimulator
             Log("DEF Shatter expired.");
         }
 
+        if (_boss.MevaDownBp > 0 && _tick >= _boss.MevaDownExpires)
+        {
+            _boss.MevaDownBp = 0;
+            Log("MEVA Down expired.");
+        }
+
         for (int i = 0; i < _heroes.Length; i++)
         {
             HeroState hero = _heroes[i];
@@ -443,6 +507,11 @@ public sealed class BattleSimulator
                 part.BurnPulse = 0;
                 part.BurnIii = false;
             }
+
+            if (part.ShockPulse > 0 && _tick > part.ShockExpires)
+            {
+                part.ShockPulse = 0;
+            }
         }
 
         for (int i = 0; i < _heroes.Length; i++)
@@ -466,9 +535,10 @@ public sealed class BattleSimulator
             }
 
             part.Hp -= part.BurnPulse;
-            if (part.Hp < 0)
+            if (part.Hp <= 0)
             {
                 part.Hp = 0;
+                part.Active = false;
             }
 
             Log($"{part.Name} {(part.BurnIii ? "Burn III" : "Burn")} {part.BurnPulse}. HP {part.Hp}.");
@@ -598,6 +668,11 @@ public sealed class BattleSimulator
 
     private void ResolveReadyActions()
     {
+        if (_script != null && !_boss.Casting && _boss.Ap.IsReady && _bossPlan.Count == 0 && CoreAlive() && AnyHeroAlive())
+        {
+            EnqueueScriptedBossAction();
+        }
+
         _turnOrder.Clear();
         for (int i = 0; i < _heroes.Length; i++)
         {
@@ -760,7 +835,7 @@ public sealed class BattleSimulator
     private void BeginHeroChant(HeroState hero, AbilityDef ability, int part, int ally)
     {
         ClearHold(hero);
-        int fastCast = Formulas.TotalFastCastBp(hero.Gear.FastCastBp, RaceFastCast(hero), 0);
+        int fastCast = Formulas.TotalFastCastBp(Set(hero, LoadoutKind.FastCast).FastCastBp, RaceFastCast(hero), 0);
         int chant = Formulas.EffectiveChantTicks(ability.ChantTicks, fastCast);
         hero.Mp -= ability.MpCost;
         if (hero.Mp < 0)
@@ -855,8 +930,9 @@ public sealed class BattleSimulator
             hero.Mp = 0;
         }
 
-        int attack = Formulas.EffectiveAttack(hero.Atk, 0, hero.Gear.WsStr, hero.Gear.WsDex, property);
-        int accuracy = hero.Acc + hero.Gear.WsDex;
+        GearMods weapon = Set(hero, LoadoutKind.Weapon);
+        int attack = Formulas.EffectiveAttack(hero.Atk, 0, weapon.WsStr, weapon.WsDex, property);
+        int accuracy = hero.Acc + weapon.WsDex;
         bool physicalBurst = PhysicalBurst(part, ability);
         int hitBp = SimConst.Bp;
         int hitRoll = -1;
@@ -867,7 +943,7 @@ public sealed class BattleSimulator
             hitRoll = _rng.RollD10000(RngStream.Hit, ability.Name + " hit");
             hit = hitRoll < hitBp;
         }
-        int critBp = Formulas.PhysicalCritChanceBp(accuracy, _boss.Eva, hero.Gear.WsDex, hero.Gear.WsCritBp, physicalBurst);
+        int critBp = Formulas.PhysicalCritChanceBp(accuracy, _boss.Eva, weapon.WsDex, weapon.WsCritBp, physicalBurst);
         bool crit = false;
         int critRoll = -1;
         if (hit)
@@ -902,8 +978,8 @@ public sealed class BattleSimulator
             MitigationConstant = SimConst.PhysicalDrConstant,
             EffectiveResistanceBp = resistance,
             BypassPositiveResistance = physicalBurst,
-            CritMultiplierBp = crit ? Formulas.CritMultiplierBp(hero.Gear.WsCritDamageBp) : SimConst.Bp,
-            WeaponSkillBp = hero.Gear.WsDamageBp,
+            CritMultiplierBp = crit ? Formulas.CritMultiplierBp(weapon.WsCritDamageBp) : SimConst.Bp,
+            WeaponSkillBp = weapon.WsDamageBp,
             BurstBucketBp = bucket,
             BurstDiminishBp = SimConst.Bp,
             DamageTakenReductionBp = 0,
@@ -966,13 +1042,14 @@ public sealed class BattleSimulator
     {
         BossPartState part = _boss.Parts[partIndex];
         bool magicBurst = MagicBurst(part, ability);
-        int intel = hero.Intel + hero.Gear.MidInt;
+        int intel = hero.Intel + Set(hero, LoadoutKind.MidCast).MidInt;
         int elapsed = part.BurstActive ? _tick - part.BurstOpened : int.MaxValue;
         bool early = magicBurst && hero.EarlyWindowCartography && elapsed <= SimConst.EarlyWindowTicks;
         int dealtBuff = early ? 2_500 : 0;
         int burstIndex = magicBurst ? part.BurstsLanded + 1 : 1;
         var profile = ActiveProfile(part);
-        int mbd = hero.Gear.MidMbdBp;
+        GearMods mid = Set(hero, LoadoutKind.MidCast);
+        int mbd = mid.MidMbdBp;
         if (mbd > SimConst.GearMbdCapBp)
         {
             mbd = SimConst.GearMbdCapBp;
@@ -985,7 +1062,7 @@ public sealed class BattleSimulator
         if (!magicBurst)
         {
             int macc = Formulas.MagicAccuracy(intel, hero.Acc, 0);
-            hitBp = Formulas.HitChanceBp(macc, _boss.Meva);
+            hitBp = Formulas.HitChanceBp(macc, BossMeva());
             hitRoll = _rng.RollD10000(RngStream.Hit, ability.Name + " magic hit");
             resisted = hitRoll >= hitBp;
         }
@@ -998,12 +1075,12 @@ public sealed class BattleSimulator
         {
             Power = intel,
             MultiplierBp = ability.MultiplierBp,
-            MitigationStat = _boss.Meva,
+            MitigationStat = BossMeva(),
             MitigationConstant = SimConst.MagicalDrConstant,
             EffectiveResistanceBp = resistance,
             BypassPositiveResistance = magicBurst,
             Resisted = resisted,
-            CritMultiplierBp = crit ? Formulas.CritMultiplierBp(hero.Gear.MidCritDamageBp) : SimConst.Bp,
+            CritMultiplierBp = crit ? Formulas.CritMultiplierBp(mid.MidCritDamageBp) : SimConst.Bp,
             BurstBucketBp = bucket,
             DamageDealtBuffBp = dealtBuff,
             BurstDiminishBp = magicBurst ? Formulas.BurstDiminishBp(burstIndex) : SimConst.Bp,
@@ -1057,8 +1134,8 @@ public sealed class BattleSimulator
     private void ResolveHeal(HeroState hero, AbilityDef ability, int allyIndex)
     {
         HeroState target = _heroes[allyIndex];
-        int intel = hero.Intel + hero.Gear.MidInt;
-        int raw = Formulas.HealAmount(intel, ability.MultiplierBp, hero.Gear.MidHealingPotencyBp);
+        int intel = hero.Intel + Set(hero, LoadoutKind.MidCast).MidInt;
+        int raw = Formulas.HealAmount(intel, ability.MultiplierBp, Set(hero, LoadoutKind.MidCast).MidHealingPotencyBp);
         int missing = target.MaxHp - target.Hp;
         int restored = raw < missing ? raw : missing;
         target.Hp += restored;
@@ -1085,7 +1162,7 @@ public sealed class BattleSimulator
                 break;
             case SupportEffect.CircuitBenediction:
                 HeroState blessed = _heroes[ally];
-                int intel = hero.Intel + hero.Gear.MidInt;
+                int intel = hero.Intel + Set(hero, LoadoutKind.MidCast).MidInt;
                 blessed.RegenPerPulse = FixedMath.MulBp(intel, ability.MultiplierBp);
                 blessed.RegenExpires = _tick + 4_000;
                 blessed.RegenNextTick = _tick + SimConst.GlobalPhase;
@@ -1195,7 +1272,7 @@ public sealed class BattleSimulator
 
         var request = new DamageRequest
         {
-            Power = magical ? _boss.Intel : _boss.Atk,
+            Power = magical ? BossIntel() : BossAtk(),
             MultiplierBp = ability.MultiplierBp,
             MitigationStat = magical ? EffectiveMeva(target) : EffectiveDef(target),
             MitigationConstant = magical ? SimConst.MagicalDrConstant : SimConst.PhysicalDrConstant,
@@ -1240,6 +1317,11 @@ public sealed class BattleSimulator
             target.Heat = Formulas.ApplyHeat(target.Heat, gain);
             target.HeatDecayTick = _tick + SimConst.HeatDecayTicks;
             Log($"{target.Name} Heat +{gain} → {target.Heat}.");
+        }
+
+        if (ability.AppliesBurn && (magical || hit) && result.Total > 0)
+        {
+            ApplyHeroBurn(target, result.Total);
         }
 
         _boss.Ap.PayRecovery(ability.RecoveryAp);
@@ -1387,6 +1469,17 @@ public sealed class BattleSimulator
             case ResonanceId.Distortion:
                 PurgeBeneficial();
                 break;
+            case ResonanceId.Conduction:
+                ApplyShock(part, closer, attackOrInt);
+                _boss.Ap.Delay(SimConst.ConductionDelayAp);
+                Log($"Conduction delays the boss by {SimConst.ConductionDelayAp} AP. Boss AP {ApGauge.Format(_boss.Ap.Centi)}.");
+                break;
+            case ResonanceId.TectonicShear:
+                ApplyMevaDown(SimConst.TectonicMevaDownBp, SimConst.TectonicMevaTicks);
+                break;
+            case ResonanceId.Radiance:
+                ApplyRadiance();
+                break;
         }
     }
 
@@ -1400,6 +1493,15 @@ public sealed class BattleSimulator
             case ApexId.MagmaCore:
                 ApplyBurn(part, closer, attackOrInt, burnIii: true);
                 ApplyShatter(SimConst.ShatterMagmaBp, SimConst.ShatterMagmaTicks);
+                break;
+            case ApexId.UmbralZero:
+                _boss.Ap.Delay(SimConst.UmbralDelayAp);
+                ApplyMevaDown(SimConst.UmbralMevaDownBp, SimConst.UmbralMevaTicks);
+                Log($"Umbral Zero sets the boss back {SimConst.UmbralDelayAp} AP. Boss AP {ApGauge.Format(_boss.Ap.Centi)}.");
+                break;
+            case ApexId.TempestCrown:
+                TempestInterrupt(part);
+                GrantTempestAp();
                 break;
         }
     }
@@ -1575,7 +1677,7 @@ public sealed class BattleSimulator
     private void GrantEnmity(int partIndex, HeroState hero, AbilityDef ability, int damageForCe, int hpRestored, bool useIdleEnmity)
     {
         bool shelter = ShelterActive() && hero.Slot == 0;
-        int enmityPlus = useIdleEnmity ? hero.Gear.IdleEnmityBp : 0;
+        int enmityPlus = useIdleEnmity ? Set(hero, LoadoutKind.Idle).IdleEnmityBp : 0;
         bool aethel = hero.Race == RaceId.AethelBorn;
         int flat = Formulas.AbilityCe(ability.BaseCe, enmityPlus, shelter, aethel);
         int fromDamage = Formulas.DamageCe(damageForCe, aethel);
@@ -1596,7 +1698,8 @@ public sealed class BattleSimulator
             return 0;
         }
 
-        int triple = hero.Gear.WsTripleAttackBp;
+        GearMods weapon = Set(hero, LoadoutKind.Weapon);
+        int triple = weapon.WsTripleAttackBp;
         if (triple > 2_500)
         {
             triple = 2_500;
@@ -1612,7 +1715,7 @@ public sealed class BattleSimulator
             }
         }
 
-        int doubles = hero.Gear.WsDoubleAttackBp;
+        int doubles = weapon.WsDoubleAttackBp;
         if (doubles > 5_000)
         {
             doubles = 5_000;
@@ -1635,7 +1738,7 @@ public sealed class BattleSimulator
 
         Log($"{hero.Name} multi-attack +{extra}.");
         int total = 0;
-        int critMultiplier = Formulas.CritMultiplierBp(hero.Gear.WsCritDamageBp);
+        int critMultiplier = Formulas.CritMultiplierBp(weapon.WsCritDamageBp);
         for (int i = 0; i < extra; i++)
         {
             int extraHitRoll = _rng.RollD10000(RngStream.Hit, ability.Name + " extra hit");
@@ -1805,7 +1908,10 @@ public sealed class BattleSimulator
 
     private int EffectiveDef(HeroState hero)
     {
-        int def = hero.Def + (hero.Casting ? 0 : hero.Gear.IdleDef);
+        int idle = hero.SplitLoadouts
+            ? (hero.Casting ? hero.MidCast.IdleDef : hero.Idle.IdleDef)
+            : (hero.Casting ? 0 : hero.Gear.IdleDef);
+        int def = hero.Def + idle;
         if (hero.Slot == 0 && ShelterActive())
         {
             def = (int)((long)def * (SimConst.Bp + SimConst.ShelterDefBp) / SimConst.Bp);
@@ -1814,9 +1920,25 @@ public sealed class BattleSimulator
         return def;
     }
 
-    private int EffectiveEva(HeroState hero) => hero.Eva + (hero.Casting ? 0 : hero.Gear.IdleEva);
+    private int EffectiveEva(HeroState hero)
+    {
+        if (!hero.SplitLoadouts)
+        {
+            return hero.Eva + (hero.Casting ? 0 : hero.Gear.IdleEva);
+        }
 
-    private int EffectiveMeva(HeroState hero) => hero.Meva + (hero.Casting ? 0 : hero.Gear.IdleMeva);
+        return hero.Eva + (hero.Casting ? hero.MidCast.IdleEva : hero.Idle.IdleEva);
+    }
+
+    private int EffectiveMeva(HeroState hero)
+    {
+        if (!hero.SplitLoadouts)
+        {
+            return hero.Meva + (hero.Casting ? 0 : hero.Gear.IdleMeva);
+        }
+
+        return hero.Meva + (hero.Casting ? hero.MidCast.IdleMeva : hero.Idle.IdleMeva);
+    }
 
     private static int RaceFastCast(HeroState hero) => hero.Race == RaceId.AethelBorn ? SimConst.AethelFastCastBp : 0;
 
@@ -1829,6 +1951,347 @@ public sealed class BattleSimulator
         }
 
         return _boss.ResistBp[(int)element];
+    }
+
+    private GearMods Set(HeroState hero, LoadoutKind kind)
+    {
+        if (!hero.SplitLoadouts)
+        {
+            return hero.Gear;
+        }
+
+        return kind switch
+        {
+            LoadoutKind.FastCast => hero.FastCast,
+            LoadoutKind.MidCast => hero.MidCast,
+            LoadoutKind.Weapon => hero.Weapon,
+            _ => hero.Idle,
+        };
+    }
+
+    private void EnqueueScriptedBossAction()
+    {
+        BossScript script = _script!;
+        if (!script.Frenzy && (CoreHpBp() <= script.PhaseHpBp || _tick >= script.EnrageTick))
+        {
+            script.Frenzy = true;
+            _boss.FrenzyBp = script.FrenzyBonusBp;
+            Log($"Carapace frenzy. ATK and INT +{script.FrenzyBonusBp}bp.");
+        }
+
+        int[] abilities = script.Frenzy ? script.Phase2 : script.Phase1;
+        int[] parts = script.Frenzy ? script.Phase2Part : script.Phase1Part;
+        if (abilities.Length == 0)
+        {
+            return;
+        }
+
+        for (int n = 0; n < abilities.Length; n++)
+        {
+            int index = script.Cursor % abilities.Length;
+            script.Cursor++;
+            int part = parts[index];
+            if ((uint)part >= (uint)_boss.Parts.Length)
+            {
+                part = Core;
+            }
+
+            if (part != Core && (_boss.Parts[part].Hp <= 0 || !_boss.Parts[part].Active))
+            {
+                continue;
+            }
+
+            _bossPlan.Enqueue(new BattleAction(abilities[index], part, -1));
+            return;
+        }
+    }
+
+    private void ApplyShock(BossPartState part, HeroState closer, int attackOrInt)
+    {
+        int raw = (int)((long)attackOrInt * SimConst.ShockRatioBp / SimConst.Bp);
+        int resistance = Formulas.EffectiveResistanceBp(PartResistance(0, ElementId.Lightning), HeroEpen(closer));
+        int kept = SimConst.Bp - resistance;
+        if (kept < 0)
+        {
+            kept = 0;
+        }
+
+        part.ShockPulse = (int)((long)raw * kept / SimConst.Bp);
+        part.ShockExpires = _tick + SimConst.ShockDuration;
+        part.ShockNextTick = _tick + SimConst.GlobalPhase;
+        Log($"{part.Name} Shock pulse {part.ShockPulse} until {part.ShockExpires}.");
+    }
+
+    private void ApplyMevaDown(int bp, int ticks)
+    {
+        bool active = _boss.MevaDownBp > 0 && _tick < _boss.MevaDownExpires;
+        if (active && _boss.MevaDownBp > bp)
+        {
+            Log($"MEVA Down stays {_boss.MevaDownBp}bp until {_boss.MevaDownExpires}.");
+            return;
+        }
+
+        _boss.MevaDownBp = bp;
+        _boss.MevaDownExpires = _tick + ticks;
+        Log($"MEVA Down {_boss.MevaDownBp}bp until {_boss.MevaDownExpires}. MEVA {BossMeva()}.");
+    }
+
+    private void ApplyRadiance()
+    {
+        for (int i = 0; i < _heroes.Length; i++)
+        {
+            HeroState hero = _heroes[i];
+            if (!hero.IsAlive)
+            {
+                continue;
+            }
+
+            int pulse = hero.MaxHp * SimConst.RadianceHealBp / SimConst.Bp;
+            if (pulse < 1)
+            {
+                pulse = 1;
+            }
+
+            hero.RadiancePulse = pulse;
+            hero.RadianceExpires = _tick + SimConst.RadianceDuration;
+            hero.RadianceNextTick = _tick + SimConst.GlobalPhase;
+        }
+
+        Log($"Radiance regen until {_tick + SimConst.RadianceDuration}.");
+    }
+
+    private void TempestInterrupt(BossPartState part)
+    {
+        int partIndex = 0;
+        for (int i = 0; i < _boss.Parts.Length; i++)
+        {
+            if (ReferenceEquals(_boss.Parts[i], part))
+            {
+                partIndex = i;
+                break;
+            }
+        }
+
+        if (!_boss.Casting || _boss.CastPart != partIndex)
+        {
+            Log("Tempest Crown finds no chant on that part.");
+            return;
+        }
+
+        _boss.Casting = false;
+        _boss.Ap.PayRecovery(SimConst.RecoveryStance);
+        Log("Tempest Crown interrupts the chant.");
+    }
+
+    private void GrantTempestAp()
+    {
+        for (int i = 0; i < _heroes.Length; i++)
+        {
+            HeroState hero = _heroes[i];
+            if (!hero.IsAlive || hero.Casting)
+            {
+                continue;
+            }
+
+            int granted = hero.Ap.Refund(SimConst.TempestGrantAp);
+            Log($"{hero.Name} Tempest Crown +{granted} AP. AP {ApGauge.Format(hero.Ap.Centi)}.");
+        }
+    }
+
+    private void ApplyHeroBurn(HeroState target, int damage)
+    {
+        if (target.Race == RaceId.AshDravan)
+        {
+            Log($"{target.Name} is immune to Burn.");
+            return;
+        }
+
+        int pulse = (int)((long)damage * SimConst.HeroBurnRatioBp / SimConst.Bp);
+        if (pulse < 1)
+        {
+            pulse = 1;
+        }
+
+        target.BurnPulse = pulse;
+        target.BurnExpires = _tick + SimConst.BurnDuration;
+        target.BurnNextTick = _tick + SimConst.GlobalPhase;
+        Log($"{target.Name} Burn pulse {pulse} until {target.BurnExpires}.");
+    }
+
+    private void PulseShock()
+    {
+        for (int p = 0; p < _boss.Parts.Length; p++)
+        {
+            BossPartState part = _boss.Parts[p];
+            if (part.ShockPulse <= 0 || part.ShockNextTick != _tick)
+            {
+                continue;
+            }
+
+            part.Hp -= part.ShockPulse;
+            if (part.Hp < 0)
+            {
+                part.Hp = 0;
+            }
+
+            if (part.Hp == 0)
+            {
+                part.Active = false;
+            }
+
+            Log($"{part.Name} Shock {part.ShockPulse}. HP {part.Hp}.");
+            int next = _tick + SimConst.GlobalPhase;
+            if (next > part.ShockExpires)
+            {
+                part.ShockPulse = 0;
+                part.ShockNextTick = 0;
+            }
+            else
+            {
+                part.ShockNextTick = next;
+            }
+        }
+    }
+
+    private void PulseRadiance()
+    {
+        for (int i = 0; i < _heroes.Length; i++)
+        {
+            HeroState hero = _heroes[i];
+            if (hero.RadiancePulse <= 0 || hero.RadianceNextTick != _tick || !hero.IsAlive)
+            {
+                continue;
+            }
+
+            int missing = hero.MaxHp - hero.Hp;
+            int restored = missing < hero.RadiancePulse ? missing : hero.RadiancePulse;
+            hero.Hp += restored;
+            Log($"{hero.Name} Radiance {hero.RadiancePulse} (restored {restored}).");
+            int next = _tick + SimConst.GlobalPhase;
+            if (next > hero.RadianceExpires)
+            {
+                hero.RadiancePulse = 0;
+                hero.RadianceNextTick = 0;
+            }
+            else
+            {
+                hero.RadianceNextTick = next;
+            }
+        }
+    }
+
+    private void NoteOutcome()
+    {
+        if (!_scoreOutcome || _outcome != FightOutcome.Ongoing)
+        {
+            return;
+        }
+
+        if (!CoreAlive())
+        {
+            _outcome = FightOutcome.Victory;
+            Log("Victory. The Core is destroyed.");
+            return;
+        }
+
+        if (!AnyHeroAlive())
+        {
+            _outcome = FightOutcome.Defeat;
+            Log("Defeat. The party is wiped.");
+            return;
+        }
+
+        if (_script != null && _tick >= _script.HardEnrageTick)
+        {
+            _outcome = FightOutcome.Defeat;
+            Log("Defeat. Hard enrage.");
+        }
+    }
+
+    private bool CoreAlive()
+    {
+        if (_boss.Parts.Length == 0)
+        {
+            return false;
+        }
+
+        return _boss.Parts[Core].Hp > 0;
+    }
+
+    private int CoreHpBp()
+    {
+        BossPartState core = _boss.Parts[Core];
+        if (core.MaxHp <= 0)
+        {
+            return 0;
+        }
+
+        return (int)((long)core.Hp * SimConst.Bp / core.MaxHp);
+    }
+
+    private bool AnyHeroAlive()
+    {
+        for (int i = 0; i < _heroes.Length; i++)
+        {
+            if (_heroes[i].IsAlive)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private bool DamagingDotPending()
+    {
+        for (int p = 0; p < _boss.Parts.Length; p++)
+        {
+            BossPartState part = _boss.Parts[p];
+            if (part.Hp > 0 && (part.BurnPulse > 0 || part.ShockPulse > 0))
+            {
+                return true;
+            }
+        }
+
+        for (int i = 0; i < _heroes.Length; i++)
+        {
+            if (_heroes[i].IsAlive && _heroes[i].BurnPulse > 0)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private int BossAtk()
+    {
+        if (_boss.FrenzyBp <= 0)
+        {
+            return _boss.Atk;
+        }
+
+        return (int)((long)_boss.Atk * (SimConst.Bp + _boss.FrenzyBp) / SimConst.Bp);
+    }
+
+    private int BossIntel()
+    {
+        if (_boss.FrenzyBp <= 0)
+        {
+            return _boss.Intel;
+        }
+
+        return (int)((long)_boss.Intel * (SimConst.Bp + _boss.FrenzyBp) / SimConst.Bp);
+    }
+
+    private int BossMeva()
+    {
+        if (_boss.MevaDownBp <= 0 || _tick >= _boss.MevaDownExpires)
+        {
+            return _boss.Meva;
+        }
+
+        return (int)((long)_boss.Meva * (SimConst.Bp - _boss.MevaDownBp) / SimConst.Bp);
     }
 
     private static string RollText(int roll) => roll < 0 ? "no roll" : $"roll {roll}";
