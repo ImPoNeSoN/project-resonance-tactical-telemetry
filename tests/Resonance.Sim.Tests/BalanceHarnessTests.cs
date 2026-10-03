@@ -1,3 +1,4 @@
+using Resonance.Sim.Data;
 using Resonance.Sim.Sim;
 
 namespace Resonance.Sim.Tests;
@@ -5,58 +6,134 @@ namespace Resonance.Sim.Tests;
 public class BalanceHarnessTests
 {
     [Fact]
-    public void Default_decks_win_most_carapace_seeds()
+    public void Presets_win_in_band_and_spread_resonances()
     {
         const int n = 12;
-        int wins = 0;
-        long tickSum = 0;
-        var counts = new Dictionary<string, int>();
-        for (int i = 0; i < n; i++)
+        const ulong first = 20261004UL;
+        var rows = new PresetRow[PartyPreset.Count];
+        var union = new int[8];
+        for (int preset = 0; preset < PartyPreset.Count; preset++)
         {
-            BattleSimulator sim = CarapaceEncounter.Create(20261004UL + (ulong)i);
-            sim.RunToEnd();
-            if (sim.Outcome == FightOutcome.Victory)
+            int wins = 0;
+            long tickSum = 0;
+            var l2 = new int[8];
+            var l3 = new int[5];
+            for (int i = 0; i < n; i++)
             {
-                wins++;
-                tickSum += sim.Tick;
+                BattleSimulator sim = CarapaceEncounter.Create(preset, first + (ulong)i);
+                sim.RunToEnd();
+                if (sim.Outcome == FightOutcome.Victory)
+                {
+                    wins++;
+                    tickSum += sim.Tick;
+                }
+
+                for (int r = 1; r < l2.Length; r++)
+                {
+                    int count = sim.Detonations((ResonanceId)r);
+                    l2[r] += count;
+                    union[r] += count;
+                }
+
+                for (int a = 1; a < l3.Length; a++)
+                {
+                    l3[a] += sim.Detonations((ApexId)a);
+                }
+
+                Console.WriteLine($"preset {PartyPreset.Name(preset)} seed {first + (ulong)i} {sim.Outcome} tick {sim.Tick} core {sim.Boss.Parts[0].Hp} l3 {sim.Level3Detonations}");
             }
 
-            foreach (CombatEvent evt in sim.Events)
+            int average = wins == 0 ? 0 : (int)(tickSum / wins);
+            rows[preset] = new PresetRow(PartyPreset.Name(preset), wins, average, l2, l3);
+            Console.WriteLine($"preset {rows[preset].Name} wins {wins}/{n} average {average} l3 {Sum(l3)}");
+            for (int r = 1; r < l2.Length; r++)
             {
-                Count(counts, evt.Text, "Liquefaction");
-                Count(counts, evt.Text, "Induration");
-                Count(counts, evt.Text, "Fragmentation");
-                Count(counts, evt.Text, "Distortion");
-                Count(counts, evt.Text, "Conduction");
-                Count(counts, evt.Text, "Tectonic");
-                Count(counts, evt.Text, "Radiance");
-                Count(counts, evt.Text, "Solar Apex");
-                Count(counts, evt.Text, "Umbral Zero");
-                Count(counts, evt.Text, "Magma Core");
-                Count(counts, evt.Text, "Tempest Crown");
+                if (l2[r] > 0)
+                {
+                    Console.WriteLine($"  {(ResonanceId)r} {l2[r]}");
+                }
             }
 
-            Console.WriteLine($"seed {20261004 + i} {sim.Outcome} tick {sim.Tick} core {sim.Boss.Parts[0].Hp}");
+            for (int a = 1; a < l3.Length; a++)
+            {
+                if (l3[a] > 0)
+                {
+                    Console.WriteLine($"  {(ApexId)a} {l3[a]}");
+                }
+            }
         }
 
-        int average = wins == 0 ? 0 : (int)(tickSum / wins);
-        Console.WriteLine($"wins {wins}/{n} average victory tick {average}");
-        foreach (KeyValuePair<string, int> pair in counts.OrderBy(pair => pair.Key))
+        int best = 0;
+        for (int i = 1; i < rows.Length; i++)
         {
-            Console.WriteLine($"resonance {pair.Key} {pair.Value}");
+            if (rows[i].Wins > rows[best].Wins || (rows[i].Wins == rows[best].Wins && rows[i].AverageTick < rows[best].AverageTick))
+            {
+                best = i;
+            }
         }
 
-        Assert.InRange(wins, (n / 2) + 1, n - 1);
+        int distinct = 0;
+        for (int r = 1; r < union.Length; r++)
+        {
+            if (union[r] > 0)
+            {
+                distinct++;
+            }
+        }
+
+        int bestTotal = 0;
+        int bestMax = 0;
+        for (int r = 1; r < rows[best].L2.Length; r++)
+        {
+            bestTotal += rows[best].L2[r];
+            if (rows[best].L2[r] > bestMax)
+            {
+                bestMax = rows[best].L2[r];
+            }
+        }
+
+        int share = bestTotal == 0 ? 100 : bestMax * 100 / bestTotal;
+        Console.WriteLine($"best {rows[best].Name} share {share}% distinct {distinct}");
+
+        for (int i = 0; i < rows.Length; i++)
+        {
+            Assert.InRange(rows[i].Wins, 7, 9);
+        }
+
+        Assert.True(distinct >= 4);
+        Assert.InRange(share, 0, 60);
     }
 
-    private static void Count(Dictionary<string, int> counts, string text, string name)
+    private static int Sum(int[] values)
     {
-        if (!text.Contains(name, StringComparison.Ordinal))
+        int total = 0;
+        for (int i = 0; i < values.Length; i++)
         {
-            return;
+            total += values[i];
         }
 
-        counts.TryGetValue(name, out int value);
-        counts[name] = value + 1;
+        return total;
+    }
+
+    private readonly struct PresetRow
+    {
+        public PresetRow(string name, int wins, int averageTick, int[] l2, int[] l3)
+        {
+            Name = name;
+            Wins = wins;
+            AverageTick = averageTick;
+            L2 = l2;
+            L3 = l3;
+        }
+
+        public string Name { get; }
+
+        public int Wins { get; }
+
+        public int AverageTick { get; }
+
+        public int[] L2 { get; }
+
+        public int[] L3 { get; }
     }
 }

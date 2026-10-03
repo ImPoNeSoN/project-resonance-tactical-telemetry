@@ -46,6 +46,50 @@ public static class ResonanceReadout
             }
 
             text.Append(" | next: ").Append(ResonanceTable.NextLinks(part.Tier, part.Property, part.Resonance));
+            string resist = ResistLine(part);
+            if (resist.Length > 0)
+            {
+                text.Append(" | ").Append(resist);
+            }
+
+            if (part.Pressure.Length > 0)
+            {
+                text.Append(" | ").Append(part.Pressure);
+            }
+
+            if (part.DefBonus != 0)
+            {
+                text.Append(" | DEF ").Append(sim.Boss.Def + part.DefBonus);
+            }
+        }
+
+        return text.ToString();
+    }
+
+    public static string ResistLine(BossPartState part)
+    {
+        if (part.ResistBp == null)
+        {
+            return "";
+        }
+
+        var text = new System.Text.StringBuilder();
+        for (int i = 0; i < part.ResistBp.Length && i < 8; i++)
+        {
+            int bp = part.ResistBp[i];
+            if (bp == 0)
+            {
+                continue;
+            }
+
+            if (text.Length > 0)
+            {
+                text.Append(", ");
+            }
+
+            string sign = bp > 0 ? "+" : "−";
+            int shown = bp < 0 ? -bp : bp;
+            text.Append((ElementId)i).Append(' ').Append(sign).Append(shown / 100).Append('%');
         }
 
         return text.ToString();
