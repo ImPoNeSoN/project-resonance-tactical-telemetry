@@ -336,7 +336,7 @@ public partial class GreyBoxBattle : Control
         column.AddChild(ColumnTitle("Resonance"));
 
         var resonanceScroll = VerticalScroll();
-        resonanceScroll.SizeFlagsStretchRatio = 1;
+        resonanceScroll.SizeFlagsStretchRatio = 0.65f;
         column.AddChild(resonanceScroll);
         var resonanceBox = Stack();
         resonanceScroll.AddChild(resonanceBox);
@@ -355,15 +355,15 @@ public partial class GreyBoxBattle : Control
         {
             SizeFlagsHorizontal = SizeFlags.ExpandFill,
             SizeFlagsVertical = SizeFlags.ExpandFill,
-            SizeFlagsStretchRatio = 1,
+            SizeFlagsStretchRatio = 2.6f,
         };
         abilityPanel.AddThemeStyleboxOverride("panel", new StyleBoxFlat
         {
             BgColor = new Color("1b2230"),
             ContentMarginLeft = 6,
             ContentMarginRight = 6,
-            ContentMarginTop = 4,
-            ContentMarginBottom = 4,
+            ContentMarginTop = 3,
+            ContentMarginBottom = 3,
         });
         var abilityScroll = VerticalScroll();
         abilityPanel.AddChild(abilityScroll);
@@ -374,7 +374,8 @@ public partial class GreyBoxBattle : Control
             SizeFlagsVertical = SizeFlags.ShrinkBegin,
             Text = "Select an ability.",
         };
-        _abilityDetail.AddThemeFontSizeOverride("font_size", 12);
+        _abilityDetail.AddThemeFontSizeOverride("font_size", 11);
+        _abilityDetail.AddThemeConstantOverride("line_spacing", 0);
         _abilityDetail.AddThemeColorOverride("font_color", new Color("d5dde8"));
         abilityScroll.AddChild(_abilityDetail);
         column.AddChild(abilityPanel);

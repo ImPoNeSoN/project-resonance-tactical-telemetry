@@ -25,17 +25,16 @@ public static class AbilityBrief
         var text = new StringBuilder();
         text.Append(ability.Name).Append('\n');
         text.Append(AbilityForecast.Effect(ability, actor, ally, boss, partIndex, tick, party)).Append('\n');
-        text.Append("MP ").Append(ability.MpCost).Append(" · AP ").Append(ability.RecoveryAp).Append('\n');
-        text.Append("Target: ").Append(Target(ability)).Append('\n');
-        text.Append("Property: ").Append(Property(ability)).Append('\n');
+        text.Append("MP ").Append(ability.MpCost).Append(" · AP ").Append(ability.RecoveryAp);
+        text.Append(" · Target: ").Append(Target(ability));
+        text.Append(" · Property: ").Append(Property(ability)).Append('\n');
         text.Append(ChainLine(ability)).Append('\n');
-        text.Append(PowerLine(ability)).Append('\n');
-        text.Append(HitLine(ability)).Append('\n');
+        text.Append(PowerLine(ability)).Append(" · ").Append(HitLine(ability)).Append('\n');
         text.Append(StatusLine(ability)).Append('\n');
         text.Append(ability.ChantTicks > 0
-            ? $"Charge: {ability.ChantTicks} tick chant\n"
-            : "Charge: instant\n");
-        text.Append("Threat: VE ").Append(ability.BaseVe).Append(" · CE ").Append(ability.BaseCe);
+            ? $"Charge: {ability.ChantTicks} tick chant"
+            : "Charge: instant");
+        text.Append(" · Threat: VE ").Append(ability.BaseVe).Append(" · CE ").Append(ability.BaseCe);
         if (!string.IsNullOrWhiteSpace(ability.Description))
         {
             text.Append('\n').Append(ability.Description);
@@ -169,10 +168,7 @@ public static class AbilityBrief
         return $"Power: {kind}, about {percent}% {stat}";
     }
 
-    private static string HitLine(AbilityDef ability) =>
-        ability.UsesWeaponLoadout
-            ? "Hits: 1, plus double or triple attack from weapon gear"
-            : "Hits: 1";
+    private static string HitLine(AbilityDef ability) => "Hits: 1";
 
     private static string StatusLine(AbilityDef ability)
     {
