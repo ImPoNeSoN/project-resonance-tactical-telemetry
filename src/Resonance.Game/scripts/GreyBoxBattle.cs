@@ -7,9 +7,16 @@ namespace Resonance.Game;
 
 /// <summary>
 /// Grey-box Carapace Engine fight. Plain Control nodes and flat colors only.
+/// Full-rect columns: a lane timeline, party, boss parts, resonance, then the action bar.
 /// </summary>
 public partial class GreyBoxBattle : Control
 {
+    private const int Swatch = 12;
+    private const int Pip = 10;
+    private const int NameCol = 168;
+    private const int ApCol = 72;
+    private const int Gap = 4;
+
     private static readonly Color[] PortraitColors =
     [
         new("c4a574"),
@@ -21,15 +28,19 @@ public partial class GreyBoxBattle : Control
 
     private SimBridge _bridge = null!;
     private Label _status = null!;
+    private Label _bossTitle = null!;
     private Label _resonance = null!;
     private Label _order = null!;
-    private Control _timeline = null!;
-    private readonly List<TimelineMarker> _markers = new();
+    private Label _actorLabel = null!;
+    private VBoxContainer _laneBox = null!;
+    private readonly List<TimelineLane> _lanes = new();
     private readonly List<HeroRow> _heroes = new();
     private readonly List<PartRow> _parts = new();
-    private VBoxContainer _abilities = null!;
+    private HBoxContainer _abilities = null!;
     private HBoxContainer _allies = null!;
     private RichTextLabel _log = null!;
+    private ColorRect _background = null!;
+    private MarginContainer _margin = null!;
     private Control _overlay = null!;
     private Control _picker = null!;
     private Label _overlayTitle = null!;
@@ -40,130 +51,51 @@ public partial class GreyBoxBattle : Control
     private int _part;
     private int _ally = 2;
     private int _abilityActor = -1;
+    private bool _fitting;
 
     public override void _Ready()
     {
         _bridge = GetNode<SimBridge>("/root/SimBridge");
-        SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+        ConfigureWindowStretch();
+        FillViewport(this);
 
-        var background = new ColorRect { Color = new Color("12161c"), MouseFilter = MouseFilterEnum.Ignore };
-        background.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
-        AddChild(background);
+        _background = new ColorRect { Color = new Color("12161c"), MouseFilter = MouseFilterEnum.Ignore };
+        AddChild(_background);
+        FillViewport(_background);
 
-        var margin = new MarginContainer();
-        margin.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
-        margin.AddThemeConstantOverride("margin_left", 12);
-        margin.AddThemeConstantOverride("margin_top", 8);
-        margin.AddThemeConstantOverride("margin_right", 12);
-        margin.AddThemeConstantOverride("margin_bottom", 8);
-        AddChild(margin);
+        _margin = new MarginContainer();
+        _margin.AddThemeConstantOverride("margin_left", 6);
+        _margin.AddThemeConstantOverride("margin_top", 4);
+        _margin.AddThemeConstantOverride("margin_right", 6);
+        _margin.AddThemeConstantOverride("margin_bottom", 4);
+        AddChild(_margin);
+        FillViewport(_margin);
 
-        var root = new VBoxContainer { SizeFlagsVertical = SizeFlags.ExpandFill };
-        root.AddThemeConstantOverride("separation", 6);
-        margin.AddChild(root);
-
-        var title = new Label { Text = "Project Resonance  ·  Grey-Box Battle  ·  Carapace Engine" };
-        title.AddThemeFontSizeOverride("font_size", 18);
-        root.AddChild(title);
-
-        _status = new Label { AutowrapMode = TextServer.AutowrapMode.WordSmart };
-        root.AddChild(_status);
-
-        _timeline = new Control { CustomMinimumSize = new Vector2(0, 78) };
-        var track = new ColorRect { Color = new Color("1c2430"), MouseFilter = MouseFilterEnum.Ignore };
-        track.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
-        _timeline.AddChild(track);
-        root.AddChild(_timeline);
-
-        var body = new HBoxContainer { SizeFlagsVertical = SizeFlags.ExpandFill };
-        body.AddThemeConstantOverride("separation", 8);
-        root.AddChild(body);
-
-        var heroColumn = new VBoxContainer { CustomMinimumSize = new Vector2(340, 0), SizeFlagsVertical = SizeFlags.ExpandFill };
-        heroColumn.AddThemeConstantOverride("separation", 4);
-        body.AddChild(heroColumn);
-
-        var bossColumn = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill, SizeFlagsVertical = SizeFlags.ExpandFill };
-        bossColumn.AddThemeConstantOverride("separation", 4);
-        body.AddChild(bossColumn);
-
-        var side = new VBoxContainer { CustomMinimumSize = new Vector2(280, 0), SizeFlagsVertical = SizeFlags.ExpandFill };
-        side.AddThemeConstantOverride("separation", 4);
-        body.AddChild(side);
-
-        BattleSimulator sim = _bridge.Simulation;
-        for (int i = 0; i < sim.Heroes.Count; i++)
+        var root = new VBoxContainer
         {
-            int slot = i;
-            var row = new HeroRow(PortraitColors[i % 4]);
-            row.Panel.GuiInput += @event => ClickHero(@event, slot);
-            _heroes.Add(row);
-            heroColumn.AddChild(row.Panel);
-        }
+            SizeFlagsHorizontal = SizeFlags.ExpandFill,
+            SizeFlagsVertical = SizeFlags.ExpandFill,
+        };
+        root.AddThemeConstantOverride("separation", 4);
+        _margin.AddChild(root);
 
-        for (int i = 0; i < sim.Boss.Parts.Length; i++)
-        {
-            int index = i;
-            var row = new PartRow();
-            row.Panel.GuiInput += @event => ClickPart(@event, index);
-            _parts.Add(row);
-            bossColumn.AddChild(row.Panel);
-        }
-
-        _resonance = new Label { AutowrapMode = TextServer.AutowrapMode.WordSmart };
-        side.AddChild(_resonance);
-        _order = new Label { AutowrapMode = TextServer.AutowrapMode.WordSmart };
-        side.AddChild(_order);
-
-        var allyLabel = new Label { Text = "Ally target (heals and Benediction)" };
-        side.AddChild(allyLabel);
-        _allies = new HBoxContainer();
-        _allies.AddThemeConstantOverride("separation", 4);
-        side.AddChild(_allies);
-        for (int i = 0; i < sim.Heroes.Count; i++)
-        {
-            int slot = i;
-            var button = new Button { Text = ShortName(sim.Heroes[i].Name), SizeFlagsHorizontal = SizeFlags.ExpandFill };
-            button.Pressed += () =>
-            {
-                _ally = slot;
-                Refresh();
-            };
-            _allies.AddChild(button);
-        }
-
-        _abilities = new VBoxContainer { SizeFlagsVertical = SizeFlags.ExpandFill };
-        _abilities.AddThemeConstantOverride("separation", 4);
-        side.AddChild(_abilities);
-
-        var buttons = new HBoxContainer();
-        buttons.AddThemeConstantOverride("separation", 8);
-        root.AddChild(buttons);
-
-        var step = new Button { Text = "Step" };
-        step.Pressed += () => _bridge.StepOnce();
-        buttons.AddChild(step);
-
-        _pause = new Button { Text = "Pause" };
-        _pause.Pressed += () => _bridge.TogglePause();
-        buttons.AddChild(_pause);
-
-        _auto = new Button { Text = "Auto-run" };
-        _auto.Pressed += () => _bridge.ToggleAuto();
-        buttons.AddChild(_auto);
-
-        var restart = new Button { Text = "Restart" };
-        restart.Pressed += Restart;
-        buttons.AddChild(restart);
+        root.AddChild(BuildHeader());
+        root.AddChild(BuildTimeline());
+        root.AddChild(BuildBody());
+        root.AddChild(BuildAction());
 
         _log = new RichTextLabel
         {
             BbcodeEnabled = true,
             ScrollFollowing = true,
+            FitContent = false,
             SizeFlagsVertical = SizeFlags.ExpandFill,
-            CustomMinimumSize = new Vector2(0, 96),
+            SizeFlagsStretchRatio = 1,
+            CustomMinimumSize = new Vector2(0, 52),
         };
-        _log.AddThemeStyleboxOverride("normal", new StyleBoxFlat { BgColor = new Color("0e1218") });
+        _log.AddThemeStyleboxOverride("normal", Flat(new Color("0e1218"), 4));
+        _log.AddThemeFontSizeOverride("normal_font_size", 12);
+        _log.AddThemeColorOverride("default_color", new Color("c5d0dc"));
         root.AddChild(_log);
 
         BuildOverlay();
@@ -174,6 +106,60 @@ public partial class GreyBoxBattle : Control
         _bridge.StateChanged += Refresh;
         Refresh();
         _picker.Visible = true;
+        GetTree().Root.SizeChanged += FitToViewport;
+    }
+
+    /// <summary>
+    /// Base layout is 1280×720. Canvas-item stretch with expand scales that layout to the
+    /// window and grows the viewport on the extra axis, so a maximize actually changes the UI.
+    /// </summary>
+    private void ConfigureWindowStretch()
+    {
+        Window window = GetTree().Root;
+        window.ContentScaleMode = Window.ContentScaleModeEnum.CanvasItems;
+        window.ContentScaleAspect = Window.ContentScaleAspectEnum.Expand;
+        window.ContentScaleSize = new Vector2I(1280, 720);
+        window.ContentScaleFactor = 1f;
+    }
+
+    private void FitToViewport()
+    {
+        if (_fitting)
+        {
+            return;
+        }
+
+        _fitting = true;
+        FillViewport(this);
+        FillViewport(_background);
+        FillViewport(_margin);
+        if (IsInstanceValid(_overlay))
+        {
+            FillViewport(_overlay);
+        }
+
+        if (IsInstanceValid(_picker))
+        {
+            FillViewport(_picker);
+        }
+
+        _fitting = false;
+    }
+
+    private static void FillViewport(Control control)
+    {
+        control.AnchorLeft = 0f;
+        control.AnchorTop = 0f;
+        control.AnchorRight = 1f;
+        control.AnchorBottom = 1f;
+        control.OffsetLeft = 0f;
+        control.OffsetTop = 0f;
+        control.OffsetRight = 0f;
+        control.OffsetBottom = 0f;
+        control.GrowHorizontal = GrowDirection.Both;
+        control.GrowVertical = GrowDirection.Both;
+        control.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+        control.SizeFlagsVertical = SizeFlags.ExpandFill;
     }
 
     public override void _Input(InputEvent @event)
@@ -194,6 +180,327 @@ public partial class GreyBoxBattle : Control
         }
     }
 
+
+    private Control BuildHeader()
+    {
+        var header = new VBoxContainer();
+        header.AddThemeConstantOverride("separation", 0);
+
+        var top = new HBoxContainer();
+        top.AddThemeConstantOverride("separation", 12);
+        var title = new Label { Text = "Project Resonance  ·  Grey-Box Battle  ·  Carapace Engine" };
+        title.AddThemeFontSizeOverride("font_size", 15);
+        top.AddChild(title);
+
+        _status = new Label
+        {
+            SizeFlagsHorizontal = SizeFlags.ExpandFill,
+            ClipText = true,
+            TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis,
+            VerticalAlignment = VerticalAlignment.Center,
+        };
+        _status.AddThemeFontSizeOverride("font_size", 13);
+        _status.AddThemeColorOverride("font_color", new Color("d5dde8"));
+        top.AddChild(_status);
+        header.AddChild(top);
+
+        var hint = new Label
+        {
+            Text = "Space pauses. Click a hero, click a part, then pick an ability.",
+            ClipText = true,
+            TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis,
+        };
+        hint.AddThemeFontSizeOverride("font_size", 12);
+        hint.AddThemeColorOverride("font_color", new Color("8ea0b5"));
+        header.AddChild(hint);
+        return header;
+    }
+
+    private Control BuildTimeline()
+    {
+        var panel = new PanelContainer { MouseFilter = MouseFilterEnum.Ignore };
+        panel.AddThemeStyleboxOverride("panel", new StyleBoxFlat
+        {
+            BgColor = new Color("181e28"),
+            ContentMarginLeft = 6,
+            ContentMarginRight = 6,
+            ContentMarginTop = 3,
+            ContentMarginBottom = 3,
+        });
+
+        var box = new VBoxContainer { MouseFilter = MouseFilterEnum.Ignore };
+        box.AddThemeConstantOverride("separation", 1);
+        panel.AddChild(box);
+
+        var scale = new HBoxContainer { MouseFilter = MouseFilterEnum.Ignore };
+        scale.AddThemeConstantOverride("separation", Gap);
+        int gutter = Swatch + Pip + NameCol + ApCol + (Gap * 3);
+        scale.AddChild(new Control
+        {
+            CustomMinimumSize = new Vector2(gutter, 1),
+            MouseFilter = MouseFilterEnum.Ignore,
+        });
+        scale.AddChild(new ApRuler());
+        box.AddChild(scale);
+
+        _laneBox = new VBoxContainer { MouseFilter = MouseFilterEnum.Ignore };
+        _laneBox.AddThemeConstantOverride("separation", 1);
+        box.AddChild(_laneBox);
+        return panel;
+    }
+
+    private Control BuildBody()
+    {
+        var row = new HBoxContainer
+        {
+            SizeFlagsHorizontal = SizeFlags.ExpandFill,
+            SizeFlagsVertical = SizeFlags.ExpandFill,
+            SizeFlagsStretchRatio = 5,
+        };
+        row.AddThemeConstantOverride("separation", 6);
+
+        BattleSimulator sim = _bridge.Simulation;
+        row.AddChild(BuildHeroColumn(sim));
+        row.AddChild(BuildPartColumn(sim));
+        row.AddChild(BuildInfoColumn());
+        return row;
+    }
+
+    private Control BuildHeroColumn(BattleSimulator sim)
+    {
+        var column = new VBoxContainer
+        {
+            CustomMinimumSize = new Vector2(300, 0),
+            SizeFlagsVertical = SizeFlags.ExpandFill,
+        };
+        column.AddThemeConstantOverride("separation", 2);
+        column.AddChild(ColumnTitle("Party"));
+
+        var heroScroll = VerticalScroll();
+        column.AddChild(heroScroll);
+        var heroBox = Stack();
+        heroScroll.AddChild(heroBox);
+
+        for (int i = 0; i < sim.Heroes.Count; i++)
+        {
+            int slot = i;
+            var row = new HeroRow(PortraitColors[i % 4]);
+            row.Panel.GuiInput += @event => ClickHero(@event, slot);
+            _heroes.Add(row);
+            heroBox.AddChild(row.Panel);
+        }
+
+        return column;
+    }
+
+    private Control BuildPartColumn(BattleSimulator sim)
+    {
+        var column = new VBoxContainer
+        {
+            SizeFlagsHorizontal = SizeFlags.ExpandFill,
+            SizeFlagsVertical = SizeFlags.ExpandFill,
+        };
+        column.AddThemeConstantOverride("separation", 2);
+        _bossTitle = ColumnTitle(sim.Boss.Name);
+        column.AddChild(_bossTitle);
+
+        var partScroll = VerticalScroll();
+        column.AddChild(partScroll);
+        var partBox = Stack();
+        partScroll.AddChild(partBox);
+
+        for (int i = 0; i < sim.Boss.Parts.Length; i++)
+        {
+            int index = i;
+            var row = new PartRow(PortraitColors);
+            row.Panel.GuiInput += @event => ClickPart(@event, index);
+            _parts.Add(row);
+            partBox.AddChild(row.Panel);
+        }
+
+        return column;
+    }
+
+    private Control BuildInfoColumn()
+    {
+        var column = new VBoxContainer
+        {
+            CustomMinimumSize = new Vector2(268, 0),
+            SizeFlagsVertical = SizeFlags.ExpandFill,
+        };
+        column.AddThemeConstantOverride("separation", 2);
+        column.AddChild(ColumnTitle("Resonance"));
+
+        var infoScroll = VerticalScroll();
+        column.AddChild(infoScroll);
+        var infoBox = Stack();
+        infoScroll.AddChild(infoBox);
+
+        _resonance = new Label
+        {
+            AutowrapMode = TextServer.AutowrapMode.WordSmart,
+            SizeFlagsHorizontal = SizeFlags.ExpandFill,
+        };
+        _resonance.AddThemeFontSizeOverride("font_size", 12);
+        _resonance.AddThemeColorOverride("font_color", new Color("d5dde8"));
+        infoBox.AddChild(_resonance);
+        return column;
+    }
+
+    private Control BuildAction()
+    {
+        var panel = new PanelContainer();
+        panel.AddThemeStyleboxOverride("panel", new StyleBoxFlat
+        {
+            BgColor = new Color("181e28"),
+            ContentMarginLeft = 6,
+            ContentMarginRight = 6,
+            ContentMarginTop = 4,
+            ContentMarginBottom = 4,
+        });
+
+        var box = new VBoxContainer();
+        box.AddThemeConstantOverride("separation", 3);
+        panel.AddChild(box);
+
+        _order = new Label
+        {
+            AutowrapMode = TextServer.AutowrapMode.WordSmart,
+            MaxLinesVisible = 2,
+            SizeFlagsHorizontal = SizeFlags.ExpandFill,
+        };
+        _order.AddThemeFontSizeOverride("font_size", 12);
+        _order.AddThemeColorOverride("font_color", new Color("d5dde8"));
+        box.AddChild(_order);
+
+        var abilityRow = new HBoxContainer();
+        abilityRow.AddThemeConstantOverride("separation", 6);
+        _actorLabel = new Label
+        {
+            CustomMinimumSize = new Vector2(148, 0),
+            SizeFlagsHorizontal = SizeFlags.ShrinkBegin,
+            ClipText = true,
+            TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis,
+            VerticalAlignment = VerticalAlignment.Center,
+        };
+        _actorLabel.AddThemeFontSizeOverride("font_size", 13);
+        _actorLabel.AddThemeColorOverride("font_color", new Color("ffe08a"));
+        abilityRow.AddChild(_actorLabel);
+
+        var abilityScroll = new ScrollContainer
+        {
+            HorizontalScrollMode = ScrollContainer.ScrollMode.Auto,
+            VerticalScrollMode = ScrollContainer.ScrollMode.Disabled,
+            SizeFlagsHorizontal = SizeFlags.ExpandFill,
+        };
+        abilityScroll.AddThemeStyleboxOverride("panel", new StyleBoxEmpty());
+        _abilities = new HBoxContainer();
+        _abilities.AddThemeConstantOverride("separation", 4);
+        abilityScroll.AddChild(_abilities);
+        abilityRow.AddChild(abilityScroll);
+        box.AddChild(abilityRow);
+
+        var controls = new HBoxContainer();
+        controls.AddThemeConstantOverride("separation", 4);
+        var allyLabel = new Label
+        {
+            Text = "Ally",
+            VerticalAlignment = VerticalAlignment.Center,
+        };
+        allyLabel.AddThemeFontSizeOverride("font_size", 12);
+        allyLabel.AddThemeColorOverride("font_color", new Color("8ea0b5"));
+        controls.AddChild(allyLabel);
+
+        _allies = new HBoxContainer();
+        _allies.AddThemeConstantOverride("separation", 4);
+        controls.AddChild(_allies);
+        BattleSimulator sim = _bridge.Simulation;
+        for (int i = 0; i < sim.Heroes.Count; i++)
+        {
+            int slot = i;
+            var button = new Button
+            {
+                Text = ShortName(sim.Heroes[i].Name),
+                CustomMinimumSize = new Vector2(78, 0),
+            };
+            button.AddThemeFontSizeOverride("font_size", 13);
+            button.Pressed += () =>
+            {
+                _ally = slot;
+                Refresh();
+            };
+            _allies.AddChild(button);
+        }
+
+        controls.AddChild(new Control
+        {
+            SizeFlagsHorizontal = SizeFlags.ExpandFill,
+            MouseFilter = MouseFilterEnum.Ignore,
+        });
+
+        var step = new Button { Text = "Step" };
+        step.Pressed += () => _bridge.StepOnce();
+        controls.AddChild(step);
+
+        _pause = new Button { Text = "Pause" };
+        _pause.Pressed += () => _bridge.TogglePause();
+        controls.AddChild(_pause);
+
+        _auto = new Button { Text = "Auto-run" };
+        _auto.Pressed += () => _bridge.ToggleAuto();
+        controls.AddChild(_auto);
+
+        var restart = new Button { Text = "Restart" };
+        restart.Pressed += Restart;
+        controls.AddChild(restart);
+        box.AddChild(controls);
+        return panel;
+    }
+
+    private static ScrollContainer VerticalScroll()
+    {
+        var scroll = new ScrollContainer
+        {
+            HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled,
+            VerticalScrollMode = ScrollContainer.ScrollMode.Auto,
+            SizeFlagsHorizontal = SizeFlags.ExpandFill,
+            SizeFlagsVertical = SizeFlags.ExpandFill,
+        };
+        scroll.AddThemeStyleboxOverride("panel", new StyleBoxEmpty());
+        return scroll;
+    }
+
+    private static VBoxContainer Stack()
+    {
+        var box = new VBoxContainer
+        {
+            SizeFlagsHorizontal = SizeFlags.ExpandFill,
+            SizeFlagsVertical = SizeFlags.ExpandFill,
+        };
+        box.AddThemeConstantOverride("separation", 4);
+        return box;
+    }
+
+    private static Label ColumnTitle(string text)
+    {
+        var label = new Label { Text = text };
+        label.AddThemeFontSizeOverride("font_size", 11);
+        label.AddThemeColorOverride("font_color", new Color("8ea0b5"));
+        return label;
+    }
+
+    private static StyleBoxFlat Flat(Color color, int margin)
+    {
+        return new StyleBoxFlat
+        {
+            BgColor = color,
+            ContentMarginLeft = margin,
+            ContentMarginRight = margin,
+            ContentMarginTop = margin,
+            ContentMarginBottom = margin,
+        };
+    }
+
     private void BuildOverlay()
     {
         _overlay = new ColorRect
@@ -202,14 +509,14 @@ public partial class GreyBoxBattle : Control
             Visible = false,
             MouseFilter = MouseFilterEnum.Stop,
         };
-        _overlay.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
         AddChild(_overlay);
+        FillViewport(_overlay);
 
         var center = new CenterContainer();
-        center.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
         _overlay.AddChild(center);
+        FillViewport(center);
 
-        var panel = new PanelContainer { CustomMinimumSize = new Vector2(420, 180) };
+        var panel = new PanelContainer { CustomMinimumSize = new Vector2(420, 0) };
         panel.AddThemeStyleboxOverride("panel", new StyleBoxFlat
         {
             BgColor = new Color("222836"),
@@ -245,14 +552,29 @@ public partial class GreyBoxBattle : Control
             Visible = false,
             MouseFilter = MouseFilterEnum.Stop,
         };
-        _picker.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
         AddChild(_picker);
+        FillViewport(_picker);
 
-        var center = new CenterContainer();
-        center.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
-        _picker.AddChild(center);
+        var margin = new MarginContainer();
+        margin.AddThemeConstantOverride("margin_left", 24);
+        margin.AddThemeConstantOverride("margin_right", 24);
+        margin.AddThemeConstantOverride("margin_top", 16);
+        margin.AddThemeConstantOverride("margin_bottom", 16);
+        _picker.AddChild(margin);
+        FillViewport(margin);
 
-        var panel = new PanelContainer { CustomMinimumSize = new Vector2(760, 0) };
+        var scroll = VerticalScroll();
+        margin.AddChild(scroll);
+
+        var center = new HBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        scroll.AddChild(center);
+        center.AddChild(new Control
+        {
+            SizeFlagsHorizontal = SizeFlags.ExpandFill,
+            MouseFilter = MouseFilterEnum.Ignore,
+        });
+
+        var panel = new PanelContainer { CustomMinimumSize = new Vector2(720, 0) };
         panel.AddThemeStyleboxOverride("panel", new StyleBoxFlat
         {
             BgColor = new Color("1b2230"),
@@ -262,9 +584,14 @@ public partial class GreyBoxBattle : Control
             ContentMarginBottom = 22,
         });
         center.AddChild(panel);
+        center.AddChild(new Control
+        {
+            SizeFlagsHorizontal = SizeFlags.ExpandFill,
+            MouseFilter = MouseFilterEnum.Ignore,
+        });
 
         var box = new VBoxContainer();
-        box.AddThemeConstantOverride("separation", 12);
+        box.AddThemeConstantOverride("separation", 10);
         panel.AddChild(box);
 
         var heading = new Label
@@ -379,41 +706,44 @@ public partial class GreyBoxBattle : Control
     private void Refresh()
     {
         BattleSimulator sim = _bridge.Simulation;
-        EnsureMarkers(sim);
+        EnsureLanes(sim);
         EnsureAbilities(sim);
 
         bool ended = sim.Outcome != FightOutcome.Ongoing;
         string paused = sim.Paused ? "PAUSED" : "running";
-        string frenzy = sim.Boss.FrenzyBp > 0 ? $"    Frenzy +{sim.Boss.FrenzyBp}bp" : "";
+        string frenzy = sim.Boss.FrenzyBp > 0 ? $"   Frenzy +{sim.Boss.FrenzyBp}bp" : "";
         string party = PartyPreset.Name(_bridge.Preset);
         _status.Text = ended
-            ? $"{party}    Tick {sim.Tick}    {sim.Outcome}    Seed {_bridge.Seed}"
-            : $"{party}    Tick {sim.Tick}    {paused}{frenzy}    Seed {_bridge.Seed}    Space pauses. Click a hero, click a part, then pick an ability.";
+            ? $"{party}   Tick {sim.Tick}   {sim.Outcome}   Seed {_bridge.Seed}"
+            : $"{party}   Tick {sim.Tick}   {paused}{frenzy}   Seed {_bridge.Seed}";
         _auto.Text = _bridge.AutoRunning ? "Stop" : "Auto-run";
         _pause.Text = sim.Paused ? "Resume" : "Pause";
+        _bossTitle.Text = sim.Boss.Name;
         _resonance.Text = ResonanceReadout.Summarize(sim);
         _order.Text = OrderText(sim);
-
-        float width = _timeline.Size.X;
-        if (width < 200)
+        if ((uint)_actor < (uint)sim.Heroes.Count)
         {
-            width = 1200;
+            _actorLabel.Text = sim.Heroes[_actor].Name;
         }
 
-        const float markerWidth = 168;
-        for (int i = 0; i < sim.Heroes.Count; i++)
+        for (int i = 0; i < sim.Heroes.Count && i < _lanes.Count; i++)
         {
             HeroState hero = sim.Heroes[i];
             string cast = hero.Casting ? AbilityCatalog.Get(hero.CastAbilityId).Name : "";
-            _markers[i].Set(hero.Name, ApGauge.Format(hero.Ap.Centi), hero.Ap.Centi, hero.Casting, hero.CastStartTick, hero.CastResolveTick, sim.Tick, cast);
-            Place(_markers[i], hero.Ap.Centi, width, markerWidth, i);
-            _heroes[i].Set(hero, i == _actor);
+            _lanes[i].Set(hero.Name, ApGauge.Format(hero.Ap.Centi), hero.Ap.Centi, hero.Casting, hero.CastStartTick, hero.CastResolveTick, sim.Tick, cast);
+            if (i < _heroes.Count)
+            {
+                _heroes[i].Set(hero, i == _actor);
+            }
         }
 
         BossState boss = sim.Boss;
         string bossCast = boss.Casting ? AbilityCatalog.Get(boss.CastAbilityId).Name : "";
-        _markers[sim.Heroes.Count].Set(boss.Name, ApGauge.Format(boss.Ap.Centi), boss.Ap.Centi, boss.Casting, boss.CastStartTick, boss.CastResolveTick, sim.Tick, bossCast);
-        Place(_markers[sim.Heroes.Count], boss.Ap.Centi, width, markerWidth, sim.Heroes.Count);
+        int bossLane = sim.Heroes.Count;
+        if (bossLane < _lanes.Count)
+        {
+            _lanes[bossLane].Set(boss.Name, ApGauge.Format(boss.Ap.Centi), boss.Ap.Centi, boss.Casting, boss.CastStartTick, boss.CastResolveTick, sim.Tick, bossCast);
+        }
 
         for (int i = 0; i < boss.Parts.Length && i < _parts.Count; i++)
         {
@@ -444,15 +774,25 @@ public partial class GreyBoxBattle : Control
         }
     }
 
-    private void EnsureMarkers(BattleSimulator sim)
+    private void EnsureLanes(BattleSimulator sim)
     {
         int needed = sim.Heroes.Count + 1;
-        while (_markers.Count < needed)
+        if (_lanes.Count == needed)
         {
-            int index = _markers.Count;
-            var marker = new TimelineMarker(PortraitColors[index % PortraitColors.Length]);
-            _markers.Add(marker);
-            _timeline.AddChild(marker.Root);
+            return;
+        }
+
+        foreach (TimelineLane lane in _lanes)
+        {
+            lane.Root.QueueFree();
+        }
+
+        _lanes.Clear();
+        for (int i = 0; i < needed; i++)
+        {
+            var lane = new TimelineLane(PortraitColors[i % PortraitColors.Length]);
+            _lanes.Add(lane);
+            _laneBox.AddChild(lane.Root);
         }
     }
 
@@ -479,28 +819,12 @@ public partial class GreyBoxBattle : Control
             {
                 Text = ability.MpCost > 0 ? $"{ability.Name}  ({ability.MpCost} MP)" : ability.Name,
                 Alignment = HorizontalAlignment.Left,
+                CustomMinimumSize = new Vector2(0, 28),
             };
+            button.AddThemeFontSizeOverride("font_size", 13);
             button.Pressed += () => Queue(id);
             _abilities.AddChild(button);
         }
-    }
-
-    private static void Place(TimelineMarker marker, int centi, float width, float markerWidth, int lane)
-    {
-        int shown = centi / SimConst.CentiPerAp;
-        if (shown < 0)
-        {
-            shown = 0;
-        }
-
-        if (shown > 10_000)
-        {
-            shown = 10_000;
-        }
-
-        float x = shown / 10_000f * (width - markerWidth);
-        marker.Root.Position = new Vector2(x, 4 + (lane % 2) * 2);
-        marker.Root.Size = new Vector2(markerWidth, 70);
     }
 
     private string OrderText(BattleSimulator sim)
@@ -519,7 +843,7 @@ public partial class GreyBoxBattle : Control
             queued = $"Last order: {sim.Heroes[command.HeroSlot].Name} {name} → {part} at tick {command.ApplyAtTick}.";
         }
 
-        return $"{actor} aims at {aim}. Ally {ally}.\n{queued}";
+        return $"{actor} aims at {aim}. Ally {ally}.  {queued}";
     }
 
     private static string ShortName(string name)
@@ -528,97 +852,269 @@ public partial class GreyBoxBattle : Control
         return space > 0 ? name[..space] : name;
     }
 
-    private sealed class TimelineMarker
+    private static float ApRatio(int centi)
     {
-        public TimelineMarker(Color color)
+        int shown = centi / SimConst.CentiPerAp;
+        if (shown < 0)
         {
-            Root = new PanelContainer { MouseFilter = MouseFilterEnum.Ignore };
-            Root.AddThemeStyleboxOverride("panel", new StyleBoxFlat
-            {
-                BgColor = new Color("222836"),
-                ContentMarginLeft = 4,
-                ContentMarginRight = 4,
-                ContentMarginTop = 2,
-                ContentMarginBottom = 2,
-            });
-            var box = new VBoxContainer();
-            Root.AddChild(box);
-            var head = new HBoxContainer();
-            box.AddChild(head);
-            head.AddChild(new ColorRect
-            {
-                Color = color,
-                CustomMinimumSize = new Vector2(16, 16),
-                MouseFilter = MouseFilterEnum.Ignore,
-            });
-            Name = new Label();
-            Name.AddThemeFontSizeOverride("font_size", 12);
-            head.AddChild(Name);
-            Detail = new Label();
-            Detail.AddThemeFontSizeOverride("font_size", 11);
-            box.AddChild(Detail);
-            var castRow = new HBoxContainer();
-            box.AddChild(castRow);
-            Cast = new ProgressBar
-            {
-                MinValue = 0,
-                MaxValue = 1,
-                ShowPercentage = false,
-                CustomMinimumSize = new Vector2(0, 10),
-                SizeFlagsHorizontal = SizeFlags.ExpandFill,
-                Visible = false,
-            };
-            castRow.AddChild(Cast);
-            Interrupt = new ColorRect
-            {
-                Color = new Color("e74c3c"),
-                CustomMinimumSize = new Vector2(12, 12),
-                Visible = false,
-                MouseFilter = MouseFilterEnum.Ignore,
-            };
-            castRow.AddChild(Interrupt);
+            shown = 0;
         }
 
-        public PanelContainer Root { get; }
+        if (shown > 10_000)
+        {
+            shown = 10_000;
+        }
 
-        private Label Name { get; }
+        return shown / 10_000f;
+    }
 
-        private Label Detail { get; }
+    private sealed partial class ApRuler : Control
+    {
+        public ApRuler()
+        {
+            CustomMinimumSize = new Vector2(0, 14);
+            MouseFilter = MouseFilterEnum.Ignore;
+            SizeFlagsHorizontal = SizeFlags.ExpandFill;
+            for (int i = 0; i <= 4; i++)
+            {
+                var label = new Label
+                {
+                    Text = (i * 2_500).ToString(),
+                    MouseFilter = MouseFilterEnum.Ignore,
+                    VerticalAlignment = VerticalAlignment.Bottom,
+                };
+                label.AddThemeFontSizeOverride("font_size", 11);
+                label.AddThemeColorOverride("font_color", new Color("8ea0b5"));
+                float anchor = i / 4f;
+                if (i == 0)
+                {
+                    label.AnchorLeft = 0;
+                    label.AnchorRight = 0;
+                    label.OffsetLeft = 0;
+                    label.OffsetRight = 48;
+                    label.HorizontalAlignment = HorizontalAlignment.Left;
+                }
+                else if (i == 4)
+                {
+                    label.AnchorLeft = 1;
+                    label.AnchorRight = 1;
+                    label.OffsetLeft = -56;
+                    label.OffsetRight = 0;
+                    label.HorizontalAlignment = HorizontalAlignment.Right;
+                }
+                else
+                {
+                    label.AnchorLeft = anchor;
+                    label.AnchorRight = anchor;
+                    label.OffsetLeft = -28;
+                    label.OffsetRight = 28;
+                    label.HorizontalAlignment = HorizontalAlignment.Center;
+                }
 
-        private ProgressBar Cast { get; }
+                label.AnchorTop = 0;
+                label.AnchorBottom = 1;
+                AddChild(label);
+            }
+        }
+    }
 
-        private ColorRect Interrupt { get; }
+    private sealed class TimelineLane
+    {
+        private readonly Label _name;
+        private readonly Label _detail;
+        private readonly ColorRect _pip;
+        private readonly ColorRect _marker;
+        private readonly ColorRect _castFill;
+        private readonly Label _castName;
+        private int _centi;
+        private bool _casting;
+        private int _elapsed;
+        private int _span;
+
+        public TimelineLane(Color color)
+        {
+            Root = new HBoxContainer { MouseFilter = MouseFilterEnum.Ignore };
+            Root.AddThemeConstantOverride("separation", Gap);
+
+            Root.AddChild(new ColorRect
+            {
+                Color = color,
+                CustomMinimumSize = new Vector2(Swatch, Swatch),
+                MouseFilter = MouseFilterEnum.Ignore,
+            });
+
+            var pipSlot = new Control
+            {
+                CustomMinimumSize = new Vector2(Pip, Pip),
+                MouseFilter = MouseFilterEnum.Ignore,
+            };
+            _pip = new ColorRect
+            {
+                Color = new Color("e74c3c"),
+                Visible = false,
+                MouseFilter = MouseFilterEnum.Ignore,
+            };
+            _pip.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+            pipSlot.AddChild(_pip);
+            Root.AddChild(pipSlot);
+
+            _name = new Label
+            {
+                CustomMinimumSize = new Vector2(NameCol, 0),
+                SizeFlagsHorizontal = SizeFlags.ShrinkBegin,
+                ClipText = true,
+                TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis,
+                VerticalAlignment = VerticalAlignment.Center,
+            };
+            _name.AddThemeFontSizeOverride("font_size", 12);
+            Root.AddChild(_name);
+
+            _detail = new Label
+            {
+                CustomMinimumSize = new Vector2(ApCol, 0),
+                SizeFlagsHorizontal = SizeFlags.ShrinkBegin,
+                HorizontalAlignment = HorizontalAlignment.Right,
+                VerticalAlignment = VerticalAlignment.Center,
+                ClipText = true,
+                TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis,
+            };
+            _detail.AddThemeFontSizeOverride("font_size", 12);
+            _detail.AddThemeColorOverride("font_color", new Color("d5dde8"));
+            Root.AddChild(_detail);
+
+            Track = new Control
+            {
+                SizeFlagsHorizontal = SizeFlags.ExpandFill,
+                CustomMinimumSize = new Vector2(0, 14),
+                ClipContents = true,
+                MouseFilter = MouseFilterEnum.Ignore,
+            };
+            var backdrop = new ColorRect
+            {
+                Color = new Color("10151c"),
+                MouseFilter = MouseFilterEnum.Ignore,
+            };
+            backdrop.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+            Track.AddChild(backdrop);
+
+            for (int i = 0; i <= 4; i++)
+            {
+                float anchor = i / 4f;
+                var tick = new ColorRect
+                {
+                    Color = new Color("2c3848"),
+                    MouseFilter = MouseFilterEnum.Ignore,
+                    AnchorLeft = anchor,
+                    AnchorRight = anchor,
+                    AnchorTop = 0,
+                    AnchorBottom = 1,
+                    OffsetLeft = 0,
+                    OffsetRight = 1,
+                };
+                Track.AddChild(tick);
+            }
+
+            _castFill = new ColorRect
+            {
+                Color = new Color(color.R, color.G, color.B, 0.38f),
+                Visible = false,
+                MouseFilter = MouseFilterEnum.Ignore,
+                AnchorLeft = 0,
+                AnchorRight = 0,
+                AnchorTop = 0,
+                AnchorBottom = 1,
+                OffsetTop = 1,
+                OffsetBottom = -1,
+            };
+            Track.AddChild(_castFill);
+
+            _castName = new Label
+            {
+                Visible = false,
+                MouseFilter = MouseFilterEnum.Ignore,
+                VerticalAlignment = VerticalAlignment.Center,
+                ClipText = true,
+                TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis,
+                AnchorLeft = 0,
+                AnchorRight = 1,
+                AnchorTop = 0,
+                AnchorBottom = 1,
+                OffsetLeft = 6,
+                OffsetRight = -6,
+            };
+            _castName.AddThemeFontSizeOverride("font_size", 11);
+            _castName.AddThemeColorOverride("font_color", new Color("f4f7fb"));
+            Track.AddChild(_castName);
+
+            _marker = new ColorRect
+            {
+                Color = color,
+                MouseFilter = MouseFilterEnum.Ignore,
+                AnchorLeft = 0,
+                AnchorRight = 0,
+                AnchorTop = 0,
+                AnchorBottom = 1,
+                OffsetTop = 1,
+                OffsetBottom = -1,
+            };
+            Track.AddChild(_marker);
+            Root.AddChild(Track);
+            Track.Resized += Place;
+        }
+
+        public HBoxContainer Root { get; }
+
+        public Control Track { get; }
 
         public void Set(string name, string ap, int centi, bool casting, int start, int resolve, int tick, string castName)
         {
-            Name.Text = name;
-            Detail.Text = casting ? $"{castName}  AP {ap}" : $"AP {ap}";
-            Cast.Visible = casting;
-            Interrupt.Visible = casting;
-            if (!casting)
+            _name.Text = name;
+            _detail.Text = ap;
+            _centi = centi;
+            _casting = casting;
+            _pip.Visible = casting;
+            _castName.Visible = casting;
+            _castName.Text = castName;
+            _span = resolve - start;
+            if (_span < 1)
+            {
+                _span = 1;
+            }
+
+            _elapsed = tick - start;
+            if (_elapsed < 0)
+            {
+                _elapsed = 0;
+            }
+
+            if (_elapsed > _span)
+            {
+                _elapsed = _span;
+            }
+
+            Place();
+        }
+
+        private void Place()
+        {
+            float width = Track.Size.X;
+            if (width < 4)
             {
                 return;
             }
 
-            int span = resolve - start;
-            if (span < 1)
+            float ratio = ApRatio(_centi);
+            float x = ratio * (width - 3f);
+            _marker.OffsetLeft = x;
+            _marker.OffsetRight = x + 3f;
+            _castFill.Visible = _casting;
+            if (!_casting)
             {
-                span = 1;
+                return;
             }
 
-            Cast.MaxValue = span;
-            int elapsed = tick - start;
-            if (elapsed < 0)
-            {
-                elapsed = 0;
-            }
-
-            if (elapsed > span)
-            {
-                elapsed = span;
-            }
-
-            Cast.Value = elapsed;
+            float progress = _span <= 0 ? 0f : _elapsed / (float)_span;
+            _castFill.OffsetRight = Mathf.Max(2f, width * progress);
         }
     }
 
@@ -637,11 +1133,17 @@ public partial class GreyBoxBattle : Control
                 BgColor = new Color("1b2230"),
                 ContentMarginLeft = 6,
                 ContentMarginRight = 6,
-                ContentMarginTop = 4,
-                ContentMarginBottom = 4,
+                ContentMarginTop = 3,
+                ContentMarginBottom = 3,
                 BorderColor = new Color("00000000"),
             };
-            Panel = new PanelContainer { SizeFlagsVertical = SizeFlags.ExpandFill, MouseFilter = MouseFilterEnum.Stop };
+            Panel = new PanelContainer
+            {
+                SizeFlagsHorizontal = SizeFlags.ExpandFill,
+                SizeFlagsVertical = SizeFlags.ExpandFill,
+                MouseFilter = MouseFilterEnum.Stop,
+                MouseDefaultCursorShape = CursorShape.PointingHand,
+            };
             Panel.AddThemeStyleboxOverride("panel", _style);
             var row = new HBoxContainer { MouseFilter = MouseFilterEnum.Ignore };
             row.AddThemeConstantOverride("separation", 6);
@@ -649,19 +1151,37 @@ public partial class GreyBoxBattle : Control
             row.AddChild(new ColorRect
             {
                 Color = color,
-                CustomMinimumSize = new Vector2(28, 28),
+                CustomMinimumSize = new Vector2(8, 24),
+                SizeFlagsVertical = SizeFlags.ExpandFill,
                 MouseFilter = MouseFilterEnum.Ignore,
             });
-            var box = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill, MouseFilter = MouseFilterEnum.Ignore };
+            var box = new VBoxContainer
+            {
+                SizeFlagsHorizontal = SizeFlags.ExpandFill,
+                MouseFilter = MouseFilterEnum.Ignore,
+            };
+            box.AddThemeConstantOverride("separation", 1);
             row.AddChild(box);
-            _name = new Label { MouseFilter = MouseFilterEnum.Ignore };
+            _name = new Label
+            {
+                MouseFilter = MouseFilterEnum.Ignore,
+                ClipText = true,
+                TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis,
+            };
+            _name.AddThemeFontSizeOverride("font_size", 14);
             box.AddChild(_name);
-            _hp = Bar(new Color("c0392b"));
+            _hp = Bar(new Color("c0392b"), 7);
             box.AddChild(_hp);
-            _mp = Bar(new Color("2980b9"));
+            _mp = Bar(new Color("2980b9"), 7);
             box.AddChild(_mp);
-            _meta = new Label { MouseFilter = MouseFilterEnum.Ignore };
+            _meta = new Label
+            {
+                MouseFilter = MouseFilterEnum.Ignore,
+                ClipText = true,
+                TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis,
+            };
             _meta.AddThemeFontSizeOverride("font_size", 12);
+            _meta.AddThemeColorOverride("font_color", new Color("c5d0dc"));
             box.AddChild(_meta);
         }
 
@@ -670,10 +1190,12 @@ public partial class GreyBoxBattle : Control
         public void Set(HeroState hero, bool selected)
         {
             _style.BorderColor = selected ? new Color("ffe08a") : new Color("00000000");
-            _style.BorderWidthLeft = selected ? 3 : 0;
-            _style.BorderWidthRight = selected ? 3 : 0;
-            _style.BorderWidthTop = selected ? 3 : 0;
-            _style.BorderWidthBottom = selected ? 3 : 0;
+            int width = selected ? 2 : 0;
+            _style.BorderWidthLeft = width;
+            _style.BorderWidthRight = width;
+            _style.BorderWidthTop = width;
+            _style.BorderWidthBottom = width;
+            _style.BgColor = selected ? new Color("243044") : new Color("1b2230");
             string down = hero.IsAlive ? "" : "  DOWN";
             _name.Text = hero.Name + down;
             _hp.MaxValue = hero.MaxHp;
@@ -681,18 +1203,22 @@ public partial class GreyBoxBattle : Control
             _mp.MaxValue = hero.MaxMp <= 0 ? 1 : hero.MaxMp;
             _mp.Value = hero.Mp;
             string cast = hero.Casting ? $"  cast → {hero.CastResolveTick}" : "";
-            _meta.Text = $"HP {hero.Hp}/{hero.MaxHp}   MP {hero.Mp}/{hero.MaxMp}   AP {ApGauge.Format(hero.Ap.Centi)}{cast}";
+            _meta.Text = $"HP {hero.Hp}/{hero.MaxHp}  MP {hero.Mp}/{hero.MaxMp}  AP {ApGauge.Format(hero.Ap.Centi)}{cast}";
         }
 
-        private static ProgressBar Bar(Color _)
+        private static ProgressBar Bar(Color fill, int height)
         {
-            return new ProgressBar
+            var bar = new ProgressBar
             {
                 MinValue = 0,
                 ShowPercentage = false,
-                CustomMinimumSize = new Vector2(0, 10),
+                CustomMinimumSize = new Vector2(0, height),
                 MouseFilter = MouseFilterEnum.Ignore,
+                SizeFlagsHorizontal = SizeFlags.ExpandFill,
             };
+            bar.AddThemeStyleboxOverride("background", Flat(new Color("0c1016"), 0));
+            bar.AddThemeStyleboxOverride("fill", Flat(fill, 0));
+            return bar;
         }
     }
 
@@ -701,38 +1227,56 @@ public partial class GreyBoxBattle : Control
         private readonly StyleBoxFlat _style;
         private readonly Label _name;
         private readonly ProgressBar _hp;
+        private readonly Label _resist;
+        private readonly Label _pressure;
         private readonly ProgressBar[] _threat;
         private readonly Label[] _threatLabel;
-        private readonly Label _note;
 
-        public PartRow()
+        public PartRow(Color[] colors)
         {
             _style = new StyleBoxFlat
             {
                 BgColor = new Color("1b2230"),
-                ContentMarginLeft = 8,
-                ContentMarginRight = 8,
-                ContentMarginTop = 4,
-                ContentMarginBottom = 4,
+                ContentMarginLeft = 6,
+                ContentMarginRight = 6,
+                ContentMarginTop = 3,
+                ContentMarginBottom = 3,
                 BorderColor = new Color("00000000"),
             };
-            Panel = new PanelContainer { SizeFlagsVertical = SizeFlags.ExpandFill, MouseFilter = MouseFilterEnum.Stop };
+            Panel = new PanelContainer
+            {
+                SizeFlagsHorizontal = SizeFlags.ExpandFill,
+                SizeFlagsVertical = SizeFlags.ExpandFill,
+                MouseFilter = MouseFilterEnum.Stop,
+                MouseDefaultCursorShape = CursorShape.PointingHand,
+            };
             Panel.AddThemeStyleboxOverride("panel", _style);
             var box = new VBoxContainer { MouseFilter = MouseFilterEnum.Ignore };
+            box.AddThemeConstantOverride("separation", 2);
             Panel.AddChild(box);
-            _name = new Label { MouseFilter = MouseFilterEnum.Ignore };
+            _name = new Label
+            {
+                MouseFilter = MouseFilterEnum.Ignore,
+                ClipText = true,
+                TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis,
+            };
+            _name.AddThemeFontSizeOverride("font_size", 13);
             box.AddChild(_name);
             _hp = new ProgressBar
             {
                 MinValue = 0,
                 ShowPercentage = false,
-                CustomMinimumSize = new Vector2(0, 14),
+                CustomMinimumSize = new Vector2(0, 10),
                 MouseFilter = MouseFilterEnum.Ignore,
             };
+            _hp.AddThemeStyleboxOverride("background", Flat(new Color("0c1016"), 0));
+            _hp.AddThemeStyleboxOverride("fill", Flat(new Color("a04040"), 0));
             box.AddChild(_hp);
-            _note = new Label { AutowrapMode = TextServer.AutowrapMode.WordSmart, MouseFilter = MouseFilterEnum.Ignore };
-            _note.AddThemeFontSizeOverride("font_size", 12);
-            box.AddChild(_note);
+            _resist = Note(new Color("d5e2c4"));
+            box.AddChild(_resist);
+            _pressure = Note(new Color("b7c4d4"));
+            box.AddChild(_pressure);
+
             var threats = new HBoxContainer { MouseFilter = MouseFilterEnum.Ignore };
             threats.AddThemeConstantOverride("separation", 6);
             box.AddChild(threats);
@@ -740,9 +1284,19 @@ public partial class GreyBoxBattle : Control
             _threatLabel = new Label[4];
             for (int i = 0; i < 4; i++)
             {
-                var column = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill, MouseFilter = MouseFilterEnum.Ignore };
+                var column = new VBoxContainer
+                {
+                    SizeFlagsHorizontal = SizeFlags.ExpandFill,
+                    MouseFilter = MouseFilterEnum.Ignore,
+                };
+                column.AddThemeConstantOverride("separation", 1);
                 threats.AddChild(column);
-                _threatLabel[i] = new Label { MouseFilter = MouseFilterEnum.Ignore };
+                _threatLabel[i] = new Label
+                {
+                    MouseFilter = MouseFilterEnum.Ignore,
+                    ClipText = true,
+                    TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis,
+                };
                 _threatLabel[i].AddThemeFontSizeOverride("font_size", 11);
                 column.AddChild(_threatLabel[i]);
                 _threat[i] = new ProgressBar
@@ -750,9 +1304,11 @@ public partial class GreyBoxBattle : Control
                     MinValue = 0,
                     MaxValue = 30_000,
                     ShowPercentage = false,
-                    CustomMinimumSize = new Vector2(0, 8),
+                    CustomMinimumSize = new Vector2(0, 6),
                     MouseFilter = MouseFilterEnum.Ignore,
                 };
+                _threat[i].AddThemeStyleboxOverride("background", Flat(new Color("0c1016"), 0));
+                _threat[i].AddThemeStyleboxOverride("fill", Flat(colors[i % colors.Length], 0));
                 column.AddChild(_threat[i]);
             }
         }
@@ -762,15 +1318,20 @@ public partial class GreyBoxBattle : Control
         public void Set(BossPartState part, IReadOnlyList<HeroState> heroes, bool selected, int bossDef)
         {
             _style.BorderColor = selected ? new Color("ffe08a") : new Color("00000000");
-            _style.BorderWidthLeft = selected ? 3 : 0;
-            _style.BorderWidthRight = selected ? 3 : 0;
-            _style.BorderWidthTop = selected ? 3 : 0;
-            _style.BorderWidthBottom = selected ? 3 : 0;
+            int width = selected ? 2 : 0;
+            _style.BorderWidthLeft = width;
+            _style.BorderWidthRight = width;
+            _style.BorderWidthTop = width;
+            _style.BorderWidthBottom = width;
+            _style.BgColor = selected ? new Color("243044") : new Color("1b2230");
             string state = part.Hp <= 0 ? "destroyed" : part.Active ? "up" : "down";
             int def = bossDef + part.DefBonus;
             _name.Text = $"{part.Name}  {part.Hp}/{part.MaxHp}  DEF {def}  {state}";
             string resist = ResonanceReadout.ResistLine(part);
-            _note.Text = resist.Length == 0 ? part.Pressure : $"{resist}\n{part.Pressure}";
+            _resist.Visible = resist.Length > 0;
+            _resist.Text = resist;
+            _pressure.Visible = part.Pressure.Length > 0;
+            _pressure.Text = part.Pressure;
             _hp.MaxValue = part.MaxHp <= 0 ? 1 : part.MaxHp;
             _hp.Value = part.Hp < 0 ? 0 : part.Hp;
             for (int i = 0; i < _threat.Length; i++)
@@ -793,6 +1354,19 @@ public partial class GreyBoxBattle : Control
                 _threatLabel[i].Visible = true;
                 _threatLabel[i].Text = $"{heroes[i].Name.Split(' ')[0]} {total}";
             }
+        }
+
+        private static Label Note(Color color)
+        {
+            var label = new Label
+            {
+                AutowrapMode = TextServer.AutowrapMode.WordSmart,
+                MaxLinesVisible = 2,
+                MouseFilter = MouseFilterEnum.Ignore,
+            };
+            label.AddThemeFontSizeOverride("font_size", 12);
+            label.AddThemeColorOverride("font_color", color);
+            return label;
         }
     }
 }
