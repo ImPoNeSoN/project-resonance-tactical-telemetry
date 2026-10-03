@@ -92,6 +92,7 @@ public enum SupportEffect
     TimelineStalk,
     CircuitBenediction,
     PhaseSanctuary,
+    ChoirAegis,
 }
 
 public static class ElementMaps

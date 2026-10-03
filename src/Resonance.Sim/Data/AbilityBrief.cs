@@ -46,7 +46,7 @@ public static class AbilityBrief
     public static string Target(AbilityDef ability) => ability.Effect switch
     {
         SupportEffect.KeratinBastion or SupportEffect.TimelineStalk => "self",
-        SupportEffect.CircuitBenediction => "ally",
+        SupportEffect.CircuitBenediction or SupportEffect.ChoirAegis => "ally",
         SupportEffect.PhaseSanctuary => "all",
         _ => ability.Kind switch
         {
@@ -186,6 +186,7 @@ public static class AbilityBrief
             SupportEffect.TimelineStalk => "next recovery −4,000 AP for 6,000 ticks or until used",
             SupportEffect.CircuitBenediction => $"+20 Concentration and regen {ability.MultiplierBp / 100}% INT per 500 ticks for 4,000 ticks",
             SupportEffect.PhaseSanctuary => "−25% damage taken for the whole party for 3,000 ticks",
+            SupportEffect.ChoirAegis => $"absorb {ability.MultiplierBp / 100}% INT for {SimConst.ChoirAegisTicks} ticks",
             _ => "",
         };
         if (effect.Length > 0)
@@ -207,6 +208,17 @@ public static class AbilityBrief
             }
 
             text.Append("flat interrupt ").Append(ability.FlatInterruptBp / 100).Append("% on the casting part");
+            any = true;
+        }
+
+        if (ability.Id == AbilityCatalog.ShieldBash)
+        {
+            if (any)
+            {
+                text.Append("; ");
+            }
+
+            text.Append("stun ").Append(SimConst.StunBaseTicks).Append(" ticks, halved within ").Append(SimConst.StunDrWindowTicks);
             any = true;
         }
 

@@ -784,7 +784,7 @@ public partial class GreyBoxBattle : Control
 
         for (int i = 0; i < boss.Parts.Length && i < _parts.Count; i++)
         {
-            _parts[i].Set(boss.Parts[i], sim.Heroes, i == _part, boss.Def);
+            _parts[i].Set(boss.Parts[i], sim.Heroes, i == _part, boss.Def, sim.Tick);
         }
 
         for (int i = 0; i < _allies.GetChildCount(); i++)
@@ -1429,7 +1429,7 @@ public partial class GreyBoxBattle : Control
 
         public PanelContainer Panel { get; }
 
-        public void Set(BossPartState part, IReadOnlyList<HeroState> heroes, bool selected, int bossDef)
+        public void Set(BossPartState part, IReadOnlyList<HeroState> heroes, bool selected, int bossDef, int tick)
         {
             _style.BorderColor = selected ? new Color("ffe08a") : new Color("00000000");
             int width = selected ? 2 : 0;
@@ -1439,8 +1439,19 @@ public partial class GreyBoxBattle : Control
             _style.BorderWidthBottom = width;
             _style.BgColor = selected ? new Color("243044") : new Color("1b2230");
             string state = part.Hp <= 0 ? "destroyed" : part.Active ? "up" : "down";
+            if (part.Hp > 0 && tick < part.StunExpires)
+            {
+                state = $"stunned {part.StunExpires - tick}";
+            }
+            else if (part.Hp > 0 && tick < part.StunImmuneUntil)
+            {
+                state = $"stun immune {part.StunImmuneUntil - tick}";
+            }
+
             int def = bossDef + part.DefBonus;
-            _name.Text = $"{part.Name}  {part.Hp}/{part.MaxHp}  DEF {def}  {state}";
+            _name.Text = part.Hp > 0 && (tick < part.StunExpires || tick < part.StunImmuneUntil)
+                ? $"{part.Name}  {state}  {part.Hp}/{part.MaxHp}  DEF {def}"
+                : $"{part.Name}  {part.Hp}/{part.MaxHp}  DEF {def}  {state}";
             string resist = ResonanceReadout.ResistLine(part);
             _resist.Visible = resist.Length > 0;
             _resist.Text = resist;

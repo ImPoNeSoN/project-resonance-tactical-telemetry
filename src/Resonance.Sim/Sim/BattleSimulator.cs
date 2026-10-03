@@ -241,6 +241,11 @@ public sealed class BattleSimulator
                 Consider(hero.RegenNextTick);
             }
 
+            if (hero.AbsorbExpires > 0)
+            {
+                Consider(hero.AbsorbExpires);
+            }
+
             Consider(hero.PhysDtExpires);
             Consider(hero.AllDtExpires);
             Consider(hero.ConcentrationBuffExpires);
@@ -301,6 +306,11 @@ public sealed class BattleSimulator
             {
                 Consider(part.ShockNextTick);
             }
+
+            if (part.StunExpires > 0)
+            {
+                Consider(part.StunExpires);
+            }
         }
 
         for (int i = 0; i < _heroes.Length; i++)
@@ -352,6 +362,11 @@ public sealed class BattleSimulator
 
             // Radiance is a party HoT, not the Circuit Benediction regen the golden excerpt leaves scheduled.
             if (hero.IsAlive && hero.RadiancePulse > 0)
+            {
+                return true;
+            }
+
+            if (hero.Absorb > 0 && hero.AbsorbExpires > _tick)
             {
                 return true;
             }
@@ -512,6 +527,17 @@ public sealed class BattleSimulator
             {
                 hero.RecoveryCut = 0;
             }
+
+            if (hero.AbsorbExpires > 0 && _tick >= hero.AbsorbExpires)
+            {
+                if (hero.Absorb > 0)
+                {
+                    Log($"{hero.Name} absorb expired.");
+                }
+
+                hero.Absorb = 0;
+                hero.AbsorbExpires = 0;
+            }
         }
 
         for (int p = 0; p < _boss.Parts.Length; p++)
@@ -541,6 +567,12 @@ public sealed class BattleSimulator
             if (part.ShockPulse > 0 && _tick > part.ShockExpires)
             {
                 part.ShockPulse = 0;
+            }
+
+            if (part.StunExpires > 0 && _tick >= part.StunExpires)
+            {
+                Log($"{part.Name} stun expired.");
+                part.StunExpires = 0;
             }
         }
 
@@ -1008,7 +1040,9 @@ public sealed class BattleSimulator
             MitigationConstant = SimConst.PhysicalDrConstant,
             EffectiveResistanceBp = resistance,
             BypassPositiveResistance = physicalBurst,
-            CritMultiplierBp = crit ? Formulas.CritMultiplierBp(weapon.WsCritDamageBp) : SimConst.Bp,
+            CritMultiplierBp = crit
+                ? Formulas.WeaponCritMultiplierBp(weapon.WsCritDamageBp, ExecutionFrame(ability, part))
+                : SimConst.Bp,
             WeaponSkillBp = weapon.WsDamageBp,
             BurstBucketBp = bucket,
             BurstDiminishBp = SimConst.Bp,
@@ -1058,6 +1092,7 @@ public sealed class BattleSimulator
         TryPounce(hero, ability);
         int extraDamage = ApplyExtraHits(hero, ability, part, hit, preCrit, hitBp, critBp);
         TryFlatInterrupt(ability, hit, partIndex);
+        ApplyShieldBashStun(ability, hit, partIndex);
         int damageForCe = hit ? dealt + detonation + result.TrueDamage + extraDamage : 0;
         GrantEnmity(partIndex, hero, ability, damageForCe, hpRestored: 0, useIdleEnmity: false);
         if (hero.Race == RaceId.SylvariMor && (linked || crit))
@@ -1209,6 +1244,18 @@ public sealed class BattleSimulator
 
                 Log($"{hero.Name} Phase Sanctuary. Party −25% damage taken until {_tick + 3_000}.");
                 break;
+            case SupportEffect.ChoirAegis:
+                HeroState shielded = _heroes[ally];
+                int shieldIntel = hero.Intel + Set(hero, LoadoutKind.MidCast).MidInt;
+                int granted = FixedMath.MulBp(shieldIntel, ability.MultiplierBp);
+                if (granted > shielded.Absorb)
+                {
+                    shielded.Absorb = granted;
+                }
+
+                shielded.AbsorbExpires = _tick + SimConst.ChoirAegisTicks;
+                Log($"{hero.Name} Choir Aegis → {shielded.Name}. Absorb {shielded.Absorb} until {shielded.AbsorbExpires}.");
+                break;
             default:
                 Log($"{hero.Name} {ability.Name}.");
                 break;
@@ -1222,6 +1269,13 @@ public sealed class BattleSimulator
     {
         AbilityDef ability = AbilityCatalog.Get(action.AbilityId);
         int partIndex = action.TargetPart;
+        if ((uint)partIndex < (uint)_boss.Parts.Length && _tick < _boss.Parts[partIndex].StunExpires)
+        {
+            _boss.Ap.PayRecovery(SimConst.RecoveryStance);
+            Log($"Boss {_boss.Parts[partIndex].Name} is stunned and cannot {ability.Name}.");
+            return;
+        }
+
         int target = SelectBossTarget(partIndex);
         if (ability.ChantTicks > 0)
         {
@@ -1244,6 +1298,13 @@ public sealed class BattleSimulator
         int part = _boss.CastPart;
         int target = _boss.CastTargetHero;
         _boss.Casting = false;
+        if ((uint)part < (uint)_boss.Parts.Length && _tick < _boss.Parts[part].StunExpires)
+        {
+            _boss.Ap.PayRecovery(SimConst.RecoveryStance);
+            Log($"Boss {ability.Name} fizzles. {_boss.Parts[part].Name} is stunned.");
+            return;
+        }
+
         ResolveBossStrike(ability, part, target);
     }
 
@@ -1786,7 +1847,7 @@ public sealed class BattleSimulator
 
         Log($"{hero.Name} multi-attack +{extra}.");
         int total = 0;
-        int critMultiplier = Formulas.CritMultiplierBp(weapon.WsCritDamageBp);
+        int critMultiplier = Formulas.WeaponCritMultiplierBp(weapon.WsCritDamageBp, ExecutionFrame(ability, part));
         for (int i = 0; i < extra; i++)
         {
             int extraHitRoll = _rng.RollD10000(RngStream.Hit, ability.Name + " extra hit");
@@ -1836,6 +1897,64 @@ public sealed class BattleSimulator
             _boss.Ap.PayRecovery(SimConst.RecoveryStance);
             Log($"Boss chant interrupted (roll {roll}).");
         }
+    }
+
+    private static bool ExecutionFrame(AbilityDef ability, BossPartState part)
+    {
+        return ability.Id == AbilityCatalog.RavelExecution
+            && Formulas.BelowExecutionThreshold(part.Hp, part.MaxHp);
+    }
+
+    private void ApplyShieldBashStun(AbilityDef ability, bool hit, int partIndex)
+    {
+        if (!hit || ability.Id != AbilityCatalog.ShieldBash)
+        {
+            return;
+        }
+
+        BossPartState part = _boss.Parts[partIndex];
+        bool stunned = _tick < part.StunExpires;
+        bool inWindow = _tick < part.StunDrUntil && _tick >= part.StunImmuneUntil;
+        if (stunned || inWindow)
+        {
+            int duration = part.LastStunTicks / 2;
+            if (duration < 1)
+            {
+                part.LastStunTicks = 0;
+                part.StunDrUntil = 0;
+                part.StunImmuneUntil = _tick + SimConst.StunImmuneTicks;
+                Log($"{part.Name} stun diminished to nothing. Immune until {part.StunImmuneUntil}.");
+                return;
+            }
+
+            CommitStun(part, partIndex, duration);
+            return;
+        }
+
+        if (_tick < part.StunImmuneUntil)
+        {
+            Log($"{part.Name} is stun immune until {part.StunImmuneUntil}.");
+            return;
+        }
+
+        CommitStun(part, partIndex, SimConst.StunBaseTicks);
+    }
+
+    private void CommitStun(BossPartState part, int partIndex, int duration)
+    {
+        part.LastStunTicks = duration;
+        part.StunExpires = _tick + duration;
+        part.StunDrUntil = _tick + SimConst.StunDrWindowTicks;
+        part.StunImmuneUntil = part.StunExpires + SimConst.StunImmuneTicks;
+        Log($"{part.Name} stunned for {duration} ticks until {part.StunExpires}.");
+        if (!_boss.Casting || _boss.CastPart != partIndex)
+        {
+            return;
+        }
+
+        _boss.Casting = false;
+        _boss.Ap.PayRecovery(SimConst.RecoveryStance);
+        Log($"Boss chant cancelled: {part.Name} stunned.");
     }
 
     private void ConsumeHeat(HeroState hero)
@@ -2122,6 +2241,11 @@ public sealed class BattleSimulator
             if ((uint)part >= (uint)_boss.Parts.Length)
             {
                 part = Core;
+            }
+
+            if (_tick < _boss.Parts[part].StunExpires)
+            {
+                continue;
             }
 
             if (part != Core && (_boss.Parts[part].Hp <= 0 || !_boss.Parts[part].Active))

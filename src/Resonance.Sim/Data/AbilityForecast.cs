@@ -44,7 +44,17 @@ public static class AbilityForecast
         if (ability.FlatInterruptBp > 0)
         {
             sentences.Add($"{Percent(ability.FlatInterruptBp)}% chance to interrupt a chant on that part when the hit lands.");
-            sentences.Add("No stun.");
+        }
+
+        if (ability.Id == AbilityCatalog.ShieldBash)
+        {
+            sentences.Add(
+                $"Stuns that part for {ForTicks(SimConst.StunBaseTicks, actor)} when the hit lands. A repeat within {SimConst.StunDrWindowTicks} ticks halves the duration. After the stun, the part is immune for {SimConst.StunImmuneTicks} ticks.");
+        }
+
+        if (ability.Id == AbilityCatalog.RavelExecution)
+        {
+            sentences.Add(ExecutionFrameSentence(boss.Parts[partIndex]));
         }
 
         if (ability.AppliesBurn)
@@ -62,6 +72,8 @@ public static class AbilityForecast
         bool beyondDamage = ability.Kind == AbilityKind.Healing
             || ability.Effect != SupportEffect.None
             || ability.FlatInterruptBp > 0
+            || ability.Id == AbilityCatalog.ShieldBash
+            || ability.Id == AbilityCatalog.RavelExecution
             || ability.AppliesBurn
             || ability.Property != ChainProperty.None
             || HasExtraHit(ability, actor);
@@ -117,6 +129,11 @@ public static class AbilityForecast
                 yield break;
             case SupportEffect.PhaseSanctuary:
                 yield return $"−25% damage taken for the whole party for {ForTicks(3_000, actor)}.";
+                yield break;
+            case SupportEffect.ChoirAegis:
+                int shieldPower = actor.Intel + Loadout(actor, LoadoutKind.MidCast).MidInt;
+                int absorb = FixedMath.MulBp(shieldPower, ability.MultiplierBp);
+                yield return $"Grants {absorb} absorb to {ally.Name} for {ForTicks(SimConst.ChoirAegisTicks, actor)}. A later cast replaces this pool only when it is larger.";
                 yield break;
             default:
                 yield return "No damage.";
@@ -196,7 +213,9 @@ public static class AbilityForecast
             }
         }
 
-        int crit = Formulas.CritMultiplierBp(weapon.WsCritDamageBp);
+        int crit = Formulas.WeaponCritMultiplierBp(
+            weapon.WsCritDamageBp,
+            ability.Id == AbilityCatalog.RavelExecution && Formulas.BelowExecutionThreshold(part.Hp, part.MaxHp));
         DamageRequest low = HitRequest(attack, ability.MultiplierBp, PartDefense(boss, partIndex, tick), SimConst.PhysicalDrConstant, resistance, burst, critMultiplier: SimConst.Bp, weapon.WsDamageBp, bucket, dealtBuff: 0, diminish: SimConst.Bp, trueBonus);
         DamageRequest high = HitRequest(attack, ability.MultiplierBp, PartDefense(boss, partIndex, tick), SimConst.PhysicalDrConstant, resistance, burst, crit, weapon.WsDamageBp, bucket, dealtBuff: 0, diminish: SimConst.Bp, trueBonus);
         return new HitSpan(
@@ -558,6 +577,19 @@ public static class AbilityForecast
         }
 
         return count;
+    }
+
+    private static string ExecutionFrameSentence(BossPartState part)
+    {
+        int percent = part.MaxHp <= 0 ? 0 : (int)((long)part.Hp * 100 / part.MaxHp);
+        int capWhole = SimConst.ExecutionFrameCapBp / SimConst.Bp;
+        int capFrac = (SimConst.ExecutionFrameCapBp % SimConst.Bp) / 100;
+        string cap = $"{capWhole}.{capFrac:00}×";
+        bool active = Formulas.BelowExecutionThreshold(part.Hp, part.MaxHp);
+        string now = active
+            ? $"{part.Name} is at {percent}% HP, so the high end above includes the frame."
+            : $"{part.Name} is at {percent}% HP, so this hit uses the normal crit cap.";
+        return $"Execution Frame: below {SimConst.ExecutionFrameHpPercent}% HP, crit damage +{SimConst.ExecutionFrameCritDamageBp / 100}% and the crit cap is {cap}. {now}";
     }
 
     private static string ForTicks(int ticks, HeroState actor)

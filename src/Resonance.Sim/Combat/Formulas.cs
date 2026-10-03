@@ -158,6 +158,24 @@ public static class Formulas
         return multiplier > capBp ? capBp : multiplier;
     }
 
+    /// <summary>Strictly below 35% HP. 35% itself does not qualify.</summary>
+    public static bool BelowExecutionThreshold(int hp, int maxHp)
+    {
+        return maxHp > 0 && (long)hp * 100 < (long)maxHp * SimConst.ExecutionFrameHpPercent;
+    }
+
+    public static int WeaponCritMultiplierBp(int critDamageGearBp, bool executionFrame)
+    {
+        if (!executionFrame)
+        {
+            return CritMultiplierBp(critDamageGearBp);
+        }
+
+        return CritMultiplierBp(
+            critDamageGearBp + SimConst.ExecutionFrameCritDamageBp,
+            SimConst.ExecutionFrameCapBp);
+    }
+
     /// <summary>Interrupt% = clamp((Damage / MaxHP) × 2.5 − Concentration × 0.01, 0, 0.95).</summary>
     public static int InterruptChanceBp(int damageTaken, int maxHp, int concentration)
     {
