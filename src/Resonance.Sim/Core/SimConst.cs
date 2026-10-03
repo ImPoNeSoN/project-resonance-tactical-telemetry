@@ -97,6 +97,13 @@ public static class SimConst
     public const int SpendHeatCost = 20;
     public const int WaitMitigationBp = 2_000;
     public const int ShieldBashInterruptBp = 3_500;
+    public const int StunBaseTicks = 1_500;
+    public const int StunDrWindowTicks = 4_000;
+    public const int StunImmuneTicks = 1_000;
+    public const int ExecutionFrameHpPercent = 35;
+    public const int ExecutionFrameCritDamageBp = 4_000;
+    public const int ExecutionFrameCapBp = 29_000;
+    public const int ChoirAegisTicks = 3_000;
 
     public const int ShockRatioBp = 2_500;
     public const int ShockDuration = 3_000;

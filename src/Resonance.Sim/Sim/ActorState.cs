@@ -45,6 +45,7 @@ public sealed class HeroState
     public int RegenExpires;
     public int RegenNextTick;
     public int Absorb;
+    public int AbsorbExpires;
     public int Heat;
     public int HeatDecayTick;
     public int HeatAfterPrime;
@@ -105,6 +106,19 @@ public sealed class BossPartState
     public int ShockPulse;
     public int ShockNextTick;
     public int ShockExpires;
+
+    /// <summary>Exclusive end tick. Zero means this part is not stunned.</summary>
+    public int StunExpires;
+
+    /// <summary>Exclusive end of the post-stun immunity. A bash in this window does not stun.</summary>
+    public int StunImmuneUntil;
+
+    /// <summary>Exclusive end of the diminishing-returns window opened by the last stun.</summary>
+    public int StunDrUntil;
+
+    /// <summary>Duration of the last stun that actually landed. The next one in the window is half of this.</summary>
+    public int LastStunTicks;
+
     public EnmitySlot[] Enmity = [];
 
     /// <summary>Null uses the boss-wide table. The golden fight leaves this null.</summary>

@@ -130,8 +130,10 @@ public class AbilityBriefTests
         int high = DamagePipeline.Resolve(crit).Total;
         Assert.Contains($"About {low}–{high} damage to Core after DEF.", panel, StringComparison.Ordinal);
         Assert.Contains("35% chance to interrupt a chant on that part when the hit lands.", panel, StringComparison.Ordinal);
-        Assert.Contains("No stun.", panel, StringComparison.Ordinal);
-        Assert.DoesNotContain("Stun", panel, StringComparison.Ordinal);
+        Assert.Contains($"Stuns that part for {SimConst.StunBaseTicks} ticks", panel, StringComparison.Ordinal);
+        Assert.Contains($"halves the duration", panel, StringComparison.Ordinal);
+        Assert.Contains($"immune for {SimConst.StunImmuneTicks} ticks", panel, StringComparison.Ordinal);
+        Assert.DoesNotContain("No stun.", panel, StringComparison.Ordinal);
         Assert.Contains("Applies Blunt.", panel, StringComparison.Ordinal);
         Assert.Contains("Hit 95%.", panel, StringComparison.Ordinal);
     }

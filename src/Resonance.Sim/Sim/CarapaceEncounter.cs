@@ -242,7 +242,7 @@ public static class CarapaceEncounter
         seraphine.Idle = new GearMods { IdleMeva = 30 };
         seraphine.FastCast = new GearMods { FastCastBp = 3_000 };
         seraphine.MidCast = new GearMods { MidHealingPotencyBp = 5_000, MidInt = 40 };
-        seraphine.Kit = [AbilityCatalog.CureCascade, AbilityCatalog.CircuitBenediction, AbilityCatalog.PhaseSanctuary, AbilityCatalog.Attack];
+        seraphine.Kit = [AbilityCatalog.ChoirAegis, AbilityCatalog.CureCascade, AbilityCatalog.CircuitBenediction, AbilityCatalog.PhaseSanctuary, AbilityCatalog.Attack];
         seraphine.Deck = Deck(
             $"""
             1 IF Ally(Lowest HP%) [HP% < 55] AND Self [MP >= Cost: Cure Cascade] -> CAST [Cure Cascade] ON Ally(Lowest HP%)

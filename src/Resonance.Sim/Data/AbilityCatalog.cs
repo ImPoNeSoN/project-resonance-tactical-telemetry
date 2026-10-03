@@ -38,6 +38,7 @@ public static class AbilityCatalog
     public const int CrescentSever = 56;
     public const int UmbralPierce = 57;
     public const int RavelExecution = 58;
+    public const int ChoirAegis = 59;
 
     private static readonly Dictionary<int, AbilityDef> ById = Build();
     private static readonly Dictionary<string, AbilityDef> ByName = IndexNames();
@@ -99,7 +100,7 @@ public static class AbilityCatalog
             New(GloomBolt, "Gloom Bolt", AbilityKind.Magical, ChainProperty.Darkness, ElementId.Darkness, 10_000, 0, 0, 0, 0, 10_000, SupportEffect.None, "Darkness spell."),
             New(Shear, "Shear", AbilityKind.Physical, ChainProperty.Slashing, ElementId.None, 10_000, 0, 0, 0, 0, 10_000, SupportEffect.None, "Slashing weapon skill."),
             New(CinderBrand, "Cinder Brand", AbilityKind.ElementalPhysical, ChainProperty.Fire, ElementId.Fire, 10_000, 0, 0, 0, 0, 10_000, SupportEffect.None, "Fire elemental-physical."),
-            New(ShieldBash, "Shield Bash", AbilityKind.Physical, ChainProperty.Blunt, ElementId.None, 4_000, 0, 0, 0, 400, 8_000, SupportEffect.None, "Interrupts only the part that is casting.", SimConst.ShieldBashInterruptBp),
+            New(ShieldBash, "Shield Bash", AbilityKind.Physical, ChainProperty.Blunt, ElementId.None, 4_000, 0, 0, 0, 400, 8_000, SupportEffect.None, "A landed hit stuns that part. The flat interrupt still applies only while that part is casting.", SimConst.ShieldBashInterruptBp),
             New(Attack, "Attack", AbilityKind.Physical, ChainProperty.None, ElementId.None, 10_000, 0, 0, 0, 100, 10_000, SupportEffect.None, "Basic weapon swing with no chain property."),
             New(PyreLattice, "Pyre Lattice", AbilityKind.Magical, ChainProperty.Fire, ElementId.Fire, 14_000, 1_400, 320, 700, 1_000, 44_000, SupportEffect.None, "Heavy fire spell. Spends a Liquefaction burst window."),
             New(HexLance, "Hex Lance", AbilityKind.Magical, ChainProperty.Lightning, ElementId.Lightning, 10_000, 600, 140, 200, 500, 24_000, SupportEffect.None, "Lightning spell. Closes Piercing into Conduction."),
@@ -113,7 +114,8 @@ public static class AbilityCatalog
             New(GaleQuanta, "Gale Quanta", AbilityKind.Magical, ChainProperty.Wind, ElementId.Wind, 10_000, 500, 120, 200, 400, 22_000, SupportEffect.None, "Wind spell. Closes Slashing into Fragmentation."),
             New(CrescentSever, "Crescent Sever", AbilityKind.Physical, ChainProperty.Slashing, ElementId.None, 10_000, 0, 0, 0, 600, 26_000, SupportEffect.None, "Slashing. Closes Blunt into Distortion and purges Kiln Guard."),
             New(UmbralPierce, "Umbral Pierce", AbilityKind.ElementalPhysical, ChainProperty.Darkness, ElementId.Darkness, 10_000, 0, 30, 0, 600, 24_000, SupportEffect.None, "Darkness link. Closes Blunt into Distortion (Kiln Guard purge) and Induration into Umbral Zero."),
-            New(RavelExecution, "Ravel Execution", AbilityKind.Physical, ChainProperty.Piercing, ElementId.None, 14_000, 0, 0, 0, 1_500, 52_000, SupportEffect.None, "Tier-3 finisher. Closes Slashing into Fragmentation and takes the physical burst bonus inside that window."),
+            New(RavelExecution, "Ravel Execution", AbilityKind.Physical, ChainProperty.Piercing, ElementId.None, 14_000, 0, 0, 0, 1_500, 52_000, SupportEffect.None, "Tier-3 finisher. Closes Slashing into Fragmentation and takes the physical burst bonus inside that window. Execution Frame raises crit damage by 40% and the cap to 2.90× while that part is below 35% HP."),
+            New(ChoirAegis, "Choir Aegis", AbilityKind.Support, ChainProperty.None, ElementId.None, 4_000, 300, 80, 200, 100, 20_000, SupportEffect.ChoirAegis, "Single-ally damage shield. Fills that ally's absorb pool."),
         ];
 
         var map = new Dictionary<int, AbilityDef>(all.Length);
