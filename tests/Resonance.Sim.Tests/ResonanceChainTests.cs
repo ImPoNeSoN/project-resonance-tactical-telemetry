@@ -22,13 +22,15 @@ public class ResonanceChainTests
 
         sim.RunToEnd();
 
-        Assert.Equal(2, core.Tier);
-        Assert.Equal(ResonanceId.Induration, core.Resonance);
+        Assert.Equal(0, core.Tier);
+        Assert.Equal(ResonanceId.None, core.Resonance);
         Assert.Equal(1_500, DamageAt(sim));
         Assert.Contains("Induration detonation 750", Transcript(sim), StringComparison.Ordinal);
+        Assert.Contains("opens no resonance window", Transcript(sim), StringComparison.Ordinal);
         Assert.Equal(120_000 - 1_500 - 750, core.Hp);
-        Assert.Equal(sim.Tick, core.BurstOpened);
-        Assert.Equal(sim.Tick + 1_500, core.BurstExpires);
+        Assert.Equal(0, core.BurstOpened);
+        Assert.Equal(100_600, core.BurstExpires);
+        Assert.Equal(SimConst.IndurationSlowBp, sim.Boss.SlowBp);
     }
 
     [Fact]
@@ -195,7 +197,7 @@ public class ResonanceChainTests
     }
 
     [Fact]
-    public void Burst_chain_steps_reach_level_3_and_keep_detonating()
+    public void Burst_closers_do_not_refresh_solar_apex_inside_one_window()
     {
         var queue = new List<int> { AbilityCatalog.Shear, AbilityCatalog.TalonLance, AbilityCatalog.PrismRay };
         for (int i = 0; i < 8; i++)
@@ -225,8 +227,12 @@ public class ResonanceChainTests
             }
         }
 
-        Assert.True(solarTicks.Count >= 8, $"solars={solarTicks.Count} ticks={string.Join(",", solarTicks)}");
-        Assert.True(solarTicks[^1] - solarTicks[0] > 2_700, $"span {solarTicks[0]}..{solarTicks[^1]}");
+        // The same script used to refresh Solar inside one window (>= 8, span > 2,700).
+        // A burst closer no longer opens the next window, so each later apex is a new
+        // L1 rebuild after the previous 1,500-tick window has expired.
+        Assert.Equal(new[] { 600, 2_600, 4_850 }, solarTicks);
+        Assert.Equal(2_000, solarTicks[1] - solarTicks[0]);
+        Assert.Equal(2_250, solarTicks[2] - solarTicks[1]);
     }
 
     private static IReadOnlyList<int> Repeat(int value, int count)

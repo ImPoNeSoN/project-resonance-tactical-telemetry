@@ -66,7 +66,8 @@ public class GoldenCombatLogTests
         Assert.Equal(1, sim.Boss.Parts[0].Tier);
         Assert.Equal(ChainProperty.Ice, sim.Boss.Parts[0].Property);
         Assert.Equal(6_900, sim.Boss.Parts[0].ChainExpires);
-        Assert.Equal(4_139, sim.Boss.Parts[0].BurstExpires);
+        Assert.Equal(3_512, sim.Boss.Parts[0].BurstExpires);
+        Assert.True(sim.Boss.Parts[0].BurstActive);
     }
 
     [Fact]
@@ -111,9 +112,10 @@ public class GoldenCombatLogTests
 
         sim.RunUntil(2_639);
         Assert.Equal(3_272, DamageAt(sim, 2_639));
-        Assert.Equal(2, sim.Boss.Parts[0].Tier);
-        Assert.Equal(ResonanceId.Induration, sim.Boss.Parts[0].Resonance);
-        Assert.Equal(4_139, sim.Boss.Parts[0].BurstExpires);
+        Assert.Equal(0, sim.Boss.Parts[0].Tier);
+        Assert.Equal(ResonanceId.None, sim.Boss.Parts[0].Resonance);
+        Assert.Equal(3_512, sim.Boss.Parts[0].BurstExpires);
+        Assert.True(sim.Boss.Parts[0].BurstActive);
         Assert.Equal(1_899, sim.Boss.Parts[0].Enmity[2].Ce);
         Assert.Equal(414, sim.Heroes[2].Mp);
         Assert.True(sim.Boss.Casting);

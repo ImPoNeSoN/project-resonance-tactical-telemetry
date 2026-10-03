@@ -62,7 +62,7 @@ Godot 4.7-stable mono, headless, `--path src/Resonance.Game`:
 
 The owner settled all eight. Each ruling is in `docs/02` and in README §6. None of them is still open.
 
-1. **Magic Burst vs chain application. Resolved (decision 17).** A matching-element spell inside a Magic Burst window deals burst damage and then applies its property as the next chain step. The resonance slice already implemented that rule. Tick 1,170 restarts the chain at L1(Ice). Tick 2,639 closes Piercing → Induration and replaces the window.
+1. **Magic Burst vs chain application. Resolved (decision 17).** A matching-element spell inside a Magic Burst window deals burst damage and then applies its property as the next chain step. Tick 1,170 restarts the chain at L1(Ice). Tick 2,639 closes Piercing → Induration, deals the detonation, and leaves the chain Empty. Decision 25 is the accepted rule that this closer does not open a new window.
 
 2. **Rolls and the PCG seed. Resolved (decision 18).** The golden fight uses PCG-XSH-RR seed `20261002`. The regenerated §2.15 log prints every roll that fight draws and names the seed. A Magic Burst draws no hit roll (`no roll`). A 0% interrupt draws no interrupt roll. `ScriptedRng` stays as the replay tool: the golden test records the seed's rolls and replays that list to the same end state. It is not used to invent fillers for rolls the log omitted.
 
@@ -107,7 +107,7 @@ Date: 2026-10-02. This slice starts from the merged combat-math core (PR #1, `0c
 - Detonations: L2 is `floor(50% of the closing hit)`; L3 is 100% of the closing hit as true damage, then the chain returns to Empty and a new burst window opens.
 - Side effects that this fight and the named rules require: Liquefaction Burn, Burn III, Induration −30% AGI, Fragmentation −25% DEF Shatter, Magma Core −30% DEF Shatter, Distortion buff purge (up to two most recent), Solar Apex VE reset onto the living anchor.
 - Magic Burst: 100% hit with no hit roll, +50% crit, positive resistance bypassed, 50% MP refund. Kith-Lir 65% replaces 50%, chip refunds cap at 80%, +600 ticks per burst (Zeph's early window is 900), extension cap +1,200.
-- The owner's chain-step rule: burst damage is computed against the window open at the start of the resolution, then the property is applied. A detonation replaces the window (the old Kith-Lir extension does not carry). A restart does not close the window.
+- The owner's chain-step rule: burst damage is computed against the window open at the start of the resolution, then the property is applied. A burst that closes the chain still detonates and still takes its burst bonuses, but it does not open a new resonance window or a new burst window (decision 25). A restart does not close the window. A non-burst closer still opens both.
 - Ash-Dravan Thermal Battery in the battle loop: Heat, decay, and a primed weapon skill. A natural L2 or L3 gets +25% detonation. Anything else is a forced Liquefaction plus Burn plus a Fire window, and Heat returns to 0. A forced detonation does not grant Cadence Surge.
 - Cadence Surge only for a Sylvari-Mor whose action crits or is a physical chain link. The 1,200 AP refund is paid after recovery.
 - Godot debug readout: `SimBridge` emits `ResonanceChanged` with the per-part chain, the burst mask, the ticks left, and the next links.
@@ -118,22 +118,29 @@ Date: 2026-10-02. This slice starts from the merged combat-math core (PR #1, `0c
 - Conduction Shock and the 1,500 AP delay, Tectonic Shear's MEVA down, Radiance's party regen, Umbral Zero's AP −3,000 and MEVA down, and Tempest Crown's 100% interrupt and +2,000 AP. The matrix routes exist. Those side effects do not run.
 - Ensemble Gain's chain-participant list.
 - Multi-attack extra-hit damage. The rolls are consumed. Extra hits are not applied. Every golden double-attack roll fails.
-- A cap on burst-as-chain-step loops. Measured, not implemented. See below.
 - Gambits, the other abilities and heroes, raids, shields beyond the golden fight, and the zero-alloc pass. `BigInteger` in the damage product is the performance risk called out in decision 24.
 
-### Loop measurement (cap proposed, not implemented)
+### Loop cap (accepted, decision 25)
 
-One hero can reach Solar Apex and keep detonating it by alternating a burst closer with the next matrix step: Shear (Slashing) → Talon (Piercing, Fragmentation) → Prism (Light, Solar Apex), then Gale (Wind burst on the Solar window, which also opens L1 Wind) → Prism (Light burst, and Wind → Light is Radiance, which opens a new window) → Shear (Radiance → Slashing is Solar Apex again). The test `Burst_chain_steps_reach_level_3_and_keep_detonating` records at least eight Solar Apex true detonations, and the span from the first to the last is longer than 2,700 ticks, which is the longest a single extended burst window can last.
+The owner accepted the cap. A matching burst that closes a chain still deals its burst damage, its detonation, and the resonance side effect. It does not open a new resonance window or a new Magic Burst window. The chain becomes Empty. The window that spell qualified in stays open, and a Kith-Lir extension still applies to that window. The next Apex has to be rebuilt from L1 by an action that is not a burst.
 
-The same refresh exists one tier down. Piercing into an open Induration chain has no L3 route, so it restarts at L1(Piercing) and leaves the Ice window up. The next Ice burst then detonates Induration and opens a fresh Ice window.
+The same script that used to refresh Solar Apex inside one window (at least 8 detonations, first-to-last longer than 2,700 ticks) now detonates Solar Apex **3 times**, at ticks **600, 2,600, and 4,850**. The intervals are **2,000** and **2,250** ticks. Each later apex is a fresh non-burst rebuild after the previous 1,500-tick window has expired. No second Solar happens inside an open window. `Burst_closers_do_not_refresh_solar_apex_inside_one_window` pins those three ticks.
 
-**Proposed cap, not in the sim:** a Magic Burst that also detonates may update the chain and deal the detonation, but it must not open the replacement burst window. Only a closer that was not already bursting on that sub-target opens the next window. That keeps the owner's "also a chain step" rule and stops both loops at one window. An alternative is a 4,000-tick detonation cooldown per sub-target. Neither is implemented.
+The same rule stops the Induration refresh. An Ice burst that closes Piercing still applies the slow and the 50% detonation, then leaves the chain Empty and leaves the Ice window in place. It does not open a fresh Ice window.
+
+### Race passives in the battle loop
+
+These three are exercised by `BattleSimulator`, not only by the formula helpers.
+
+- **Kith-Lir Aetheric Condenser.** Implemented for the signature rule: a Magic Burst refunds 65% of MP cost instead of 50%, and extends the current window by 600 ticks, capped at +1,200. Physical bursts do not get either. The golden fight exercises both: Zeph's Blizzard II refunds 117 MP at ticks 1,170 and 2,639, and the second burst extends the same window to 3,512 instead of replacing it. Still missing: chip refunds are accepted by `BurstRefundBp` and always passed as 0, because chips are not in the sim. Zeph's Early-Window Cartography (+25% damage and a 900-tick extension when the burst resolves within 300 ticks) is wired on his hero and in `ResolveSpell`, but this fight's first burst is 358 ticks into the window, so that branch is not hit, and no test asserts the 900-tick extension.
+- **Sylvari-Mor Cadence Surge.** Implemented: a Sylvari-Mor crit or physical chain link refunds 1,200 AP after recovery, once per action, and the refund stops at 10,000. The golden fight hits it at ticks 812 and 1,856 (physical links) and 2,900 (crit). `Sylvari_cadence_refunds_on_a_crit_and_on_a_physical_link` covers both gates. Still missing: Saeli Thorn-Vesper's 1,800 refund. Every Sylvari refund is 1,200.
+- **Ash-Dravan Thermal Battery.** Heat gain on elemental damage taken, Heat decay, and the primed weapon skill all run inside `BattleSimulator`. A natural L2 or L3 gets +25% detonation and does not grant Cadence. Anything else forces Liquefaction, Burn, and a Fire window, then Heat returns to 0. `Primed_ash_dravan_forces_liquefaction_when_the_matrix_does_not` exercises the forced path through the battle loop. Still missing, and not covered by a battle-loop test: the natural +25% path, Heat gain from a landed elemental hit, and the 1,000-tick decay. Also not implemented: Thurga Ember-Maw leaving Heat at 30 instead of 0, the racial +75 elemental penetration (the `Epen` field is read if something sets it; nothing grants the racial 75), and Burn immunity (no burn is applied to heroes).
 
 ### Tests for this slice
 
-`dotnet build ProjectResonance.sln` and `dotnet test ProjectResonance.sln` from the repo root, .NET 8 SDK. Build: 0 warnings, 0 errors. Tests: 43 passed, 0 failed (about 40 ms). That is the first pilot's formula facts, three golden tests re-pinned to seed `20261002` (including a scripted replay of every recorded roll), the chain and burst facts, the odd-input truncation facts, and `Level3_bonus_is_true_damage_outside_the_burst_bucket`.
+`dotnet build ProjectResonance.sln` and `dotnet test ProjectResonance.sln` from the repo root, .NET 8 SDK. Build: 0 warnings, 0 errors. Tests after the accepted burst-loop cap: 43 passed, 0 failed. That is the first pilot's formula facts, three golden tests re-pinned to seed `20261002` (including a scripted replay of every recorded roll), the chain and burst facts, the odd-input truncation facts, `Level3_bonus_is_true_damage_outside_the_burst_bucket`, and `Burst_closers_do_not_refresh_solar_apex_inside_one_window`.
 
-The golden end state at tick 3,087, seed `20261002`: Korrith HP 8,643, MP 270, AP 8,483, Core VE 3,164, CE 2,303; Mirrim HP 4,480, MP 95, AP 4,566, Core CE 2,440, Weapon Arm CE 1,036; Zeph HP 3,710, MP 414, AP 5,831, Core VE 466, CE 1,899; Seraphine HP 4,750, MP 500, AP −3,989, VE 1,717 (317 normal + 1,400 heavy), CE 180; Core HP 108,698, Weapon Arm 43,915, Shield 30,000, boss AP 874; Core chain L1(Ice) until 6,900, Core burst until 4,139.
+The golden end state at tick 3,087, seed `20261002`: Korrith HP 8,643, MP 270, AP 8,483, Core VE 3,164, CE 2,303; Mirrim HP 4,480, MP 95, AP 4,566, Core CE 2,440, Weapon Arm CE 1,036; Zeph HP 3,710, MP 414, AP 5,831, Core VE 466, CE 1,899; Seraphine HP 4,750, MP 500, AP −3,989, VE 1,717 (317 normal + 1,400 heavy), CE 180; Core HP 108,698, Weapon Arm 43,915, Shield 30,000, boss AP 874; Core chain L1(Ice) until 6,900, Core burst still open until 3,512.
 
 Godot 4.7-stable mono, headless, `--path src/Resonance.Game --quit-after 8` exited 0 with no script errors. There is no display on this machine, so the Step button was not clicked by hand. The scene's `_Ready` path is what that run loads.
 

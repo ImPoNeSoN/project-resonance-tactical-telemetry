@@ -692,7 +692,7 @@ public sealed class BattleSimulator
         }
         else if (hit && ability.Property != ChainProperty.None)
         {
-            (linked, detonation, chainNote) = ApplyChain(part, ability.Property, dealt, physicalLink: true, hero, attack > hero.Intel ? attack : hero.Intel);
+            (linked, detonation, chainNote) = ApplyChain(part, ability.Property, dealt, physicalLink: true, hero, attack > hero.Intel ? attack : hero.Intel, openerIsBurst: physicalBurst);
             if (naturalPrime)
             {
                 detonation = ThermalBattery.BonusDetonation(detonation);
@@ -776,7 +776,7 @@ public sealed class BattleSimulator
         int windowsBefore = _windowsOpened;
         if (magicBurst)
         {
-            // Count this spell against the window it qualified in. A detonation below replaces that window.
+            // Count this spell against the window it qualified in. A closing burst does not replace that window.
             part.BurstsLanded = burstIndex;
         }
 
@@ -785,7 +785,7 @@ public sealed class BattleSimulator
         if (ability.Property != ChainProperty.None)
         {
             int power = intel > hero.Atk ? intel : hero.Atk;
-            (_, detonation, chainNote) = ApplyChain(part, ability.Property, result.Dealt, physicalLink: false, hero, power);
+            (_, detonation, chainNote) = ApplyChain(part, ability.Property, result.Dealt, physicalLink: false, hero, power, openerIsBurst: magicBurst);
         }
 
         bool windowReplaced = _windowsOpened != windowsBefore;
@@ -1018,7 +1018,8 @@ public sealed class BattleSimulator
         int closingDamage,
         bool physicalLink,
         HeroState closer,
-        int attackOrInt)
+        int attackOrInt,
+        bool openerIsBurst)
     {
         if (part.Tier == 0 || _tick >= part.ChainExpires)
         {
@@ -1036,6 +1037,14 @@ public sealed class BattleSimulator
             }
 
             int detonation = closingDamage * 5_000 / SimConst.Bp;
+            if (openerIsBurst)
+            {
+                // Detonate and spend the chain. Do not open the L2 resonance window or a new burst window.
+                ApplyResonanceEffect(resonance, part, closer, attackOrInt);
+                ClearChain(part);
+                return (physicalLink, detonation, $"{resonance} detonation {detonation}. Chain closed; burst closer opens no resonance window and no burst window");
+            }
+
             OpenL2(part, resonance, closer, attackOrInt);
             return (physicalLink, detonation, $"{resonance} detonation {detonation}. L2 until {part.ChainExpires}. Burst until {part.BurstExpires}");
         }
@@ -1048,9 +1057,16 @@ public sealed class BattleSimulator
         }
 
         ClearChain(part);
-        OpenBurst(part, ResonanceTable.Profile(apex));
         ApplyApexEffect(apex, part, closer, attackOrInt);
-        return (physicalLink, closingDamage, $"{apex} true detonation {closingDamage}");
+        if (!openerIsBurst)
+        {
+            OpenBurst(part, ResonanceTable.Profile(apex));
+        }
+
+        string note = openerIsBurst
+            ? $"{apex} true detonation {closingDamage}. Chain closed; burst closer opens no burst window"
+            : $"{apex} true detonation {closingDamage}";
+        return (physicalLink, closingDamage, note);
     }
 
     private bool IsValidTransition(BossPartState part, ChainProperty incoming)
