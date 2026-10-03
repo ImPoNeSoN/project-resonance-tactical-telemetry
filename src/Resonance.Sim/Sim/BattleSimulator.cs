@@ -40,6 +40,14 @@ public sealed class BattleSimulator
 
     public int GlobalBurstMask;
 
+    public int StunsLanded { get; private set; }
+
+    public int StunsLost { get; private set; }
+
+    public int AegisCasts { get; private set; }
+
+    public int DamageAbsorbed { get; private set; }
+
     public BattleSimulator(
         HeroState[] heroes,
         BossState boss,
@@ -1254,6 +1262,7 @@ public sealed class BattleSimulator
                 }
 
                 shielded.AbsorbExpires = _tick + SimConst.ChoirAegisTicks;
+                AegisCasts++;
                 Log($"{hero.Name} Choir Aegis → {shielded.Name}. Absorb {shielded.Absorb} until {shielded.AbsorbExpires}.");
                 break;
             default:
@@ -1386,6 +1395,7 @@ public sealed class BattleSimulator
         if (absorbed > 0)
         {
             blocksShed = true;
+            DamageAbsorbed += absorbed;
         }
 
         target.Hp -= taken;
@@ -1923,6 +1933,7 @@ public sealed class BattleSimulator
                 part.LastStunTicks = 0;
                 part.StunDrUntil = 0;
                 part.StunImmuneUntil = _tick + SimConst.StunImmuneTicks;
+                StunsLost++;
                 Log($"{part.Name} stun diminished to nothing. Immune until {part.StunImmuneUntil}.");
                 return;
             }
@@ -1933,6 +1944,7 @@ public sealed class BattleSimulator
 
         if (_tick < part.StunImmuneUntil)
         {
+            StunsLost++;
             Log($"{part.Name} is stun immune until {part.StunImmuneUntil}.");
             return;
         }
@@ -1946,6 +1958,12 @@ public sealed class BattleSimulator
         part.StunExpires = _tick + duration;
         part.StunDrUntil = _tick + SimConst.StunDrWindowTicks;
         part.StunImmuneUntil = part.StunExpires + SimConst.StunImmuneTicks;
+        StunsLanded++;
+        if (duration < SimConst.StunBaseTicks)
+        {
+            StunsLost++;
+        }
+
         Log($"{part.Name} stunned for {duration} ticks until {part.StunExpires}.");
         if (!_boss.Casting || _boss.CastPart != partIndex)
         {

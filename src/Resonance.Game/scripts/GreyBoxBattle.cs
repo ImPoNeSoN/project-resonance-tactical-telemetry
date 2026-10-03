@@ -770,7 +770,7 @@ public partial class GreyBoxBattle : Control
             _lanes[i].Set(hero.Name, ApGauge.Format(hero.Ap.Centi), hero.Ap.Centi, hero.Casting, hero.CastStartTick, hero.CastResolveTick, sim.Tick, cast);
             if (i < _heroes.Count)
             {
-                _heroes[i].Set(hero, i == _actor);
+                _heroes[i].Set(hero, i == _actor, sim.Tick);
             }
         }
 
@@ -1301,7 +1301,7 @@ public partial class GreyBoxBattle : Control
 
         public PanelContainer Panel { get; }
 
-        public void Set(HeroState hero, bool selected)
+        public void Set(HeroState hero, bool selected, int tick)
         {
             _style.BorderColor = selected ? new Color("ffe08a") : new Color("00000000");
             int width = selected ? 2 : 0;
@@ -1311,7 +1311,8 @@ public partial class GreyBoxBattle : Control
             _style.BorderWidthBottom = width;
             _style.BgColor = selected ? new Color("243044") : new Color("1b2230");
             string down = hero.IsAlive ? "" : "  DOWN";
-            _name.Text = hero.Name + down;
+            bool shielded = hero.Absorb > 0 && tick < hero.AbsorbExpires;
+            _name.Text = shielded ? $"shield {hero.Absorb}  {hero.Name}{down}" : hero.Name + down;
             _hp.MaxValue = hero.MaxHp;
             _hp.Value = hero.Hp < 0 ? 0 : hero.Hp;
             _mp.MaxValue = hero.MaxMp <= 0 ? 1 : hero.MaxMp;

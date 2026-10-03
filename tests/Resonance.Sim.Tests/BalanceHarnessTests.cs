@@ -16,12 +16,20 @@ public class BalanceHarnessTests
         {
             int wins = 0;
             long tickSum = 0;
+            int stunsLanded = 0;
+            int stunsLost = 0;
+            int aegisCasts = 0;
+            int absorbed = 0;
             var l2 = new int[8];
             var l3 = new int[5];
             for (int i = 0; i < n; i++)
             {
                 BattleSimulator sim = CarapaceEncounter.Create(preset, first + (ulong)i);
                 sim.RunToEnd();
+                stunsLanded += sim.StunsLanded;
+                stunsLost += sim.StunsLost;
+                aegisCasts += sim.AegisCasts;
+                absorbed += sim.DamageAbsorbed;
                 if (sim.Outcome == FightOutcome.Victory)
                 {
                     wins++;
@@ -44,8 +52,20 @@ public class BalanceHarnessTests
             }
 
             int average = wins == 0 ? 0 : (int)(tickSum / wins);
-            rows[preset] = new PresetRow(PartyPreset.Name(preset), wins, average, l2, l3);
-            Console.WriteLine($"preset {rows[preset].Name} wins {wins}/{n} average {average} l3 {Sum(l3)}");
+            rows[preset] = new PresetRow(PartyPreset.Name(preset), wins, average, l2, l3, stunsLanded, stunsLost, aegisCasts, absorbed);
+            int shownTotal = 0;
+            int shownMax = 0;
+            for (int r = 1; r < l2.Length; r++)
+            {
+                shownTotal += l2[r];
+                if (l2[r] > shownMax)
+                {
+                    shownMax = l2[r];
+                }
+            }
+
+            int shownShare = shownTotal == 0 ? 100 : shownMax * 100 / shownTotal;
+            Console.WriteLine($"preset {rows[preset].Name} wins {wins}/{n} average {average} l3 {Sum(l3)} share {shownShare}% stuns {stunsLanded} lost {stunsLost} aegis {aegisCasts} absorbed {absorbed}");
             for (int r = 1; r < l2.Length; r++)
             {
                 if (l2[r] > 0)
@@ -98,9 +118,13 @@ public class BalanceHarnessTests
         for (int i = 0; i < rows.Length; i++)
         {
             Assert.InRange(rows[i].Wins, 7, 9);
+            Assert.True(rows[i].StunsLanded > 0, rows[i].Name);
+            Assert.True(rows[i].StunsLost > 0, rows[i].Name);
+            Assert.True(rows[i].AegisCasts > 0, rows[i].Name);
+            Assert.True(rows[i].DamageAbsorbed > 0, rows[i].Name);
         }
 
-        Assert.True(distinct >= 4);
+        Assert.True(distinct >= 5);
         Assert.InRange(share, 0, 60);
     }
 
@@ -117,13 +141,17 @@ public class BalanceHarnessTests
 
     private readonly struct PresetRow
     {
-        public PresetRow(string name, int wins, int averageTick, int[] l2, int[] l3)
+        public PresetRow(string name, int wins, int averageTick, int[] l2, int[] l3, int stunsLanded, int stunsLost, int aegisCasts, int damageAbsorbed)
         {
             Name = name;
             Wins = wins;
             AverageTick = averageTick;
             L2 = l2;
             L3 = l3;
+            StunsLanded = stunsLanded;
+            StunsLost = stunsLost;
+            AegisCasts = aegisCasts;
+            DamageAbsorbed = damageAbsorbed;
         }
 
         public string Name { get; }
@@ -135,5 +163,13 @@ public class BalanceHarnessTests
         public int[] L2 { get; }
 
         public int[] L3 { get; }
+
+        public int StunsLanded { get; }
+
+        public int StunsLost { get; }
+
+        public int AegisCasts { get; }
+
+        public int DamageAbsorbed { get; }
     }
 }

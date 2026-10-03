@@ -77,10 +77,10 @@ public static class CarapaceEncounter
 
         var script = new BossScript
         {
-            PhaseHpBp = 3_500,
+            PhaseHpBp = 5_000,
             EnrageTick = 80_000,
             HardEnrageTick = 120_000,
-            FrenzyBonusBp = 2_200,
+            FrenzyBonusBp = 4_000,
             Phase1 = [AbilityCatalog.PistonSweep, AbilityCatalog.OverpressureLance, AbilityCatalog.KilnVent],
             Phase1Part = [BattleSimulator.WeaponArm, BattleSimulator.Core, BattleSimulator.Core],
             Phase2 = [AbilityCatalog.KilnVent, AbilityCatalog.OverpressureLance, AbilityCatalog.PistonSweep, AbilityCatalog.KilnVent],
@@ -101,11 +101,12 @@ public static class CarapaceEncounter
         HeroState korrith = Tank();
         korrith.Deck = Deck(
             """
-            1 IF Boss [CastResolvesIn < 700] -> USE [Shield Bash]
-            2 IF Boss [TankMargin < 2000] -> USE [Lattice Provoke]
-            3 IF NOT Self [HasBuff: Keratin Bastion] -> USE [Keratin Bastion]
-            4 IF Boss.WeaponArm [MyEnmityRank > 1] -> USE [Lattice Provoke] ON WeaponArm
-            5 IF Field [Always] -> USE [Attack]
+            1 IF Target [CastResolvesIn < 200] AND NOT Target [StunImmune] AND NOT Target [Stunned] -> USE [Shield Bash]
+            2 IF Boss [AP >= 9000] AND NOT Boss [Casting] AND NOT Target [StunImmune] -> USE [Shield Bash]
+            3 IF Boss [TankMargin < 2000] -> USE [Lattice Provoke]
+            4 IF NOT Self [HasBuff: Keratin Bastion] -> USE [Keratin Bastion]
+            5 IF Boss.WeaponArm [MyEnmityRank > 1] -> USE [Lattice Provoke] ON WeaponArm
+            6 IF Field [Always] -> USE [Attack]
             """,
             bulwark: true);
 
@@ -138,12 +139,12 @@ public static class CarapaceEncounter
         HeroState korrith = Tank();
         korrith.Deck = Deck(
             """
-            1 IF Boss [CastResolvesIn < 700] -> USE [Shield Bash]
-            2 IF Boss [TankMargin < 2000] -> USE [Lattice Provoke]
-            3 IF NOT Self [HasBuff: Keratin Bastion] -> USE [Keratin Bastion]
-            4 IF Boss.Core [Window: Slashing] AND Boss [HP% >= 64] -> USE [Seismic Maul] ON Core
-            5 IF Boss.Core [WindowLeft == 0] -> USE [Seismic Maul] ON Core
-            6 IF Field [Always] -> USE [Attack] ON Core
+            1 IF Target [CastResolvesIn < 80] AND NOT Target [StunImmune] AND NOT Target [Stunned] -> USE [Shield Bash]
+            2 IF Boss [AP >= 9300] AND NOT Boss [Casting] AND NOT Target [StunImmune] -> USE [Shield Bash]
+            3 IF Boss [TankMargin < 2000] -> USE [Lattice Provoke]
+            4 IF NOT Self [HasBuff: Keratin Bastion] -> USE [Keratin Bastion]
+            5 IF Boss.Core [Window: Slashing] AND Boss [HP% >= 64] -> USE [Seismic Maul] ON Core
+            6 IF Boss.Core [WindowLeft == 0] -> USE [Seismic Maul] ON Core
             """,
             bulwark: true);
 
@@ -182,12 +183,12 @@ public static class CarapaceEncounter
         HeroState korrith = Tank();
         korrith.Deck = Deck(
             """
-            1 IF Boss [CastResolvesIn < 700] -> USE [Shield Bash]
-            2 IF Boss [TankMargin < 2000] -> USE [Lattice Provoke]
-            3 IF NOT Self [HasBuff: Keratin Bastion] -> USE [Keratin Bastion]
-            4 IF Boss.Core [Window: Slashing] -> USE [Seismic Maul] ON Core
-            5 IF Boss.Core [WindowLeft == 0] -> USE [Seismic Maul] ON Core
-            6 IF Field [Always] -> USE [Attack] ON Core
+            1 IF Target [CastResolvesIn < 200] AND NOT Target [StunImmune] AND NOT Target [Stunned] -> USE [Shield Bash]
+            2 IF Boss [AP >= 9000] AND NOT Boss [Casting] AND NOT Target [StunImmune] -> USE [Shield Bash]
+            3 IF Boss [TankMargin < 2000] -> USE [Lattice Provoke]
+            4 IF NOT Self [HasBuff: Keratin Bastion] -> USE [Keratin Bastion]
+            5 IF Boss.Core [Window: Slashing] -> USE [Seismic Maul] ON Core
+            6 IF Boss.Core [WindowLeft == 0] -> USE [Seismic Maul] ON Core
             """,
             bulwark: true);
 
@@ -246,10 +247,11 @@ public static class CarapaceEncounter
         seraphine.Deck = Deck(
             $"""
             1 IF Ally(Lowest HP%) [HP% < 55] AND Self [MP >= Cost: Cure Cascade] -> CAST [Cure Cascade] ON Ally(Lowest HP%)
-            2 IF NOT Ally({focus}) [HasBuff: Concentration] AND Self [MP% >= 40] AND Self [MP >= Cost: Circuit Benediction] -> CAST [Circuit Benediction] ON Ally({focus})
-            3 IF Boss [Casting] AND Self [MP% >= 50] AND Self [MP >= Cost: Phase Sanctuary] -> CAST [Phase Sanctuary]
-            4 IF Ally(Lowest HP%) [HP% < 75] AND Self [MP >= Cost: Cure Cascade] -> CAST [Cure Cascade] ON Ally(Lowest HP%)
-            5 IF Field [Always] -> USE [Attack]
+            2 IF Ally(Lowest HP%) [HP% < 70] AND NOT Ally(Lowest HP%) [HasBuff: Choir Aegis] AND Self [MP >= Cost: Choir Aegis] -> CAST [Choir Aegis] ON Ally(Lowest HP%)
+            3 IF NOT Ally(Highest Threat) [HasBuff: Choir Aegis] AND Self [MP% >= 35] AND Self [MP >= Cost: Choir Aegis] -> CAST [Choir Aegis] ON Ally(Highest Threat)
+            4 IF NOT Ally({focus}) [HasBuff: Concentration] AND Self [MP% >= 40] AND Self [MP >= Cost: Circuit Benediction] -> CAST [Circuit Benediction] ON Ally({focus})
+            5 IF Boss [Casting] AND Self [MP% >= 50] AND Self [MP >= Cost: Phase Sanctuary] -> CAST [Phase Sanctuary]
+            6 IF Ally(Lowest HP%) [HP% < 75] AND Self [MP >= Cost: Cure Cascade] -> CAST [Cure Cascade] ON Ally(Lowest HP%)
             """);
         return seraphine;
     }

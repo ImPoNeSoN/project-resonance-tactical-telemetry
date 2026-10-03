@@ -2,12 +2,83 @@ using System.Text;
 using Resonance.Sim.Combat;
 using Resonance.Sim.Core;
 using Resonance.Sim.Data;
+using Resonance.Sim.Gambits;
 using Resonance.Sim.Sim;
 
 namespace Resonance.Sim.Tests;
 
 public class AbilityGapTests
 {
+    [Fact]
+    public void Default_decks_bash_an_open_chant_and_shield_an_unprotected_ally()
+    {
+        BattleSimulator sim = CarapaceEncounter.Create(PartyPreset.IceLattice, 1UL);
+        HeroState[] heroes = Copy(sim);
+        heroes[0].CurrentTargetPart = 0;
+        sim.Boss.Casting = true;
+        sim.Boss.CastPart = 0;
+        sim.Boss.CastAbilityId = AbilityCatalog.OverpressureLance;
+        sim.Boss.CastResolveTick = 150;
+        GambitDecision open = GambitMachine.Evaluate(heroes[0].Deck!, View(heroes, sim.Boss, 0));
+        Assert.Equal(AbilityCatalog.ShieldBash, open.AbilityId);
+
+        sim.Boss.CastResolveTick = 5_000;
+        GambitDecision earlyChant = GambitMachine.Evaluate(heroes[0].Deck!, View(heroes, sim.Boss, 0));
+        Assert.NotEqual(AbilityCatalog.ShieldBash, earlyChant.AbilityId);
+
+        sim.Boss.CastResolveTick = 150;
+        sim.Boss.Parts[0].StunImmuneUntil = 10_000;
+        GambitDecision immune = GambitMachine.Evaluate(heroes[0].Deck!, View(heroes, sim.Boss, 0));
+        Assert.NotEqual(AbilityCatalog.ShieldBash, immune.AbilityId);
+
+        sim.Boss.Casting = false;
+        sim.Boss.Parts[0].StunImmuneUntil = 0;
+        sim.Boss.Ap.Centi = 8_500 * SimConst.CentiPerAp;
+        GambitDecision earlyGauge = GambitMachine.Evaluate(heroes[0].Deck!, View(heroes, sim.Boss, 0));
+        Assert.NotEqual(AbilityCatalog.ShieldBash, earlyGauge.AbilityId);
+        sim.Boss.Ap.Centi = 9_500 * SimConst.CentiPerAp;
+        GambitDecision soon = GambitMachine.Evaluate(heroes[0].Deck!, View(heroes, sim.Boss, 0));
+        Assert.Equal(AbilityCatalog.ShieldBash, soon.AbilityId);
+
+        BattleSimulator choir = CarapaceEncounter.Create(PartyPreset.ShatterChoir, 1UL);
+        HeroState[] choirHeroes = Copy(choir);
+        choirHeroes[0].CurrentTargetPart = 0;
+        choir.Boss.Casting = true;
+        choir.Boss.CastPart = 0;
+        choir.Boss.CastAbilityId = AbilityCatalog.OverpressureLance;
+        choir.Boss.CastResolveTick = 50;
+        GambitDecision choirOpen = GambitMachine.Evaluate(choirHeroes[0].Deck!, View(choirHeroes, choir.Boss, 0));
+        Assert.Equal(AbilityCatalog.ShieldBash, choirOpen.AbilityId);
+        choir.Boss.CastResolveTick = 150;
+        GambitDecision choirEarly = GambitMachine.Evaluate(choirHeroes[0].Deck!, View(choirHeroes, choir.Boss, 0));
+        Assert.NotEqual(AbilityCatalog.ShieldBash, choirEarly.AbilityId);
+        choir.Boss.Casting = false;
+        choir.Boss.Ap.Centi = 9_200 * SimConst.CentiPerAp;
+        GambitDecision choirGauge = GambitMachine.Evaluate(choirHeroes[0].Deck!, View(choirHeroes, choir.Boss, 0));
+        Assert.NotEqual(AbilityCatalog.ShieldBash, choirGauge.AbilityId);
+        choir.Boss.Ap.Centi = 9_400 * SimConst.CentiPerAp;
+        GambitDecision choirSoon = GambitMachine.Evaluate(choirHeroes[0].Deck!, View(choirHeroes, choir.Boss, 0));
+        Assert.Equal(AbilityCatalog.ShieldBash, choirSoon.AbilityId);
+
+        for (int i = 0; i < heroes.Length; i++)
+        {
+            heroes[i].Hp = heroes[i].MaxHp * 90 / 100;
+        }
+
+        heroes[3].Mp = heroes[3].MaxMp;
+        heroes[0].Hp = heroes[0].MaxHp * 60 / 100;
+        GambitDecision aegis = GambitMachine.Evaluate(heroes[3].Deck!, View(heroes, sim.Boss, 3));
+        Assert.Equal(AbilityCatalog.ChoirAegis, aegis.AbilityId);
+        Assert.Equal(0, aegis.TargetHero);
+
+        heroes[0].Absorb = 400;
+        heroes[0].AbsorbExpires = 5_000;
+        sim.Boss.Parts[0].Enmity[1].Ce = 8_000;
+        GambitDecision threat = GambitMachine.Evaluate(heroes[3].Deck!, View(heroes, sim.Boss, 3));
+        Assert.Equal(AbilityCatalog.ChoirAegis, threat.AbilityId);
+        Assert.Equal(1, threat.TargetHero);
+    }
+
     [Fact]
     public void Shield_bash_stuns_then_halves_until_immunity()
     {
@@ -468,6 +539,19 @@ public class AbilityGapTests
             from = at + needle.Length;
         }
     }
+
+    private static HeroState[] Copy(BattleSimulator sim)
+    {
+        var heroes = new HeroState[sim.Heroes.Count];
+        for (int i = 0; i < heroes.Length; i++)
+        {
+            heroes[i] = sim.Heroes[i];
+        }
+
+        return heroes;
+    }
+
+    private static GambitView View(HeroState[] heroes, BossState boss, int actor) => new(heroes, boss, actor, 0, 0, 0);
 
     private static string Text(BattleSimulator sim)
     {
