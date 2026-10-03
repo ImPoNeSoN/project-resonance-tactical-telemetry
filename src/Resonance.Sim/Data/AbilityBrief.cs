@@ -1,19 +1,30 @@
+using System.Collections.Generic;
 using System.Text;
 using Resonance.Sim.Combat;
 using Resonance.Sim.Core;
+using Resonance.Sim.Sim;
 
 namespace Resonance.Sim.Data;
 
 /// <summary>
-/// Grey-box ability panel. Every number is read from <see cref="AbilityDef"/> or the resonance
-/// table. <see cref="AbilityDef.Description"/> is only the extra tactical note.
+/// Grey-box ability panel. The effect line is computed for the acting hero. The lines under it
+/// are read from <see cref="AbilityDef"/> or the resonance table. <see cref="AbilityDef.Description"/>
+/// is only the extra tactical note.
 /// </summary>
 public static class AbilityBrief
 {
-    public static string Format(AbilityDef ability)
+    public static string Format(
+        AbilityDef ability,
+        HeroState actor,
+        HeroState ally,
+        BossState boss,
+        int partIndex,
+        int tick,
+        IReadOnlyList<HeroState> party)
     {
         var text = new StringBuilder();
         text.Append(ability.Name).Append('\n');
+        text.Append(AbilityForecast.Effect(ability, actor, ally, boss, partIndex, tick, party)).Append('\n');
         text.Append("MP ").Append(ability.MpCost).Append(" · AP ").Append(ability.RecoveryAp).Append('\n');
         text.Append("Target: ").Append(Target(ability)).Append('\n');
         text.Append("Property: ").Append(Property(ability)).Append('\n');

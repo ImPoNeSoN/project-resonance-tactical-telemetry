@@ -7,7 +7,8 @@ namespace Resonance.Game;
 
 /// <summary>
 /// Grey-box Carapace Engine fight. Plain Control nodes and flat colors only.
-/// Full-rect columns: a lane timeline, party, boss parts, resonance, then the action bar.
+/// Full-rect columns: a lane timeline, party, boss parts, a scrolling resonance readout,
+/// and a pinned ability panel, then the action bar.
 /// </summary>
 public partial class GreyBoxBattle : Control
 {
@@ -334,10 +335,11 @@ public partial class GreyBoxBattle : Control
         column.AddThemeConstantOverride("separation", 2);
         column.AddChild(ColumnTitle("Resonance"));
 
-        var infoScroll = VerticalScroll();
-        column.AddChild(infoScroll);
-        var infoBox = Stack();
-        infoScroll.AddChild(infoBox);
+        var resonanceScroll = VerticalScroll();
+        resonanceScroll.SizeFlagsStretchRatio = 1;
+        column.AddChild(resonanceScroll);
+        var resonanceBox = Stack();
+        resonanceScroll.AddChild(resonanceBox);
 
         _resonance = new Label
         {
@@ -346,17 +348,36 @@ public partial class GreyBoxBattle : Control
         };
         _resonance.AddThemeFontSizeOverride("font_size", 12);
         _resonance.AddThemeColorOverride("font_color", new Color("d5dde8"));
-        infoBox.AddChild(_resonance);
-        infoBox.AddChild(ColumnTitle("Ability"));
+        resonanceBox.AddChild(_resonance);
+
+        column.AddChild(ColumnTitle("Ability"));
+        var abilityPanel = new PanelContainer
+        {
+            SizeFlagsHorizontal = SizeFlags.ExpandFill,
+            SizeFlagsVertical = SizeFlags.ExpandFill,
+            SizeFlagsStretchRatio = 1,
+        };
+        abilityPanel.AddThemeStyleboxOverride("panel", new StyleBoxFlat
+        {
+            BgColor = new Color("1b2230"),
+            ContentMarginLeft = 6,
+            ContentMarginRight = 6,
+            ContentMarginTop = 4,
+            ContentMarginBottom = 4,
+        });
+        var abilityScroll = VerticalScroll();
+        abilityPanel.AddChild(abilityScroll);
         _abilityDetail = new Label
         {
             AutowrapMode = TextServer.AutowrapMode.WordSmart,
             SizeFlagsHorizontal = SizeFlags.ExpandFill,
+            SizeFlagsVertical = SizeFlags.ShrinkBegin,
             Text = "Select an ability.",
         };
         _abilityDetail.AddThemeFontSizeOverride("font_size", 12);
         _abilityDetail.AddThemeColorOverride("font_color", new Color("d5dde8"));
-        infoBox.AddChild(_abilityDetail);
+        abilityScroll.AddChild(_abilityDetail);
+        column.AddChild(abilityPanel);
         return column;
     }
 
@@ -880,9 +901,25 @@ public partial class GreyBoxBattle : Control
     private void UpdateAbilityDetail()
     {
         int id = _hoveredAbility >= 0 ? _hoveredAbility : _selectedAbility;
-        _abilityDetail.Text = id < 0
-            ? "Select an ability."
-            : AbilityBrief.Format(AbilityCatalog.Get(id));
+        if (id < 0)
+        {
+            _abilityDetail.Text = "Select an ability.";
+        }
+        else
+        {
+            BattleSimulator sim = _bridge.Simulation;
+            int actor = (uint)_actor < (uint)sim.Heroes.Count ? _actor : 0;
+            int ally = (uint)_ally < (uint)sim.Heroes.Count ? _ally : actor;
+            int part = sim.Boss.Parts.Length == 0 || (uint)_part >= (uint)sim.Boss.Parts.Length ? 0 : _part;
+            _abilityDetail.Text = AbilityBrief.Format(
+                AbilityCatalog.Get(id),
+                sim.Heroes[actor],
+                sim.Heroes[ally],
+                sim.Boss,
+                part,
+                sim.Tick,
+                sim.Heroes);
+        }
         for (int i = 0; i < _abilities.GetChildCount(); i++)
         {
             if (_abilities.GetChild(i) is Button button)
