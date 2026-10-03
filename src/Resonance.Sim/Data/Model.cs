@@ -141,6 +141,12 @@ public sealed class AbilityDef
     public SupportEffect Effect { get; init; }
     public int FlatInterruptBp { get; init; }
     public bool AppliesBurn { get; init; }
+
+    /// <summary>
+    /// Short tactical note for the grey-box ability panel. Numbers that already live on this
+    /// record (MP, AP, multiplier, threat) are formatted from those fields, not repeated here.
+    /// </summary>
+    public string Description { get; init; } = "";
     public bool UsesWeaponLoadout => Kind is AbilityKind.Physical or AbilityKind.ElementalPhysical;
     public bool DealsDamage => Kind is AbilityKind.Physical or AbilityKind.ElementalPhysical or AbilityKind.Magical;
 }
