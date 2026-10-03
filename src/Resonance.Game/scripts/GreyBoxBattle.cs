@@ -39,6 +39,8 @@ public partial class GreyBoxBattle : Control
     private HBoxContainer _abilities = null!;
     private HBoxContainer _allies = null!;
     private RichTextLabel _log = null!;
+    private ColorRect _background = null!;
+    private MarginContainer _margin = null!;
     private Control _overlay = null!;
     private Control _picker = null!;
     private Label _overlayTitle = null!;
@@ -49,23 +51,25 @@ public partial class GreyBoxBattle : Control
     private int _part;
     private int _ally = 2;
     private int _abilityActor = -1;
+    private bool _fitting;
 
     public override void _Ready()
     {
         _bridge = GetNode<SimBridge>("/root/SimBridge");
-        SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+        ConfigureWindowStretch();
+        FillViewport(this);
 
-        var background = new ColorRect { Color = new Color("12161c"), MouseFilter = MouseFilterEnum.Ignore };
-        background.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
-        AddChild(background);
+        _background = new ColorRect { Color = new Color("12161c"), MouseFilter = MouseFilterEnum.Ignore };
+        AddChild(_background);
+        FillViewport(_background);
 
-        var margin = new MarginContainer();
-        margin.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
-        margin.AddThemeConstantOverride("margin_left", 6);
-        margin.AddThemeConstantOverride("margin_top", 4);
-        margin.AddThemeConstantOverride("margin_right", 6);
-        margin.AddThemeConstantOverride("margin_bottom", 4);
-        AddChild(margin);
+        _margin = new MarginContainer();
+        _margin.AddThemeConstantOverride("margin_left", 6);
+        _margin.AddThemeConstantOverride("margin_top", 4);
+        _margin.AddThemeConstantOverride("margin_right", 6);
+        _margin.AddThemeConstantOverride("margin_bottom", 4);
+        AddChild(_margin);
+        FillViewport(_margin);
 
         var root = new VBoxContainer
         {
@@ -73,7 +77,7 @@ public partial class GreyBoxBattle : Control
             SizeFlagsVertical = SizeFlags.ExpandFill,
         };
         root.AddThemeConstantOverride("separation", 4);
-        margin.AddChild(root);
+        _margin.AddChild(root);
 
         root.AddChild(BuildHeader());
         root.AddChild(BuildTimeline());
@@ -102,6 +106,60 @@ public partial class GreyBoxBattle : Control
         _bridge.StateChanged += Refresh;
         Refresh();
         _picker.Visible = true;
+        GetTree().Root.SizeChanged += FitToViewport;
+    }
+
+    /// <summary>
+    /// Base layout is 1280×720. Canvas-item stretch with expand scales that layout to the
+    /// window and grows the viewport on the extra axis, so a maximize actually changes the UI.
+    /// </summary>
+    private void ConfigureWindowStretch()
+    {
+        Window window = GetTree().Root;
+        window.ContentScaleMode = Window.ContentScaleModeEnum.CanvasItems;
+        window.ContentScaleAspect = Window.ContentScaleAspectEnum.Expand;
+        window.ContentScaleSize = new Vector2I(1280, 720);
+        window.ContentScaleFactor = 1f;
+    }
+
+    private void FitToViewport()
+    {
+        if (_fitting)
+        {
+            return;
+        }
+
+        _fitting = true;
+        FillViewport(this);
+        FillViewport(_background);
+        FillViewport(_margin);
+        if (IsInstanceValid(_overlay))
+        {
+            FillViewport(_overlay);
+        }
+
+        if (IsInstanceValid(_picker))
+        {
+            FillViewport(_picker);
+        }
+
+        _fitting = false;
+    }
+
+    private static void FillViewport(Control control)
+    {
+        control.AnchorLeft = 0f;
+        control.AnchorTop = 0f;
+        control.AnchorRight = 1f;
+        control.AnchorBottom = 1f;
+        control.OffsetLeft = 0f;
+        control.OffsetTop = 0f;
+        control.OffsetRight = 0f;
+        control.OffsetBottom = 0f;
+        control.GrowHorizontal = GrowDirection.Both;
+        control.GrowVertical = GrowDirection.Both;
+        control.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+        control.SizeFlagsVertical = SizeFlags.ExpandFill;
     }
 
     public override void _Input(InputEvent @event)
@@ -451,12 +509,12 @@ public partial class GreyBoxBattle : Control
             Visible = false,
             MouseFilter = MouseFilterEnum.Stop,
         };
-        _overlay.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
         AddChild(_overlay);
+        FillViewport(_overlay);
 
         var center = new CenterContainer();
-        center.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
         _overlay.AddChild(center);
+        FillViewport(center);
 
         var panel = new PanelContainer { CustomMinimumSize = new Vector2(420, 0) };
         panel.AddThemeStyleboxOverride("panel", new StyleBoxFlat
@@ -494,16 +552,16 @@ public partial class GreyBoxBattle : Control
             Visible = false,
             MouseFilter = MouseFilterEnum.Stop,
         };
-        _picker.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
         AddChild(_picker);
+        FillViewport(_picker);
 
         var margin = new MarginContainer();
-        margin.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
         margin.AddThemeConstantOverride("margin_left", 24);
         margin.AddThemeConstantOverride("margin_right", 24);
         margin.AddThemeConstantOverride("margin_top", 16);
         margin.AddThemeConstantOverride("margin_bottom", 16);
         _picker.AddChild(margin);
+        FillViewport(margin);
 
         var scroll = VerticalScroll();
         margin.AddChild(scroll);
