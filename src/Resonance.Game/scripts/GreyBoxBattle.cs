@@ -30,6 +30,7 @@ public partial class GreyBoxBattle : Control
     private Label _status = null!;
     private Label _bossTitle = null!;
     private Label _resonance = null!;
+    private Label _abilityDetail = null!;
     private Label _order = null!;
     private Label _actorLabel = null!;
     private VBoxContainer _laneBox = null!;
@@ -51,6 +52,8 @@ public partial class GreyBoxBattle : Control
     private int _part;
     private int _ally = 2;
     private int _abilityActor = -1;
+    private int _selectedAbility = -1;
+    private int _hoveredAbility = -1;
     private bool _fitting;
 
     public override void _Ready()
@@ -344,6 +347,16 @@ public partial class GreyBoxBattle : Control
         _resonance.AddThemeFontSizeOverride("font_size", 12);
         _resonance.AddThemeColorOverride("font_color", new Color("d5dde8"));
         infoBox.AddChild(_resonance);
+        infoBox.AddChild(ColumnTitle("Ability"));
+        _abilityDetail = new Label
+        {
+            AutowrapMode = TextServer.AutowrapMode.WordSmart,
+            SizeFlagsHorizontal = SizeFlags.ExpandFill,
+            Text = "Select an ability.",
+        };
+        _abilityDetail.AddThemeFontSizeOverride("font_size", 12);
+        _abilityDetail.AddThemeColorOverride("font_color", new Color("d5dde8"));
+        infoBox.AddChild(_abilityDetail);
         return column;
     }
 
@@ -697,6 +710,7 @@ public partial class GreyBoxBattle : Control
             _bridge.TogglePause();
         }
 
+        _selectedAbility = abilityId;
         AbilityDef ability = AbilityCatalog.Get(abilityId);
         sim.Heroes[_actor].CurrentTargetPart = _part;
         int ally = ability.Kind == AbilityKind.Healing || ability.Effect == SupportEffect.CircuitBenediction ? _ally : -1;
@@ -708,6 +722,7 @@ public partial class GreyBoxBattle : Control
         BattleSimulator sim = _bridge.Simulation;
         EnsureLanes(sim);
         EnsureAbilities(sim);
+        UpdateAbilityDetail();
 
         bool ended = sim.Outcome != FightOutcome.Ongoing;
         string paused = sim.Paused ? "PAUSED" : "running";
@@ -804,6 +819,23 @@ public partial class GreyBoxBattle : Control
         }
 
         _abilityActor = _actor;
+        _hoveredAbility = -1;
+        int[] kit = sim.Heroes[_actor].Kit;
+        bool keep = false;
+        for (int i = 0; i < kit.Length; i++)
+        {
+            if (kit[i] == _selectedAbility)
+            {
+                keep = true;
+                break;
+            }
+        }
+
+        if (!keep)
+        {
+            _selectedAbility = kit.Length > 0 ? kit[0] : -1;
+        }
+
         while (_abilities.GetChildCount() > 0)
         {
             Node child = _abilities.GetChild(0);
@@ -811,7 +843,7 @@ public partial class GreyBoxBattle : Control
             child.QueueFree();
         }
 
-        foreach (int abilityId in sim.Heroes[_actor].Kit)
+        foreach (int abilityId in kit)
         {
             AbilityDef ability = AbilityCatalog.Get(abilityId);
             int id = abilityId;
@@ -822,9 +854,53 @@ public partial class GreyBoxBattle : Control
                 CustomMinimumSize = new Vector2(0, 28),
             };
             button.AddThemeFontSizeOverride("font_size", 13);
-            button.Pressed += () => Queue(id);
+            button.MouseEntered += () =>
+            {
+                _hoveredAbility = id;
+                UpdateAbilityDetail();
+            };
+            button.MouseExited += () =>
+            {
+                if (_hoveredAbility == id)
+                {
+                    _hoveredAbility = -1;
+                    UpdateAbilityDetail();
+                }
+            };
+            button.Pressed += () =>
+            {
+                _selectedAbility = id;
+                _hoveredAbility = -1;
+                Queue(id);
+            };
             _abilities.AddChild(button);
         }
+    }
+
+    private void UpdateAbilityDetail()
+    {
+        int id = _hoveredAbility >= 0 ? _hoveredAbility : _selectedAbility;
+        _abilityDetail.Text = id < 0
+            ? "Select an ability."
+            : AbilityBrief.Format(AbilityCatalog.Get(id));
+        for (int i = 0; i < _abilities.GetChildCount(); i++)
+        {
+            if (_abilities.GetChild(i) is Button button)
+            {
+                button.Modulate = ShownAbility(button.Text) ? new Color("ffe08a") : Colors.White;
+            }
+        }
+    }
+
+    private bool ShownAbility(string buttonText)
+    {
+        int id = _hoveredAbility >= 0 ? _hoveredAbility : _selectedAbility;
+        if (id < 0)
+        {
+            return false;
+        }
+
+        return buttonText.StartsWith(AbilityCatalog.Get(id).Name, StringComparison.Ordinal);
     }
 
     private string OrderText(BattleSimulator sim)
