@@ -36,7 +36,11 @@ public readonly struct DamageResult
 
 public static class DamagePipeline
 {
-    public static DamageResult Resolve(in DamageRequest request)
+    public static DamageResult Resolve(in DamageRequest request) => Resolve(request, request.CritMultiplierBp);
+
+    public static int PreCritDealt(in DamageRequest request) => Resolve(request, SimConst.Bp).Dealt;
+
+    private static DamageResult Resolve(in DamageRequest request, int critMultiplierBp)
     {
         if (request.Power <= 0 || request.MultiplierBp <= 0)
         {
@@ -75,7 +79,7 @@ public static class DamagePipeline
         Multiply(SimConst.Bp - dr);
         Multiply(SimConst.Bp - resistance);
         Multiply(request.Resisted ? 5_000 : SimConst.Bp);
-        Multiply(request.CritMultiplierBp <= 0 ? SimConst.Bp : request.CritMultiplierBp);
+        Multiply(critMultiplierBp <= 0 ? SimConst.Bp : critMultiplierBp);
         Multiply(SimConst.Bp + request.WeaponSkillBp);
         Multiply(SimConst.Bp + request.BurstBucketBp);
         Multiply(SimConst.Bp + request.DamageDealtBuffBp);

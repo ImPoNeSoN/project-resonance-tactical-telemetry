@@ -139,6 +139,7 @@ public sealed class AbilityDef
     public int BaseCe { get; init; }
     public int MultiplierBp { get; init; }
     public SupportEffect Effect { get; init; }
+    public int FlatInterruptBp { get; init; }
     public bool UsesWeaponLoadout => Kind is AbilityKind.Physical or AbilityKind.ElementalPhysical;
     public bool DealsDamage => Kind is AbilityKind.Physical or AbilityKind.ElementalPhysical or AbilityKind.Magical;
 }

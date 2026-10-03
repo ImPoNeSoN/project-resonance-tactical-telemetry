@@ -81,4 +81,20 @@ public static class SimConst
     public const int HeatDecay = 5;
     public const int HeatDecayTicks = 1_000;
     public const int PurgeCount = 2;
+
+    public const int AshDravanEpen = 75;
+    public const int SaeliCadenceRefundAp = 1_800;
+    public const int ThurgaHeatRemainder = 30;
+    public const int ExtraHitBp = 5_000;
+    public const int DeferMaxTicks = 1_500;
+    public const int DeferApCap = 12_000;
+    public const int DeferApCapCenti = 1_200_000;
+    public const int GambitStartingSlots = 6;
+    public const int GambitMaxSlots = 10;
+    public const int GambitConditionsPerSlot = 3;
+    public const int GambitLogicBudget = 20;
+    public const int GambitMaxDeferSlots = 2;
+    public const int SpendHeatCost = 20;
+    public const int WaitMitigationBp = 2_000;
+    public const int ShieldBashInterruptBp = 3_500;
 }

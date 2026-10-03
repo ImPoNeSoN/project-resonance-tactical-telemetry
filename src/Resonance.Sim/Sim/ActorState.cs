@@ -1,6 +1,7 @@
 using Resonance.Sim.Combat;
 using Resonance.Sim.Core;
 using Resonance.Sim.Data;
+using Resonance.Sim.Gambits;
 
 namespace Resonance.Sim.Sim;
 
@@ -46,6 +47,18 @@ public sealed class HeroState
     public int Absorb;
     public int Heat;
     public int HeatDecayTick;
+    public int HeatAfterPrime;
+    public int CadenceRefundAp;
+    public bool HasBulwarkBash;
+    public bool Silenced;
+    public int CurrentTargetPart;
+    public int DeferUntilTick;
+    public int DeferStartedTick;
+    public int WaitDtBp;
+    public int BurnPulse;
+    public int BurnNextTick;
+    public int BurnExpires;
+    public GambitProgram? Deck;
     public bool IsAnchor;
 
     public bool IsAlive => Hp > 0;
@@ -79,6 +92,7 @@ public sealed class BossPartState
     public int BurnNextTick;
     public int BurnExpires;
     public bool BurnIii;
+    public int Contributors;
     public EnmitySlot[] Enmity = [];
 }
 

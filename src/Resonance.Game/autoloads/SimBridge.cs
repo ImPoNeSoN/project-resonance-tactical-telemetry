@@ -30,6 +30,8 @@ public partial class SimBridge : Node
 
     public bool AutoRunning => _auto;
 
+    public bool Paused => _sim.Paused;
+
     public override void _Ready()
     {
         Publish();
@@ -37,7 +39,7 @@ public partial class SimBridge : Node
 
     public override void _Process(double delta)
     {
-        if (!_auto)
+        if (!_auto || _sim.Paused)
         {
             return;
         }
@@ -68,10 +70,40 @@ public partial class SimBridge : Node
 
     public bool Step()
     {
+        if (_sim.Paused)
+        {
+            return false;
+        }
+
         bool advanced = _sim.TryStep();
         Flush();
         Publish();
         return advanced;
+    }
+
+    /// <summary>One tick. Works while paused and leaves the pause flag set.</summary>
+    public bool StepOnce()
+    {
+        bool advanced = _sim.StepOne();
+        Flush();
+        Publish();
+        return advanced;
+    }
+
+    public void TogglePause()
+    {
+        if (_sim.Paused)
+        {
+            _sim.Resume();
+        }
+        else
+        {
+            _sim.Pause();
+            _auto = false;
+        }
+
+        _wait = 0;
+        Publish();
     }
 
     public void ToggleAuto()
