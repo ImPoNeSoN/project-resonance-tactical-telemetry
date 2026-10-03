@@ -226,7 +226,8 @@ public static class GambitMachine
             return false;
         }
 
-        int fastCast = Formulas.TotalFastCastBp(actor.Gear.FastCastBp, actor.Race == RaceId.AethelBorn ? SimConst.AethelFastCastBp : 0, 0);
+        int fastCastBp = actor.SplitLoadouts ? actor.FastCast.FastCastBp : actor.Gear.FastCastBp;
+        int fastCast = Formulas.TotalFastCastBp(fastCastBp, actor.Race == RaceId.AethelBorn ? SimConst.AethelFastCastBp : 0, 0);
         int chant = Formulas.EffectiveChantTicks(ability.ChantTicks, fastCast);
         int resolve = view.Tick + chant;
         if (resolve >= state.BurstExpires)

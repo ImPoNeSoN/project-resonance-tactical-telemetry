@@ -22,6 +22,7 @@ public partial class DebugBattle : Control
     public override void _Ready()
     {
         _bridge = GetNode<SimBridge>("/root/SimBridge");
+        _bridge.LoadGolden();
         SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
 
         var background = new ColorRect

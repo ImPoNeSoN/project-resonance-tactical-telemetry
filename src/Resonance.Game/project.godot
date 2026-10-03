@@ -6,8 +6,8 @@ config_version=5
 [application]
 
 config/name="Project Resonance"
-config/description="Tactical Telemetry combat-math debug skeleton"
-run/main_scene="res://scenes/battle/DebugBattle.tscn"
+config/description="Tactical Telemetry grey-box battle"
+run/main_scene="res://scenes/battle/GreyBoxBattle.tscn"
 config/features=PackedStringArray("4.7", "C#")
 
 [autoload]
@@ -17,8 +17,9 @@ SimBridge="*res://autoloads/SimBridge.cs"
 [display]
 
 window/size/viewport_width=1280
-window/size/viewport_height=800
+window/size/viewport_height=720
 window/stretch/mode="canvas_items"
+window/stretch/aspect="expand"
 
 [dotnet]
 

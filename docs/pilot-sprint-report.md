@@ -187,14 +187,14 @@ Date: 2026-10-03. Branch `cursor/gambit-pause-slice-79c4`, from main at merge `8
 
 ### Spec ambiguities
 
-1. **The request called Shield Bash "README decision 11".** Decision 11 is focus profiles. Decision 14 is the Bulwark Bash chip. **Recommendation, applied:** keep decision 14 and do not renumber.
-2. **docs/07 asks for a lexer and an opcode stream.** **Recommendation, applied:** one scanner inside the compiler, and the slot array as the opcodes. A second object stream would allocate on a path the arena will share.
-3. **Whether an extra hit always rolls crit.** **Recommendation, applied:** roll hit first, and roll crit only if that extra hit lands. Same rule as the primary hit. A failed multi-attack check draws neither, which is why §2.15 did not need a new log.
-4. **When a command queued during pause becomes visible.** **Recommendation, applied:** stamp it T+1 and drain it on a later tick. A resolved tick is not rewritten.
-5. **DEFER re-evaluates every tick, which disables event-skipping for that hero.** **Recommendation:** keep the every-tick rule for this slice. A later slice may jump ahead only if it proves the skipped ticks could not have changed the match.
-6. **`CountBelowHP%: N >= M` is not strict EBNF.** **Recommendation, applied:** N is the percent, M is the count, and the compare is the operator between them. The count includes the actor and uses strictly-below.
-7. **Shield Bash interrupt and which part is casting.** **Recommendation, applied:** draw the flat interrupt only when the hit lands on `CastPart`. A Core bash does not interrupt a Weapon Arm chant.
-8. **Does a gambit deck keep `RunToEnd` alive after the scripted queues empty?** **Recommendation, applied:** yes. The golden party has no deck, so tick 3,087 is unchanged. Tests that attach a deck use `RunUntil`.
+1. **The request called Shield Bash "README decision 11".** Decision 11 is focus profiles. Decision 14 is the Bulwark Bash chip. **Resolved (owner, 2026-10-03):** keep decision 14 and do not renumber.
+2. **docs/07 asks for a lexer and an opcode stream.** **Resolved (owner, 2026-10-03):** one scanner inside the compiler, and the slot array as the opcodes. A second object stream would allocate on a path the arena will share.
+3. **Whether an extra hit always rolls crit.** **Resolved (owner, 2026-10-03):** roll hit first, and roll crit only if that extra hit lands. Same rule as the primary hit. A failed multi-attack check draws neither, which is why §2.15 did not need a new log.
+4. **When a command queued during pause becomes visible.** **Resolved (owner, 2026-10-03):** stamp it T+1 and drain it on a later tick. A resolved tick is not rewritten.
+5. **DEFER re-evaluates every tick, which disables event-skipping for that hero.** **Resolved (owner, 2026-10-03):** keep the every-tick rule. A later slice may jump ahead only if it proves the skipped ticks could not have changed the match.
+6. **`CountBelowHP%: N >= M` is not strict EBNF.** **Resolved (owner, 2026-10-03):** N is the percent, M is the count, and the compare is the operator between them. The count includes the actor and uses strictly-below.
+7. **Shield Bash interrupt and which part is casting.** **Resolved (owner, 2026-10-03):** draw the flat interrupt only when the hit lands on `CastPart`. A Core bash does not interrupt a Weapon Arm chant.
+8. **Does a gambit deck keep `RunToEnd` alive after the scripted queues empty?** **Resolved (owner, 2026-10-03):** yes. The golden party has no deck, so tick 3,087 is unchanged. Tests that attach a deck use `RunUntil`.
 
 ### Tests
 
@@ -217,3 +217,84 @@ A human C# developer who already has the merged combat core, working only on thi
 | Writing the new rulings into the bible and this report | 0.5 day | same session |
 
 **Human total for Slice 3: about 5–8 focused person-days.** The earlier 11–16 and 4–7 estimates stay as history. They are not part of this slice.
+
+## Slice 4 — Grey-Box Battle
+
+Date: 2026-10-03. Branch `cursor/grey-box-battle-79c4`, from main at merge `d2108b9`. The owner accepted the eight Slice 3 rulings exactly as built. Those are README decisions 26–36, and the eight items above are marked resolved. The §2.15 golden log was not regenerated.
+
+### What was built
+
+- A Carapace Engine encounter in `Resonance.Sim`, separate from the golden factory. Core, Weapon Arm, and Shield each have HP and a threat table. The script loops Piston Sweep (Weapon Arm, instant), Overpressure Lance (Core, the chant Shield Bash can interrupt), and Kiln Vent (Core, magical Fire that applies Burn). At Core HP ≤ 35% or tick 80,000 the boss frenzies for +22% ATK and INT. Tick 120,000 with the Core still standing is a defeat. Victory is Core HP 0. A part burn can deliver that last point of damage.
+- The §2.15 party: Korrith (tank, Bulwark Bash), Mirrim (linker), Zeph (burst, Early-Window Cartography), Seraphine (support). Each has a default gambit deck and a split loadout. Decks auto-play. Tactical Pause still takes a manual command from that hero's kit.
+- Gear swaps at the phase §2.13 names. Fast Cast locks the chant, Mid-Cast covers the chant and the resolution, Weapon covers a weapon skill, and Idle covers everything else, including damage taken and an interrupted chant. The golden party keeps one combined set, so its numbers do not move.
+- Side effects for the five resonances that were still missing: Conduction (Shock plus −1,500 AP), Tectonic Shear (MEVA −20% for 6,000 ticks), Radiance (2% Max HP every 500 ticks for 3,000 ticks, no VE), Umbral Zero (−3,000 AP and MEVA −30% for 6,000 ticks), Tempest Crown (100% interrupt on that part, +2,000 AP to each living ally who is not casting).
+- Grey-box battle scene, now the main scene, at a 1280×720 base that expands on larger windows. Top AP timeline with flat portrait swatches, cast bars, and a red interrupt node at the end of a cast. Boss panel with per-part HP and per-hero threat bars. Resonance readout. Per-hero HP and MP. Click a hero, click a part, pick an ability while paused (Space). Victory and defeat overlay with Restart. The debug console is still there and reloads the golden fight.
+- Balance harness over seeds `20261004` through `20261015`.
+
+### Balance
+
+Default decks, 12 seeds. **8 wins, 4 losses. Win rate 8/12. Average victory tick 49,058.** Losses are party wipes with the Core still up, before the tick-80,000 frenzy and before hard enrage.
+
+| Seed | Outcome | Tick | Core HP left |
+|---|---|---|---|
+| 20261004 | Victory | 43,234 | 0 |
+| 20261005 | Defeat | 67,746 | 4,847 |
+| 20261006 | Defeat | 70,337 | 7,298 |
+| 20261007 | Victory | 45,900 | 0 |
+| 20261008 | Victory | 54,384 | 0 |
+| 20261009 | Victory | 43,789 | 0 |
+| 20261010 | Defeat | 71,311 | 11,105 |
+| 20261011 | Victory | 65,923 | 0 |
+| 20261012 | Victory | 45,612 | 0 |
+| 20261013 | Victory | 44,212 | 0 |
+| 20261014 | Defeat | 69,909 | 11,244 |
+| 20261015 | Victory | 49,412 | 0 |
+
+Resonance lines in those 12 logs: **Induration 230**. Liquefaction, Fragmentation, Distortion, Conduction, Tectonic, Radiance, Solar Apex, Umbral Zero, Magma Core, and Tempest Crown were 0. The count is a substring of the combat log, so one Induration can appear on more than one line. The default route is Mirrim's Piercing into Frostfang (Ice), which is Induration. The other side effects are covered by focused tests, not by this party's kits.
+
+### What was not built
+
+- The gambit editor, chip sockets, and the rarity row past the 35% Shield Bash stub.
+- Raid shield coverage, dungeon ADM, a live Aether Density, and Tollen's Aquifer.
+- Saeli and Thurga as full heroes. Ensemble Gain still uses the contributor bitmask only.
+- Auto-pause options, the saturation tween, InputMap persistence, and gamepad bindings.
+- Art, animation, and real portraits. The timeline markers are flat color swatches.
+- Any boss other than the Carapace Engine, and any party other than these four.
+- A playtest with a mouse. Headless Godot loads the scene and exits. The owner plays it on Windows.
+
+### Spec ambiguities
+
+Each one is also README decisions 37–45. Recommended answer is the row as written.
+
+1. **DoTs and the golden excerpt.** **Recommendation:** only a scored encounter treats burn and shock as work. Benediction regen still does not extend tick 3,087. Radiance does keep its own clock, and the golden party never has it.
+2. **Win condition.** **Recommendation:** Core HP 0. Shield and Weapon Arm are side targets.
+3. **Frenzy numbers.** **Recommendation:** +22% ATK/INT at Core ≤ 35% or tick 80,000, and a loss at tick 120,000. These came from the harness above.
+4. **Korrith's filler.** **Recommendation:** Attack, and Shield Bash only in the last 700 ticks of a cast, so he does not restart every chain.
+5. **Seraphine's encounter gear.** **Recommendation:** +40 INT and +50% healing potency on the Mid-Cast set. The golden combined set stays at potency 0.
+6. **Tempest Crown timing.** **Recommendation:** skip casting allies, apply the refund ceiling before the closer pays recovery, and interrupt at 100% with Stance recovery and no roll.
+7. **Raid shield nodes.** **Recommendation:** not this fight.
+8. **Kiln Vent and Earth Bolt.** **Recommendation:** boss-only Burn chant, and a test cantrip for Tectonic Shear. Neither belongs on a hero sheet.
+9. **How hard the default decks spend MP.** **Recommendation:** keep the thresholds in decision 45. Looser spending wipes the party with the Core near half; tighter spending is what produced 8/12.
+
+### Tests
+
+`dotnet test ProjectResonance.sln` on .NET 8: **67 passed, 0 failed**. That includes the golden §2.15 tests on seed `20261002` (still tick 3,087), the new resonance side-effect tests, the gear-swap damage check, a burn that finishes the Core, and the 12-seed harness.
+
+Godot 4.7-stable mono, headless, `--path src/Resonance.Game --import --quit` and `--quit-after 8` both exited 0. The main scene is `GreyBoxBattle`. There is no display here, so the buttons and Space were not clicked.
+
+### Time for this slice
+
+Wall clock for this agent, from the Slice 4 request at 2026-10-03 16:08 UTC through the build, the harness, and the headless scene check at 16:36 UTC: **about 30 minutes**.
+
+A human C# developer who already has the merged gambit core, working only on this slice:
+
+| Task | Human | This agent |
+|---|---|---|
+| Boss script, part tables, win and loss, and DoTs that can end the fight | 1.5–2 days | same session |
+| The five remaining resonance side effects | 1–1.5 days | same session |
+| Four loadouts through chant, spell, weapon skill, and damage taken | 1 day | same session |
+| Default party, decks, and the harness pass that landed on 8/12 | 1.5–2 days | same session |
+| Grey-box battle scene | 1.5–2 days | same session |
+| Rulings and this report, while keeping the golden log still | 0.5 day | same session |
+
+**Human total for Slice 4: about 7–9 focused person-days.** The earlier 11–16, 4–7, and 5–8 estimates stay as history. They are not part of this slice.

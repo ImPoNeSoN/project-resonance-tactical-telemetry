@@ -9,7 +9,7 @@ namespace Resonance.Game;
 /// </summary>
 public partial class SimBridge : Node
 {
-    private BattleSimulator _sim = TrainingArena.CreateGolden();
+    private BattleSimulator _sim = CarapaceEncounter.Create(CarapaceEncounter.ShowcaseSeed);
     private int _shown;
     private bool _auto;
     private double _wait;
@@ -28,6 +28,8 @@ public partial class SimBridge : Node
 
     public BattleSimulator Simulation => _sim;
 
+    public ulong Seed { get; private set; } = CarapaceEncounter.ShowcaseSeed;
+
     public bool AutoRunning => _auto;
 
     public bool Paused => _sim.Paused;
@@ -45,7 +47,7 @@ public partial class SimBridge : Node
         }
 
         _wait += delta;
-        if (_wait < 0.45)
+        if (_wait < 0.2)
         {
             return;
         }
@@ -58,9 +60,25 @@ public partial class SimBridge : Node
         }
     }
 
-    public void Reset()
+    /// <summary>Reloads the §2.15 training arena. The debug console calls this.</summary>
+    public void Reset() => LoadGolden();
+
+    public void LoadGolden()
     {
-        _sim = TrainingArena.CreateGolden();
+        Seed = TrainingArena.GoldenSeed;
+        Swap(TrainingArena.CreateGolden());
+    }
+
+    /// <summary>Restarts the grey-box Carapace encounter on the showcase seed.</summary>
+    public void StartEncounter()
+    {
+        Seed = CarapaceEncounter.ShowcaseSeed;
+        Swap(CarapaceEncounter.Create(Seed));
+    }
+
+    private void Swap(BattleSimulator sim)
+    {
+        _sim = sim;
         _shown = 0;
         _auto = false;
         _wait = 0;
@@ -103,6 +121,12 @@ public partial class SimBridge : Node
         }
 
         _wait = 0;
+        Publish();
+    }
+
+    public void QueueAbility(int heroSlot, int abilityId, int targetPart, int targetHero)
+    {
+        _sim.QueueManual(heroSlot, abilityId, targetPart, targetHero);
         Publish();
     }
 

@@ -60,6 +60,15 @@ public sealed class HeroState
     public int BurnExpires;
     public GambitProgram? Deck;
     public bool IsAnchor;
+    public bool SplitLoadouts;
+    public GearMods Idle = new();
+    public GearMods FastCast = new();
+    public GearMods MidCast = new();
+    public GearMods Weapon = new();
+    public int[] Kit = [];
+    public int RadiancePulse;
+    public int RadianceNextTick;
+    public int RadianceExpires;
 
     public bool IsAlive => Hp > 0;
 
@@ -93,6 +102,9 @@ public sealed class BossPartState
     public int BurnExpires;
     public bool BurnIii;
     public int Contributors;
+    public int ShockPulse;
+    public int ShockNextTick;
+    public int ShockExpires;
     public EnmitySlot[] Enmity = [];
 }
 
@@ -119,6 +131,9 @@ public sealed class BossState
     public bool PounceAvailable = true;
     public int ShatterBp;
     public int ShatterExpires;
+    public int MevaDownBp;
+    public int MevaDownExpires;
+    public int FrenzyBp;
     public int[] ResistBp = new int[8];
     public List<string> Beneficial = [];
     public BossPartState[] Parts = [];
