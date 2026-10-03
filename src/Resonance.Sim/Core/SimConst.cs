@@ -110,4 +110,10 @@ public static class SimConst
     public const int UmbralMevaTicks = 6_000;
     public const int TempestGrantAp = 2_000;
     public const int HeroBurnRatioBp = 2_000;
+
+    public const string KilnGuardName = "Kiln Guard";
+    public const string FrenzyPlatingName = "Frenzy Plating";
+    public const int KilnGuardBp = 1_000;
+    public const int KilnGuardRefreshTicks = 8_000;
+    public const int FrenzyPlatingBp = 800;
 }

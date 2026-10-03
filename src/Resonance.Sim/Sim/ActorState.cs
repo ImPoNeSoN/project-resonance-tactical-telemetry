@@ -106,6 +106,14 @@ public sealed class BossPartState
     public int ShockNextTick;
     public int ShockExpires;
     public EnmitySlot[] Enmity = [];
+
+    /// <summary>Null uses the boss-wide table. The golden fight leaves this null.</summary>
+    public int[]? ResistBp;
+
+    public int DefBonus;
+
+    /// <summary>Player-facing reason this part rewards a chain route.</summary>
+    public string Pressure = "";
 }
 
 public sealed class BossState

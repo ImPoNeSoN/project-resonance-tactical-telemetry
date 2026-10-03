@@ -30,6 +30,8 @@ public partial class SimBridge : Node
 
     public ulong Seed { get; private set; } = CarapaceEncounter.ShowcaseSeed;
 
+    public int Preset { get; private set; } = PartyPreset.IceLattice;
+
     public bool AutoRunning => _auto;
 
     public bool Paused => _sim.Paused;
@@ -69,11 +71,20 @@ public partial class SimBridge : Node
         Swap(TrainingArena.CreateGolden());
     }
 
-    /// <summary>Restarts the grey-box Carapace encounter on the showcase seed.</summary>
-    public void StartEncounter()
+    /// <summary>Restarts the current party preset on the showcase seed.</summary>
+    public void StartEncounter() => StartEncounter(Preset);
+
+    /// <summary>Starts one of the default parties on the showcase seed.</summary>
+    public void StartEncounter(int preset)
     {
+        if (preset < 0 || preset >= PartyPreset.Count)
+        {
+            preset = PartyPreset.IceLattice;
+        }
+
+        Preset = preset;
         Seed = CarapaceEncounter.ShowcaseSeed;
-        Swap(CarapaceEncounter.Create(Seed));
+        Swap(CarapaceEncounter.Create(preset, Seed));
     }
 
     private void Swap(BattleSimulator sim)

@@ -13,6 +13,7 @@ public sealed class BattleSimulator
 {
     public const int Core = 0;
     public const int WeaponArm = 1;
+    public const int Shield = 2;
 
     private readonly HeroState[] _heroes;
     private readonly BossState _boss;
@@ -32,6 +33,8 @@ public sealed class BattleSimulator
     private bool _paused;
     private bool _ticked;
     private HeroState? _pendingCadence;
+    private readonly int[] _resonanceDetonations = new int[8];
+    private readonly int[] _apexDetonations = new int[5];
 
     public int AetherDensity;
 
@@ -68,6 +71,32 @@ public sealed class BattleSimulator
     public IReadOnlyList<RecordedCommand> Commands => _commands;
 
     public bool Paused => _paused;
+
+    public int Detonations(ResonanceId resonance)
+    {
+        int index = (int)resonance;
+        return (uint)index < (uint)_resonanceDetonations.Length ? _resonanceDetonations[index] : 0;
+    }
+
+    public int Detonations(ApexId apex)
+    {
+        int index = (int)apex;
+        return (uint)index < (uint)_apexDetonations.Length ? _apexDetonations[index] : 0;
+    }
+
+    public int Level3Detonations
+    {
+        get
+        {
+            int total = 0;
+            for (int i = 1; i < _apexDetonations.Length; i++)
+            {
+                total += _apexDetonations[i];
+            }
+
+            return total;
+        }
+    }
 
     public void Pause() => _paused = true;
 
@@ -369,6 +398,7 @@ public sealed class BattleSimulator
         PulseShock();
         PulseHeroBurns();
         PulseRadiance();
+        RefreshKilnGuard();
         DecayHeat();
         ExpireStatuses();
         ResolveChants();
@@ -974,7 +1004,7 @@ public sealed class BattleSimulator
         {
             Power = attack,
             MultiplierBp = ability.MultiplierBp,
-            MitigationStat = BossDef(),
+            MitigationStat = PartDef(partIndex),
             MitigationConstant = SimConst.PhysicalDrConstant,
             EffectiveResistanceBp = resistance,
             BypassPositiveResistance = physicalBurst,
@@ -1284,8 +1314,14 @@ public sealed class BattleSimulator
 
         // A physical miss deals nothing. A resisted spell still deals 50%.
         DamageResult result = (!magical && !hit) ? new DamageResult(0, 0) : DamagePipeline.Resolve(request);
+        int raw = result.Total;
+        if (!magical && raw > 0 && HasBeneficial(SimConst.KilnGuardName))
+        {
+            raw = (int)((long)raw * (SimConst.Bp + SimConst.KilnGuardBp) / SimConst.Bp);
+        }
+
         int absorbed = 0;
-        int taken = DamagePipeline.ApplyAbsorb(result.Total, ref target.Absorb, out absorbed);
+        int taken = DamagePipeline.ApplyAbsorb(raw, ref target.Absorb, out absorbed);
         if (absorbed > 0)
         {
             blocksShed = true;
@@ -1453,6 +1489,12 @@ public sealed class BattleSimulator
 
     private void ApplyResonanceEffect(ResonanceId resonance, BossPartState part, HeroState closer, int attackOrInt)
     {
+        int resonanceIndex = (int)resonance;
+        if ((uint)resonanceIndex < (uint)_resonanceDetonations.Length)
+        {
+            _resonanceDetonations[resonanceIndex]++;
+        }
+
         switch (resonance)
         {
             case ResonanceId.Liquefaction:
@@ -1485,6 +1527,12 @@ public sealed class BattleSimulator
 
     private void ApplyApexEffect(ApexId apex, BossPartState part, HeroState closer, int attackOrInt)
     {
+        int apexIndex = (int)apex;
+        if ((uint)apexIndex < (uint)_apexDetonations.Length)
+        {
+            _apexDetonations[apexIndex]++;
+        }
+
         switch (apex)
         {
             case ApexId.SolarApex:
@@ -1511,7 +1559,7 @@ public sealed class BattleSimulator
         int power = attackOrInt;
         int ratio = burnIii ? SimConst.BurnIiiRatioBp : SimConst.BurnRatioBp;
         int raw = (int)((long)power * ratio / SimConst.Bp);
-        int resistance = Formulas.EffectiveResistanceBp(PartResistance(0, ElementId.Fire), HeroEpen(closer));
+        int resistance = Formulas.EffectiveResistanceBp(PartResistance(PartIndex(part), ElementId.Fire), HeroEpen(closer));
         int kept = SimConst.Bp - resistance;
         if (kept < 0)
         {
@@ -1942,15 +1990,90 @@ public sealed class BattleSimulator
 
     private static int RaceFastCast(HeroState hero) => hero.Race == RaceId.AethelBorn ? SimConst.AethelFastCastBp : 0;
 
+    private int PartIndex(BossPartState part)
+    {
+        for (int i = 0; i < _boss.Parts.Length; i++)
+        {
+            if (ReferenceEquals(_boss.Parts[i], part))
+            {
+                return i;
+            }
+        }
+
+        return Core;
+    }
+
     private int PartResistance(int partIndex, ElementId element)
     {
-        _ = partIndex;
-        if (element < 0 || _boss.ResistBp.Length <= (int)element)
+        if (element < 0)
         {
             return 0;
         }
 
-        return _boss.ResistBp[(int)element];
+        int index = (int)element;
+        if ((uint)partIndex < (uint)_boss.Parts.Length)
+        {
+            int[]? local = _boss.Parts[partIndex].ResistBp;
+            if (local != null && index < local.Length)
+            {
+                return local[index];
+            }
+        }
+
+        if (index >= _boss.ResistBp.Length)
+        {
+            return 0;
+        }
+
+        return _boss.ResistBp[index];
+    }
+
+    private int PartDef(int partIndex)
+    {
+        int def = _boss.Def;
+        if ((uint)partIndex < (uint)_boss.Parts.Length)
+        {
+            def += _boss.Parts[partIndex].DefBonus;
+        }
+
+        if (HasBeneficial(SimConst.FrenzyPlatingName))
+        {
+            def = (int)((long)def * (SimConst.Bp + SimConst.FrenzyPlatingBp) / SimConst.Bp);
+        }
+
+        if (_boss.ShatterBp > 0 && _tick < _boss.ShatterExpires)
+        {
+            def = (int)((long)def * (SimConst.Bp - _boss.ShatterBp) / SimConst.Bp);
+        }
+
+        return def < 0 ? 0 : def;
+    }
+
+    private void RefreshKilnGuard()
+    {
+        if (_script == null || _tick <= 0 || _tick % SimConst.KilnGuardRefreshTicks != 0)
+        {
+            return;
+        }
+
+        if (!HasBeneficial(SimConst.KilnGuardName))
+        {
+            _boss.Beneficial.Add(SimConst.KilnGuardName);
+            Log("Kiln Guard reforms.");
+        }
+    }
+
+    private bool HasBeneficial(string name)
+    {
+        for (int i = 0; i < _boss.Beneficial.Count; i++)
+        {
+            if (_boss.Beneficial[i] == name)
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private GearMods Set(HeroState hero, LoadoutKind kind)
@@ -1976,7 +2099,12 @@ public sealed class BattleSimulator
         {
             script.Frenzy = true;
             _boss.FrenzyBp = script.FrenzyBonusBp;
-            Log($"Carapace frenzy. ATK and INT +{script.FrenzyBonusBp}bp.");
+            if (!HasBeneficial(SimConst.FrenzyPlatingName))
+            {
+                _boss.Beneficial.Add(SimConst.FrenzyPlatingName);
+            }
+
+            Log($"Carapace frenzy. ATK and INT +{script.FrenzyBonusBp}bp. Frenzy Plating +{SimConst.FrenzyPlatingBp}bp DEF and MEVA.");
         }
 
         int[] abilities = script.Frenzy ? script.Phase2 : script.Phase1;
@@ -2009,7 +2137,7 @@ public sealed class BattleSimulator
     private void ApplyShock(BossPartState part, HeroState closer, int attackOrInt)
     {
         int raw = (int)((long)attackOrInt * SimConst.ShockRatioBp / SimConst.Bp);
-        int resistance = Formulas.EffectiveResistanceBp(PartResistance(0, ElementId.Lightning), HeroEpen(closer));
+        int resistance = Formulas.EffectiveResistanceBp(PartResistance(PartIndex(part), ElementId.Lightning), HeroEpen(closer));
         int kept = SimConst.Bp - resistance;
         if (kept < 0)
         {
@@ -2286,12 +2414,18 @@ public sealed class BattleSimulator
 
     private int BossMeva()
     {
-        if (_boss.MevaDownBp <= 0 || _tick >= _boss.MevaDownExpires)
+        int meva = _boss.Meva;
+        if (HasBeneficial(SimConst.FrenzyPlatingName))
         {
-            return _boss.Meva;
+            meva = (int)((long)meva * (SimConst.Bp + SimConst.FrenzyPlatingBp) / SimConst.Bp);
         }
 
-        return (int)((long)_boss.Meva * (SimConst.Bp - _boss.MevaDownBp) / SimConst.Bp);
+        if (_boss.MevaDownBp <= 0 || _tick >= _boss.MevaDownExpires)
+        {
+            return meva;
+        }
+
+        return (int)((long)meva * (SimConst.Bp - _boss.MevaDownBp) / SimConst.Bp);
     }
 
     private static string RollText(int roll) => roll < 0 ? "no roll" : $"roll {roll}";

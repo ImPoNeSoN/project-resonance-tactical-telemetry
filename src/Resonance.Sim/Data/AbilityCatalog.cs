@@ -29,6 +29,15 @@ public static class AbilityCatalog
     public const int HexLance = 33;
     public const int KilnVent = 40;
     public const int EarthBolt = 42;
+    public const int RendPulse = 50;
+    public const int NeedleFlicker = 51;
+    public const int WindTalonArc = 52;
+    public const int PhotonSermon = 53;
+    public const int SolarFilament = 54;
+    public const int GaleQuanta = 55;
+    public const int CrescentSever = 56;
+    public const int UmbralPierce = 57;
+    public const int RavelExecution = 58;
 
     private static readonly Dictionary<int, AbilityDef> ById = Build();
     private static readonly Dictionary<string, AbilityDef> ByName = IndexNames();
@@ -96,6 +105,15 @@ public static class AbilityCatalog
             New(HexLance, "Hex Lance", AbilityKind.Magical, ChainProperty.Lightning, ElementId.Lightning, 10_000, 600, 140, 200, 500, 24_000, SupportEffect.None),
             New(KilnVent, "Kiln Vent", AbilityKind.Magical, ChainProperty.Fire, ElementId.Fire, 10_000, 800, 0, 0, 200, 15_000, SupportEffect.None, appliesBurn: true),
             New(EarthBolt, "Earth Bolt", AbilityKind.Magical, ChainProperty.Earth, ElementId.Earth, 10_000, 0, 0, 0, 0, 10_000, SupportEffect.None),
+            New(RendPulse, "Rend Pulse", AbilityKind.Physical, ChainProperty.Slashing, ElementId.None, 10_000, 0, 0, 0, 450, 19_000, SupportEffect.None),
+            New(NeedleFlicker, "Needle Flicker", AbilityKind.Physical, ChainProperty.Piercing, ElementId.None, 4_000, 0, 0, 0, 250, 11_000, SupportEffect.None),
+            New(WindTalonArc, "Wind Talon Arc", AbilityKind.ElementalPhysical, ChainProperty.Wind, ElementId.Wind, 10_000, 0, 25, 0, 500, 21_000, SupportEffect.None),
+            New(PhotonSermon, "Photon Sermon", AbilityKind.Magical, ChainProperty.Light, ElementId.Light, 10_000, 900, 160, 300, 500, 31_000, SupportEffect.None),
+            New(SolarFilament, "Solar Filament", AbilityKind.Magical, ChainProperty.Light, ElementId.Light, 14_000, 1_600, 300, 800, 900, 46_000, SupportEffect.None),
+            New(GaleQuanta, "Gale Quanta", AbilityKind.Magical, ChainProperty.Wind, ElementId.Wind, 10_000, 500, 120, 200, 400, 22_000, SupportEffect.None),
+            New(CrescentSever, "Crescent Sever", AbilityKind.Physical, ChainProperty.Slashing, ElementId.None, 10_000, 0, 0, 0, 600, 26_000, SupportEffect.None),
+            New(UmbralPierce, "Umbral Pierce", AbilityKind.ElementalPhysical, ChainProperty.Darkness, ElementId.Darkness, 10_000, 0, 30, 0, 600, 24_000, SupportEffect.None),
+            New(RavelExecution, "Ravel Execution", AbilityKind.Physical, ChainProperty.Piercing, ElementId.None, 14_000, 0, 0, 0, 1_500, 52_000, SupportEffect.None),
         ];
 
         var map = new Dictionary<int, AbilityDef>(all.Length);

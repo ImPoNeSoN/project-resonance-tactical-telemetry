@@ -195,5 +195,16 @@ Full tree: 07 §7.7.
 | 43 | Raid shield coverage | The raid rule of −20% Core damage per shield node is not this fight. Threat stays on the per-part tables | 06, 02 §2.9 |
 | 44 | Boss Burn and the earth cantrip | Kiln Vent (id 40) is a boss-only magical Fire chant that applies hero Burn. Earth Bolt (id 42) exists so tests can close Tectonic Shear. Neither is on a hero sheet | 02 §2.8.4, §2.10.6 |
 | 45 | Default deck MP | Zeph casts only into a matching burst element, and opens with Blizzard II only at MP% ≥ 85. Mirrim pounces a piercing window and stalks only at MP% ≥ 50. Seraphine heals under 55% and 75%, refreshes Benediction while her MP% is at least 40, and casts Phase Sanctuary while the boss is casting and her MP% is at least 50 | 04 §4.12 |
+| 46 | Per-part resistance versus the golden boss | A part with a null resist array uses the boss array, so §2.15 still sees Ice +10% and Fire +30%. Encounter parts set their own arrays. Burn and shock use the afflicted part's resist | 02 §2.15, Slice 5 |
+| 47 | Kiln Guard | A boss beneficial. While it is present, boss physical damage is +1,000 bp, applied after the pipeline and before absorb. It reforms every 8,000 ticks if missing. Distortion's purge can remove it. The golden boss never has it | Slice 5 |
+| 48 | Frenzy Plating | When frenzy starts, the boss gains Frenzy Plating: +800 bp DEF and MEVA while the beneficial remains. It does not reform. Distortion purges the newest beneficial first, so plating goes before an older Kiln Guard. The golden boss never has it | Slice 5 |
+| 49 | Where a Level 3 is allowed to fire | Finishers stay inside decision 25. Shatter Choir casts Photon Sermon on an open Fragmentation only while Core HP is under 60%. Guardbreak casts Blizzard II on an open Distortion only while Core HP is under 34% and at least 28%. Both are non-burst closers, so the apex still opens its own burst window. Across the 12-seed harness that is 0–2 finishers per fight | 02 §2.10.2, Slice 5 |
+| 50 | How chain variety is counted | A detonation is one call that applies an L2 or an L3 effect, not a combat-log substring. The harness cap is on L2 counts: in the best-performing preset, no single L2 is more than 60% of that preset's L2 detonations. Apex counts are reported separately | Slice 5 |
+| 51 | Kits that the default decks do not spend a slot on | Needle Flicker, Solar Filament, and Ravel Execution are on the hero kits for a manual order. The default decks leave those slots for the route the preset is built to walk | 03, 04 §4.12 |
+| 52 | Which seed the party select uses | Every preset starts on showcase seed 20261004, so the choice is the party and not a new roll. The harness still runs each preset on 20261004 through 20261015 | Slice 5 |
+| 53 | All-parts weapon skills | Tectonic Stomp's all-parts hit is not implemented. No default preset fields Gorrun. AoE waits for a later slice | 03 |
+| 54 | Ally MP% still reads the actor | Unchanged from Slice 3. A deck that needs another hero to spend a window uses a Core HP% gate, which the gambit VM can read without drawing RNG | 04 §4.12.8 |
 
 Decisions 26–36 are the Slice 3 rulings. The owner accepted them on 2026-10-03 exactly as built.
+
+Decisions 37–45 are the Slice 4 rulings. The owner accepted them on 2026-10-03 exactly as built.

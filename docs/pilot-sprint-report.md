@@ -266,15 +266,15 @@ Resonance lines in those 12 logs: **Induration 230**. Liquefaction, Fragmentatio
 
 Each one is also README decisions 37–45. Recommended answer is the row as written.
 
-1. **DoTs and the golden excerpt.** **Recommendation:** only a scored encounter treats burn and shock as work. Benediction regen still does not extend tick 3,087. Radiance does keep its own clock, and the golden party never has it.
-2. **Win condition.** **Recommendation:** Core HP 0. Shield and Weapon Arm are side targets.
-3. **Frenzy numbers.** **Recommendation:** +22% ATK/INT at Core ≤ 35% or tick 80,000, and a loss at tick 120,000. These came from the harness above.
-4. **Korrith's filler.** **Recommendation:** Attack, and Shield Bash only in the last 700 ticks of a cast, so he does not restart every chain.
-5. **Seraphine's encounter gear.** **Recommendation:** +40 INT and +50% healing potency on the Mid-Cast set. The golden combined set stays at potency 0.
-6. **Tempest Crown timing.** **Recommendation:** skip casting allies, apply the refund ceiling before the closer pays recovery, and interrupt at 100% with Stance recovery and no roll.
-7. **Raid shield nodes.** **Recommendation:** not this fight.
-8. **Kiln Vent and Earth Bolt.** **Recommendation:** boss-only Burn chant, and a test cantrip for Tectonic Shear. Neither belongs on a hero sheet.
-9. **How hard the default decks spend MP.** **Recommendation:** keep the thresholds in decision 45. Looser spending wipes the party with the Core near half; tighter spending is what produced 8/12.
+1. **DoTs and the golden excerpt.** **Resolved (owner, 2026-10-03):** only a scored encounter treats burn and shock as work. Benediction regen still does not extend tick 3,087. Radiance does keep its own clock, and the golden party never has it.
+2. **Win condition.** **Resolved (owner, 2026-10-03):** Core HP 0. Shield and Weapon Arm are side targets.
+3. **Frenzy numbers.** **Resolved (owner, 2026-10-03):** +22% ATK/INT at Core ≤ 35% or tick 80,000, and a loss at tick 120,000. These came from the harness above.
+4. **Korrith's filler.** **Resolved (owner, 2026-10-03):** Attack, and Shield Bash only in the last 700 ticks of a cast, so he does not restart every chain.
+5. **Seraphine's encounter gear.** **Resolved (owner, 2026-10-03):** +40 INT and +50% healing potency on the Mid-Cast set. The golden combined set stays at potency 0.
+6. **Tempest Crown timing.** **Resolved (owner, 2026-10-03):** skip casting allies, apply the refund ceiling before the closer pays recovery, and interrupt at 100% with Stance recovery and no roll.
+7. **Raid shield nodes.** **Resolved (owner, 2026-10-03):** not this fight.
+8. **Kiln Vent and Earth Bolt.** **Resolved (owner, 2026-10-03):** boss-only Burn chant, and a test cantrip for Tectonic Shear. Neither belongs on a hero sheet.
+9. **How hard the default decks spend MP.** **Resolved (owner, 2026-10-03):** keep the thresholds in decision 45. Looser spending wipes the party with the Core near half; tighter spending is what produced 8/12.
 
 ### Tests
 
@@ -298,3 +298,90 @@ A human C# developer who already has the merged gambit core, working only on thi
 | Rulings and this report, while keeping the golden log still | 0.5 day | same session |
 
 **Human total for Slice 4: about 7–9 focused person-days.** The earlier 11–16, 4–7, and 5–8 estimates stay as history. They are not part of this slice.
+
+## Slice 5 — Chain Variety
+
+Date: 2026-10-03. Branch `cursor/chain-variety-79c4`, from main at merge `dc6c383`. The owner accepted the nine Slice 4 rulings exactly as built. Those are README decisions 37–45, and the nine items above are marked resolved. The §2.15 golden log was not regenerated.
+
+### What was built
+
+- The Carapace parts now publish their own resists, a DEF bonus on the Shield, and a one-line pressure note. Core: Ice +10%, Fire −10%, Light −10%. Weapon Arm: Darkness −25%, Ice +15%, Fire +10%. Shield: Ice +40%, Fire +20%, Wind −25%, Darkness +10%, DEF 700. A null part array still falls back to the boss array, so the golden fight is unchanged. The boss panel and the resonance readout both show the resist line and the pressure note.
+- Kiln Guard starts on the boss and reforms every 8,000 ticks. While it is up, boss physical damage is +10%. Frenzy still adds +22% ATK/INT, and it also applies Frenzy Plating (+8% DEF and MEVA) until a Distortion purge removes it. Plating does not reform.
+- Three default parties, chosen in the grey-box scene before the fight. Restart returns to that picker. The victory overlay can replay the same party or change it. Every preset uses showcase seed 20261004.
+  - Ice Lattice: Korrith, Mirrim, Zeph, Seraphine. At Core HP ≥ 55%, Piercing into Ice (Induration), then Blizzard into the ice burst. Below 55%, Talon Lance keeps Piercing open and Hex Lance closes Conduction.
+  - Shatter Choir: Korrith, Saeli, Aurel, Seraphine. At Core HP ≥ 64%, Blunt into Slashing (Distortion) purges Kiln Guard. Below 64%, Slashing into Wind (Fragmentation) shatters DEF. Under 60%, Photon Sermon on that Fragmentation is a Solar Apex. Light does not match the wind/physical burst, so decision 25 still holds.
+  - Guardbreak: Korrith, Kaelis, Zeph, Seraphine. Blunt into Darkness (Distortion) purges. From 36% to 44% Core HP, Blunt into Fire (Liquefaction). From 28% to 34%, Blizzard on Distortion is an Umbral Zero.
+- Saeli, Aurel, and Kaelis use the ability rows already in the roster doc: Rend Pulse, Needle Flicker, Wind Talon Arc, Photon Sermon, Solar Filament, Gale Quanta, Crescent Sever, Umbral Pierce, Ravel Execution. Needle Flicker, Solar Filament, and Ravel Execution are on the kits for a manual order. The default decks do not spend a slot on them.
+- Detonations are counted when the effect is applied, once per L2 or L3, not by searching the log.
+
+### Balance
+
+Each preset, seeds `20261004` through `20261015`. A win is 7, 8, or 9 of 12. The best preset is Shatter Choir. Its largest L2 is Distortion, 123 of 232 detonations, **53%**. Five L2 resonances fire across the presets: Induration, Conduction, Fragmentation, Distortion, Liquefaction. Level 3 counts are Solar Apex 14 on Shatter Choir (0–2 on a given seed) and Umbral Zero 10 on Guardbreak (0–1). Ice Lattice's pulls did not reach a finisher.
+
+| Preset | Wins | Avg victory tick | L3 | L2 detonations |
+|---|---|---|---|---|
+| Ice Lattice | 7/12 | 48,014 | 0 | Induration 109, Conduction 11 |
+| Shatter Choir | 8/12 | 42,735 | 14 | Fragmentation 109, Distortion 123 |
+| Guardbreak | 7/12 | 44,389 | 10 | Liquefaction 11, Distortion 137 |
+
+| Seed | Ice Lattice | Shatter Choir | Guardbreak |
+|---|---|---|---|
+| 20261004 | Victory 41,434 | Defeat 62,700, Core 22,816, L3 0 | Defeat 64,150, Core 11,934, L3 1 |
+| 20261005 | Defeat 69,837, Core 8,455 | Victory 40,600, L3 1 | Defeat 66,367, Core 14,480, L3 0 |
+| 20261006 | Defeat 71,871, Core 9,840 | Victory 55,923, L3 1 | Defeat 66,617, Core 2,045, L3 1 |
+| 20261007 | Victory 45,090 | Victory 43,323, L3 1 | Victory 41,688, L3 0 |
+| 20261008 | Victory 59,769 | Victory 39,769, L3 1 | Defeat 67,850, Core 4,305, L3 1 |
+| 20261009 | Victory 42,545 | Victory 39,589, L3 1 | Defeat 57,617, Core 13,428, L3 1 |
+| 20261010 | Defeat 67,211, Core 15,885 | Defeat 70,034, Core 759, L3 1 | Victory 40,950, L3 1 |
+| 20261011 | Victory 58,230 | Victory 41,412, L3 2 | Victory 63,615, L3 1 |
+| 20261012 | Victory 43,878 | Defeat 70,600, Core 3,788, L3 1 | Victory 40,625, L3 1 |
+| 20261013 | Victory 45,154 | Victory 39,812, L3 2 | Victory 41,325, L3 1 |
+| 20261014 | Defeat 72,317, Core 2,857 | Victory 41,456, L3 1 | Victory 41,425, L3 1 |
+| 20261015 | Defeat 70,898, Core 1,810 | Defeat 63,500, Core 1,633, L3 2 | Victory 41,100, L3 1 |
+
+Victory rows leave Core HP at 0. Ice Lattice L3 is 0 on every seed.
+
+### What was not built
+
+- The gambit editor, chip sockets, and the rarity row past the 35% Shield Bash stub.
+- Raid shield coverage, dungeon ADM, a live Aether Density, and Tollen's Aquifer.
+- Tectonic Stomp's all-parts hit, and any preset that fields Gorrun. Radiance, Tectonic Shear, Magma Core, and Tempest Crown do not fire on these three decks.
+- Auto-pause options, the saturation tween, InputMap persistence, and gamepad bindings.
+- Art, animation, and real portraits.
+- A playtest with a mouse. Headless Godot loads the scene and exits. The owner plays it on Windows.
+
+### Spec ambiguities
+
+Each one is also README decisions 46–54. Recommended answer is the row as written.
+
+1. **Per-part resist and the golden boss.** **Recommendation:** a null part array uses the boss array. Encounter parts set their own. Burn and shock use the part that is burning.
+2. **Kiln Guard.** **Recommendation:** +1,000 bp boss physical damage while the beneficial is present, reforming every 8,000 ticks. Distortion can purge it. The golden boss never has it.
+3. **Frenzy Plating.** **Recommendation:** +800 bp DEF and MEVA, applied when frenzy starts, not reformed. Purge removes the newest beneficial first, so plating goes before an older Kiln Guard.
+4. **Where a Level 3 may fire.** **Recommendation:** Photon Sermon on Fragmentation only under 60% Core HP. Blizzard on Distortion only from 28% through 34%. Both are non-burst closers, so decision 25 still opens the apex burst. The harness lands 0–2 per fight.
+5. **How the 60% cap is counted.** **Recommendation:** one applied L2 effect is one detonation. The cap is on the best preset's L2 counts. Apexes are a separate column.
+6. **Kit abilities the decks skip.** **Recommendation:** Needle Flicker, Solar Filament, and Ravel Execution stay on the kit for a manual order.
+7. **Party-select seed.** **Recommendation:** every preset starts on 20261004. The harness still walks 20261004 through 20261015.
+8. **All-parts damage.** **Recommendation:** leave Tectonic Stomp unimplemented. No preset uses it.
+9. **Ally MP%.** **Recommendation:** leave the Slice 3 reading, which is the actor's MP. These decks use a Core HP% gate instead.
+
+### Tests
+
+`dotnet test ProjectResonance.sln` on .NET 8: **69 passed, 0 failed**. That includes the golden §2.15 tests on seed `20261002` (still tick 3,087), the detonation counter test, the per-part resist test, and the 3×12 harness.
+
+`dotnet build` of `Resonance.Game.csproj` with `Godot.NET.Sdk/4.7.2` succeeded. Godot 4.7.2-stable mono, headless, `--path src/Resonance.Game --quit-after 8` exited 0 and loaded `GreyBoxBattle`. `--import --quit` on that same binary finishes the filesystem scan and then aborts in the editor shutdown (`is_cmdline_mode`, singleton null, exit 134). That abort is in the editor host, after the scan, and the game run itself is clean. There is no display here, so the party buttons and Space were not clicked.
+
+### Time for this slice
+
+Wall clock for this agent, from the Slice 5 request at 2026-10-03 16:47 UTC through the harness, the scene check, and this report at 17:12 UTC: **about 25 minutes**.
+
+A human C# developer who already has the merged grey-box fight, working only on this slice:
+
+| Task | Human | This agent |
+|---|---|---|
+| Per-part resist, Kiln Guard, Frenzy Plating, without moving §2.15 | 1–1.5 days | same session |
+| Saeli, Aurel, and Kaelis kits, and three gambit presets | 1.5–2 days | same session |
+| Harness tuning until every preset is inside 7–9 of 12 and the best preset's top L2 is at most 60% | 2–3 days | same session |
+| Party select, boss-panel resists, and the readout | 1 day | same session |
+| Rulings and this report | 0.5 day | same session |
+
+**Human total for Slice 5: about 6–8 focused person-days.** The earlier estimates stay as history. They are not part of this slice.

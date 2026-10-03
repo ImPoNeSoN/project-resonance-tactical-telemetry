@@ -31,6 +31,7 @@ public partial class GreyBoxBattle : Control
     private HBoxContainer _allies = null!;
     private RichTextLabel _log = null!;
     private Control _overlay = null!;
+    private Control _picker = null!;
     private Label _overlayTitle = null!;
     private Label _overlayDetail = null!;
     private Button _auto = null!;
@@ -166,15 +167,22 @@ public partial class GreyBoxBattle : Control
         root.AddChild(_log);
 
         BuildOverlay();
+        BuildPicker();
 
         _bridge.LogLine += line => _log.AppendText($"[color=#9fd0ff]{line}[/color]\n");
         _bridge.LogCleared += () => _log.Clear();
         _bridge.StateChanged += Refresh;
         Refresh();
+        _picker.Visible = true;
     }
 
     public override void _Input(InputEvent @event)
     {
+        if (_picker.Visible)
+        {
+            return;
+        }
+
         if (@event is InputEventKey key && key.Pressed && !key.Echo && key.Keycode == Key.Space)
         {
             if (_bridge.Simulation.Outcome == FightOutcome.Ongoing)
@@ -221,19 +229,107 @@ public partial class GreyBoxBattle : Control
         box.AddChild(_overlayTitle);
         _overlayDetail = new Label { HorizontalAlignment = HorizontalAlignment.Center, AutowrapMode = TextServer.AutowrapMode.WordSmart };
         box.AddChild(_overlayDetail);
-        var again = new Button { Text = "Restart" };
-        again.Pressed += Restart;
+        var again = new Button { Text = "Replay this party" };
+        again.Pressed += Replay;
         box.AddChild(again);
+        var change = new Button { Text = "Change party" };
+        change.Pressed += ShowPicker;
+        box.AddChild(change);
     }
 
-    private void Restart()
+    private void BuildPicker()
+    {
+        _picker = new ColorRect
+        {
+            Color = new Color("12161c"),
+            Visible = false,
+            MouseFilter = MouseFilterEnum.Stop,
+        };
+        _picker.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+        AddChild(_picker);
+
+        var center = new CenterContainer();
+        center.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+        _picker.AddChild(center);
+
+        var panel = new PanelContainer { CustomMinimumSize = new Vector2(760, 0) };
+        panel.AddThemeStyleboxOverride("panel", new StyleBoxFlat
+        {
+            BgColor = new Color("1b2230"),
+            ContentMarginLeft = 28,
+            ContentMarginRight = 28,
+            ContentMarginTop = 22,
+            ContentMarginBottom = 22,
+        });
+        center.AddChild(panel);
+
+        var box = new VBoxContainer();
+        box.AddThemeConstantOverride("separation", 12);
+        panel.AddChild(box);
+
+        var heading = new Label
+        {
+            Text = "Choose a party",
+            HorizontalAlignment = HorizontalAlignment.Center,
+        };
+        heading.AddThemeFontSizeOverride("font_size", 28);
+        box.AddChild(heading);
+
+        var hint = new Label
+        {
+            Text = "Each deck walks a different chain. The Carapace parts are the reason.",
+            HorizontalAlignment = HorizontalAlignment.Center,
+            AutowrapMode = TextServer.AutowrapMode.WordSmart,
+        };
+        box.AddChild(hint);
+
+        for (int preset = 0; preset < PartyPreset.Count; preset++)
+        {
+            int chosen = preset;
+            var choice = new Button { Text = PartyPreset.Name(preset), Alignment = HorizontalAlignment.Left };
+            choice.AddThemeFontSizeOverride("font_size", 18);
+            choice.Pressed += () => ChooseParty(chosen);
+            box.AddChild(choice);
+            var summary = new Label
+            {
+                Text = PartyPreset.Summary(preset),
+                AutowrapMode = TextServer.AutowrapMode.WordSmart,
+            };
+            box.AddChild(summary);
+        }
+    }
+
+    private void ShowPicker()
+    {
+        if (_bridge.AutoRunning)
+        {
+            _bridge.ToggleAuto();
+        }
+
+        _picker.Visible = true;
+    }
+
+    private void ChooseParty(int preset)
     {
         _actor = 0;
         _part = 0;
         _ally = 2;
         _abilityActor = -1;
-        _bridge.StartEncounter();
+        _picker.Visible = false;
+        _bridge.StartEncounter(preset);
     }
+
+    private void Replay()
+    {
+        _actor = 0;
+        _part = 0;
+        _ally = 2;
+        _abilityActor = -1;
+        _picker.Visible = false;
+        _bridge.StartEncounter(_bridge.Preset);
+    }
+
+    private void Restart() => ShowPicker();
 
     private void ClickHero(InputEvent @event, int slot)
     {
@@ -289,9 +385,10 @@ public partial class GreyBoxBattle : Control
         bool ended = sim.Outcome != FightOutcome.Ongoing;
         string paused = sim.Paused ? "PAUSED" : "running";
         string frenzy = sim.Boss.FrenzyBp > 0 ? $"    Frenzy +{sim.Boss.FrenzyBp}bp" : "";
+        string party = PartyPreset.Name(_bridge.Preset);
         _status.Text = ended
-            ? $"Tick {sim.Tick}    {sim.Outcome}    Seed {_bridge.Seed}"
-            : $"Tick {sim.Tick}    {paused}{frenzy}    Seed {_bridge.Seed}    Space pauses. Click a hero, click a part, then pick an ability.";
+            ? $"{party}    Tick {sim.Tick}    {sim.Outcome}    Seed {_bridge.Seed}"
+            : $"{party}    Tick {sim.Tick}    {paused}{frenzy}    Seed {_bridge.Seed}    Space pauses. Click a hero, click a part, then pick an ability.";
         _auto.Text = _bridge.AutoRunning ? "Stop" : "Auto-run";
         _pause.Text = sim.Paused ? "Resume" : "Pause";
         _resonance.Text = ResonanceReadout.Summarize(sim);
@@ -320,18 +417,23 @@ public partial class GreyBoxBattle : Control
 
         for (int i = 0; i < boss.Parts.Length && i < _parts.Count; i++)
         {
-            _parts[i].Set(boss.Parts[i], sim.Heroes, i == _part);
+            _parts[i].Set(boss.Parts[i], sim.Heroes, i == _part, boss.Def);
         }
 
         for (int i = 0; i < _allies.GetChildCount(); i++)
         {
             if (_allies.GetChild(i) is Button button)
             {
+                if (i < sim.Heroes.Count)
+                {
+                    button.Text = ShortName(sim.Heroes[i].Name);
+                }
+
                 button.Modulate = i == _ally ? new Color("ffe08a") : Colors.White;
             }
         }
 
-        _overlay.Visible = ended;
+        _overlay.Visible = ended && !_picker.Visible;
         if (ended)
         {
             _overlayTitle.Text = sim.Outcome == FightOutcome.Victory ? "Victory" : "Defeat";
@@ -601,6 +703,7 @@ public partial class GreyBoxBattle : Control
         private readonly ProgressBar _hp;
         private readonly ProgressBar[] _threat;
         private readonly Label[] _threatLabel;
+        private readonly Label _note;
 
         public PartRow()
         {
@@ -627,6 +730,9 @@ public partial class GreyBoxBattle : Control
                 MouseFilter = MouseFilterEnum.Ignore,
             };
             box.AddChild(_hp);
+            _note = new Label { AutowrapMode = TextServer.AutowrapMode.WordSmart, MouseFilter = MouseFilterEnum.Ignore };
+            _note.AddThemeFontSizeOverride("font_size", 12);
+            box.AddChild(_note);
             var threats = new HBoxContainer { MouseFilter = MouseFilterEnum.Ignore };
             threats.AddThemeConstantOverride("separation", 6);
             box.AddChild(threats);
@@ -653,7 +759,7 @@ public partial class GreyBoxBattle : Control
 
         public PanelContainer Panel { get; }
 
-        public void Set(BossPartState part, IReadOnlyList<HeroState> heroes, bool selected)
+        public void Set(BossPartState part, IReadOnlyList<HeroState> heroes, bool selected, int bossDef)
         {
             _style.BorderColor = selected ? new Color("ffe08a") : new Color("00000000");
             _style.BorderWidthLeft = selected ? 3 : 0;
@@ -661,7 +767,10 @@ public partial class GreyBoxBattle : Control
             _style.BorderWidthTop = selected ? 3 : 0;
             _style.BorderWidthBottom = selected ? 3 : 0;
             string state = part.Hp <= 0 ? "destroyed" : part.Active ? "up" : "down";
-            _name.Text = $"{part.Name}  {part.Hp}/{part.MaxHp}  {state}";
+            int def = bossDef + part.DefBonus;
+            _name.Text = $"{part.Name}  {part.Hp}/{part.MaxHp}  DEF {def}  {state}";
+            string resist = ResonanceReadout.ResistLine(part);
+            _note.Text = resist.Length == 0 ? part.Pressure : $"{resist}\n{part.Pressure}";
             _hp.MaxValue = part.MaxHp <= 0 ? 1 : part.MaxHp;
             _hp.Value = part.Hp < 0 ? 0 : part.Hp;
             for (int i = 0; i < _threat.Length; i++)
