@@ -159,3 +159,61 @@ A human C# developer who already has the merged core, working only on this slice
 | Writing the eight rulings into docs/02, README §6, and this report | 0.5 day | same session |
 
 **Human total for this slice: about 4–7 focused person-days.** The first pilot's 11–16 day estimate above is unchanged; it covered the core this slice started from.
+
+## Slice 3 — Gambit Deck, Tactical Pause, pilot gaps
+
+Date: 2026-10-03. Branch `cursor/gambit-pause-slice-79c4`, from main at merge `8bbe5e0`. The §2.15 golden log was not regenerated. Extra-hit damage is applied only after a successful multi-attack check, and every golden double-attack roll fails, so the published numbers and the seed `20261002` log are unchanged.
+
+### What was built
+
+- Gambit compiler and validator for the 04 §4.12 text form, including the two examples, the published Zeph deck, and the published Korrith deck. The compiled form is a fixed slot array. `GambitMachine.Evaluate` is a switch over those structs: no heap allocation and no RNG. `BattleSimulator` calls it when a living hero has a deck and no manual command is waiting.
+- Slot limits (6, plus one at rank 10/20/30/40, max 10), 1–3 conditions, logic budget 20, and at most two DEFER slots. Shield Bash compiles and fires only with the Bulwark Bash grant (README decision 14). The interrupt is the common-rarity 35% stub, and only when the hit lands on the casting part. Pyre Lattice and Hex Lance are in the catalog so the Zeph deck compiles. Unknown names fail validation.
+- DEFER (no recovery, AP cap 12,000, re-evaluate while the window is open, skip DEFER slots after it), WAIT [Guard] (−20% damage taken, blocks CE shed), RETARGET, SpendHeat, NoOverwrite, and BurstOnly.
+- Tactical Pause between ticks. `StepOne` advances one tick and leaves pause set. A manual command is recorded with stamp 0 before any tick and stamp T+1 after tick T. `LoadCommandStream` replays that list to the same log. The debug scene binds Space to pause, and Step / Pause / Resume are plain `Control` buttons. Each hero's deck source is listed; the golden party says "No gambit deck (scripted queue)".
+- Double and triple attack extra hits at 50% of the primary's pre-crit damage, with their own hit and crit. A failed check draws neither roll.
+- Saeli's cadence field (1,800). Zeph's Early-Window Cartography is now tested: +25% damage and a 900-tick extension when the burst resolves within 300 ticks. Thurga leaves Heat at 30, and that remainder schedules decay. Ash-Dravan +75 EPEN is added at resistance time and stacks with the EPEN field. Ash-Dravan Burn pulses log immunity and do not reduce HP.
+- Battle-loop coverage for Heat gained from a landed elemental hit, the natural +25% detonation (Cinder Brand into L1 Blunt), and −5 Heat at the 1,000-tick decay.
+
+### What was not built
+
+- The gambit editor in 04 §4.12.7 (chip strips, drag-and-drop, dry-run highlight). This slice is the logic engine plus a text list.
+- Chip sockets and the rarity row. Shield Bash stays at the common 35% stub.
+- Resonance side effects still absent from the loop: Conduction's Shock and AP delay, Tectonic Shear's MEVA down, Radiance's party regen, Umbral Zero's AP −3,000 and MEVA down, Tempest Crown's interrupt and +2,000 AP. Detonation damage for those routes already exists.
+- Saeli Thorn-Vesper and Thurga Ember-Maw as full heroes. The slice sets the two fields the passives need.
+- Auto-pause options, the saturation tween, InputMap persistence, and gamepad bindings.
+- An opcode object stream and FsCheck. The slot array is the program on purpose, so evaluation does not allocate.
+- Dungeon ADM, raid global-burst scheduling, and Tollen's Aquifer. Those conditions read fields that stay 0.
+- Hero Burns are not produced by a boss ability yet. The pulse and the immunity run when the burn fields are set. DoTs still do not keep the timeline alive, so the golden fight still ends at tick 3,087.
+
+### Spec ambiguities
+
+1. **The request called Shield Bash "README decision 11".** Decision 11 is focus profiles. Decision 14 is the Bulwark Bash chip. **Recommendation, applied:** keep decision 14 and do not renumber.
+2. **docs/07 asks for a lexer and an opcode stream.** **Recommendation, applied:** one scanner inside the compiler, and the slot array as the opcodes. A second object stream would allocate on a path the arena will share.
+3. **Whether an extra hit always rolls crit.** **Recommendation, applied:** roll hit first, and roll crit only if that extra hit lands. Same rule as the primary hit. A failed multi-attack check draws neither, which is why §2.15 did not need a new log.
+4. **When a command queued during pause becomes visible.** **Recommendation, applied:** stamp it T+1 and drain it on a later tick. A resolved tick is not rewritten.
+5. **DEFER re-evaluates every tick, which disables event-skipping for that hero.** **Recommendation:** keep the every-tick rule for this slice. A later slice may jump ahead only if it proves the skipped ticks could not have changed the match.
+6. **`CountBelowHP%: N >= M` is not strict EBNF.** **Recommendation, applied:** N is the percent, M is the count, and the compare is the operator between them. The count includes the actor and uses strictly-below.
+7. **Shield Bash interrupt and which part is casting.** **Recommendation, applied:** draw the flat interrupt only when the hit lands on `CastPart`. A Core bash does not interrupt a Weapon Arm chant.
+8. **Does a gambit deck keep `RunToEnd` alive after the scripted queues empty?** **Recommendation, applied:** yes. The golden party has no deck, so tick 3,087 is unchanged. Tests that attach a deck use `RunUntil`.
+
+### Tests
+
+`dotnet build ProjectResonance.sln` and `dotnet test ProjectResonance.sln` from the repo root, .NET 8. Build: 0 warnings, 0 errors. Tests: 59 passed, 0 failed. The golden §2.15 tests are in that run and still pass on seed `20261002`. The new tests cover the parser, the validator, ice → Blizzard II, boss casting → Shield Bash, the chip gate, manual-over-gambit replay, DEFER's 12,000 cap, NoOverwrite, BurstOnly, pause, WAIT shed blocking, extra-hit damage, the failed-DA roll budget, Saeli's 1,800, the 900-tick early window, Thurga's 30, stacked EPEN, Burn immunity, Heat from a hit, natural +25%, and the 1,000-tick decay.
+
+Godot 4.7-stable mono, headless, `--path src/Resonance.Game --import --quit` and `--quit-after 8` both exited 0 with no script errors. There is no display on this machine, so Space and the buttons were not clicked by hand. The scene `_Ready` path is what that run loads, and Step calls `StepOne`.
+
+### Time for this slice
+
+Wall clock for this agent, from the Slice 3 request at 2026-10-03 15:41 UTC through the build, tests, and headless scene check at 16:05 UTC: **about 25 minutes**.
+
+A human C# developer who already has the merged combat core, working only on this slice:
+
+| Task | Human | This agent |
+|---|---|---|
+| Gambit grammar, validator, and the allocation-free evaluator | 2–3 days | same session |
+| Wiring it into the CTB loop, including DEFER, WAIT, and the command replay | 1–1.5 days | same session |
+| Tactical Pause and the debug-scene list | 0.5 day | same session |
+| Multi-attack damage plus the four passive gaps and their battle-loop tests | 1–1.5 days | same session |
+| Writing the new rulings into the bible and this report | 0.5 day | same session |
+
+**Human total for Slice 3: about 5–8 focused person-days.** The earlier 11–16 and 4–7 estimates stay as history. They are not part of this slice.

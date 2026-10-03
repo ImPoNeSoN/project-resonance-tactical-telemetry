@@ -244,6 +244,7 @@ Weapon skills roll Multi-Attack once after the primary hit:
 - Roll Triple Attack first (chance = gear TA, cap 25%). On success, two extra hits.
 - Otherwise roll Double Attack (chance = gear DA, cap 50%). On success, one extra hit.
 - Each extra hit deals 50% of the primary hit's pre-crit damage, rolls its own crit and hit, carries no chain property, and does not count as a chain link. Extra hits generate CE normally and can trigger Cadence Surge only via a crit (still at most once per action).
+- A failed Triple Attack check and a failed Double Attack check draw no extra hit roll and no extra crit roll. Each extra hit rolls hit first and rolls crit only when that extra hit lands. The 50% is taken from the primary's pre-crit dealt damage, then that extra's own crit multiplier is applied.
 
 ---
 

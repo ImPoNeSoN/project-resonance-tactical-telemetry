@@ -14,8 +14,10 @@ public partial class DebugBattle : Control
     private RichTextLabel _log = null!;
     private Label _boss = null!;
     private Label _resonance = null!;
+    private Label _gambits = null!;
     private Label _status = null!;
     private Button _auto = null!;
+    private Button _pause = null!;
 
     public override void _Ready()
     {
@@ -72,13 +74,20 @@ public partial class DebugBattle : Control
         _resonance = new Label { AutowrapMode = TextServer.AutowrapMode.WordSmart };
         root.AddChild(_resonance);
 
+        _gambits = new Label { AutowrapMode = TextServer.AutowrapMode.WordSmart };
+        root.AddChild(_gambits);
+
         var buttons = new HBoxContainer();
         buttons.AddThemeConstantOverride("separation", 8);
         root.AddChild(buttons);
 
         var step = new Button { Text = "Step" };
-        step.Pressed += () => _bridge.Step();
+        step.Pressed += () => _bridge.StepOnce();
         buttons.AddChild(step);
+
+        _pause = new Button { Text = "Pause" };
+        _pause.Pressed += () => _bridge.TogglePause();
+        buttons.AddChild(_pause);
 
         _auto = new Button { Text = "Auto-run" };
         _auto.Pressed += () => _bridge.ToggleAuto();
@@ -106,6 +115,15 @@ public partial class DebugBattle : Control
         Refresh();
     }
 
+    public override void _UnhandledInput(InputEvent @event)
+    {
+        if (@event is InputEventKey key && key.Pressed && !key.Echo && key.Keycode == Key.Space)
+        {
+            _bridge.TogglePause();
+            GetViewport().SetInputAsHandled();
+        }
+    }
+
     private void OnLogCleared()
     {
         _log.Clear();
@@ -125,7 +143,10 @@ public partial class DebugBattle : Control
     {
         BattleSimulator sim = _bridge.Simulation;
         _auto.Text = _bridge.AutoRunning ? "Stop" : "Auto-run";
-        _status.Text = $"Tick {sim.Tick}    Boss AP {ApGauge.Format(sim.Boss.Ap.Centi)}    AGI eff {sim.Boss.Agi}{(sim.Boss.SlowBp > 0 && sim.Tick < sim.Boss.SlowExpires ? " slowed" : "")}";
+        _pause.Text = _bridge.Paused ? "Resume" : "Pause";
+        string paused = _bridge.Paused ? "    PAUSED" : "";
+        _status.Text = $"Tick {sim.Tick}{paused}    Boss AP {ApGauge.Format(sim.Boss.Ap.Centi)}    AGI eff {sim.Boss.Agi}{(sim.Boss.SlowBp > 0 && sim.Tick < sim.Boss.SlowExpires ? " slowed" : "")}    Space pauses. Step advances one tick.";
+        _gambits.Text = GambitText(sim);
 
         for (int i = 0; i < sim.Heroes.Count; i++)
         {
@@ -157,6 +178,33 @@ public partial class DebugBattle : Control
         string burst = corePart.BurstActive ? $"{corePart.BurstMask} until {corePart.BurstExpires}" : "no burst";
         _boss.Text = $"{sim.Boss.Name}    Core {corePart.Hp}/{corePart.MaxHp}    Arm {arm.Hp}/{arm.MaxHp}    Chain {chain}    {burst}";
         _resonance.Text = ResonanceReadout.Summarize(sim);
+    }
+
+    private static string GambitText(BattleSimulator sim)
+    {
+        var lines = new System.Text.StringBuilder();
+        for (int i = 0; i < sim.Heroes.Count; i++)
+        {
+            HeroState hero = sim.Heroes[i];
+            if (i > 0)
+            {
+                lines.Append('\n');
+            }
+
+            if (hero.Deck == null)
+            {
+                lines.Append(hero.Name);
+                lines.Append(": No gambit deck (scripted queue)");
+            }
+            else
+            {
+                lines.Append(hero.Name);
+                lines.Append(": ");
+                lines.Append(hero.Deck.Source.Trim());
+            }
+        }
+
+        return lines.ToString();
     }
 
     private sealed class UnitCard

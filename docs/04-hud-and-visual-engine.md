@@ -416,6 +416,29 @@ Korrith Vael-Dun (Anchor Tank):
 - A **dry-run** button evaluates the deck against the current paused state and highlights which slot would fire.
 - Decks serialize to a compact text form (the grammar above) for sharing and arena upload.
 
+### 4.12.8 Sim implementation
+
+The combat sim compiles the text form once into a `GambitProgram`: a fixed array of slots, each with up to three condition structs and one action. That array is the program. Evaluation is a switch over those structs. It allocates nothing and draws no RNG. A separate opcode object stream is not used; the slot fields are the opcodes, which keeps the arena path off the allocator.
+
+Settled reading rules:
+
+- Leading slot numbers (`1`, `1.`, `1)`) and `//` comments are ignored. `CAST` and `USE` are synonyms. `WAIT` is written `WAIT [Guard]`.
+- `Boss` with no part reads the boss unit for `Casting` and the Core part for part stats.
+- HP% and MP% are truncating percent (`current * 100 / max`).
+- `Party [CountBelowHP%: N >= M]` counts every hero, including the actor, whose HP% is strictly below N.
+- `ChainParticipants` is the population count of the part's contributor bitmask. Opening L1 replaces the mask with the opener's slot bit. Opening L2 ORs the closer. Clearing the chain, including expiry, zeroes it.
+- `Aquifer` is false until Tollen's resource exists. Global burst and Aether Density are simulator fields; raids and dungeons are not simulated here.
+- `SpendHeat` spends 20 Heat for any hero who has the flag and at least 20 Heat.
+- A `DEFER` slot that matches on the ready tick does not act. Later ticks re-evaluate while `tick < DeferUntil`. At `tick >= DeferUntil`, DEFER slots are skipped. Matching DEFER again does not reset N. AP gained while deferring is capped at 12,000. No recovery is paid.
+- `WAIT [Guard]` pays Stance recovery and grants −20% damage taken until the hero's next action. That reduction counts as mitigation, so the hit does not shed CE.
+- `NoOverwrite` skips the slot when the ability's property would restart an open L2 (tier 2 and no L3 route). `BurstOnly` requires `now + CT_eff` to fall inside a matching burst window.
+- Shield Bash compiles only when the Bulwark Bash chip is granted, and the evaluator skips it unless that hero has the chip. Its flat interrupt is the common-rarity 35% stub until chip rarity exists, and the roll is drawn only when the hit lands on the part that is casting (README decision 14; the chip grant is not decision 11).
+- An empty match uses `USE [Attack]` on the current target.
+- A manual command beats the deck. Commands are a recorded stream. One issued before any tick is stamped 0. One issued after tick T is stamped T + 1. Replay loads that stream and does not also queue. Each tick drains commands whose stamp is at or before that tick, before actions. The same stream replayed on the same seed produces the same log.
+- Tactical Pause stops the sim between ticks, never mid-tick. Step advances exactly one tick and leaves the pause flag set.
+
+The debug scene lists each hero's deck source, or "No gambit deck (scripted queue)". Space toggles pause. Step and Resume are buttons. The golden party has no deck.
+
 ---
 
 ## 4.13 Accessibility

@@ -1,3 +1,5 @@
+using Resonance.Sim.Core;
+
 namespace Resonance.Sim.Data;
 
 public static class AbilityCatalog
@@ -21,10 +23,47 @@ public static class AbilityCatalog
     public const int GloomBolt = 24;
     public const int Shear = 25;
     public const int CinderBrand = 26;
+    public const int ShieldBash = 30;
+    public const int Attack = 31;
+    public const int PyreLattice = 32;
+    public const int HexLance = 33;
 
     private static readonly Dictionary<int, AbilityDef> ById = Build();
+    private static readonly Dictionary<string, AbilityDef> ByName = IndexNames();
 
     public static AbilityDef Get(int id) => ById[id];
+
+    public static bool TryGet(string name, out AbilityDef ability)
+    {
+        string key = Normalize(name);
+        return ByName.TryGetValue(key, out ability!);
+    }
+
+    public static string Normalize(string name)
+    {
+        var chars = new char[name.Length];
+        int n = 0;
+        bool space = false;
+        for (int i = 0; i < name.Length; i++)
+        {
+            char c = name[i];
+            if (c == ' ' || c == '\t')
+            {
+                space = n > 0;
+                continue;
+            }
+
+            if (space)
+            {
+                chars[n++] = ' ';
+                space = false;
+            }
+
+            chars[n++] = char.ToUpperInvariant(c);
+        }
+
+        return new string(chars, 0, n);
+    }
 
     private static Dictionary<int, AbilityDef> Build()
     {
@@ -49,12 +88,27 @@ public static class AbilityCatalog
             New(GloomBolt, "Gloom Bolt", AbilityKind.Magical, ChainProperty.Darkness, ElementId.Darkness, 10_000, 0, 0, 0, 0, 10_000, SupportEffect.None),
             New(Shear, "Shear", AbilityKind.Physical, ChainProperty.Slashing, ElementId.None, 10_000, 0, 0, 0, 0, 10_000, SupportEffect.None),
             New(CinderBrand, "Cinder Brand", AbilityKind.ElementalPhysical, ChainProperty.Fire, ElementId.Fire, 10_000, 0, 0, 0, 0, 10_000, SupportEffect.None),
+            New(ShieldBash, "Shield Bash", AbilityKind.Physical, ChainProperty.Blunt, ElementId.None, 4_000, 0, 0, 0, 400, 8_000, SupportEffect.None, SimConst.ShieldBashInterruptBp),
+            New(Attack, "Attack", AbilityKind.Physical, ChainProperty.None, ElementId.None, 10_000, 0, 0, 0, 100, 10_000, SupportEffect.None),
+            New(PyreLattice, "Pyre Lattice", AbilityKind.Magical, ChainProperty.Fire, ElementId.Fire, 14_000, 1_400, 320, 700, 1_000, 44_000, SupportEffect.None),
+            New(HexLance, "Hex Lance", AbilityKind.Magical, ChainProperty.Lightning, ElementId.Lightning, 10_000, 600, 140, 200, 500, 24_000, SupportEffect.None),
         ];
 
         var map = new Dictionary<int, AbilityDef>(all.Length);
         foreach (var ability in all)
         {
             map.Add(ability.Id, ability);
+        }
+
+        return map;
+    }
+
+    private static Dictionary<string, AbilityDef> IndexNames()
+    {
+        var map = new Dictionary<string, AbilityDef>(ById.Count);
+        foreach (AbilityDef ability in ById.Values)
+        {
+            map[Normalize(ability.Name)] = ability;
         }
 
         return map;
@@ -72,7 +126,8 @@ public static class AbilityCatalog
         int ve,
         int ce,
         int multiplier,
-        SupportEffect effect)
+        SupportEffect effect,
+        int flatInterruptBp = 0)
     {
         return new AbilityDef
         {
@@ -88,6 +143,7 @@ public static class AbilityCatalog
             BaseCe = ce,
             MultiplierBp = multiplier,
             Effect = effect,
+            FlatInterruptBp = flatInterruptBp,
         };
     }
 }

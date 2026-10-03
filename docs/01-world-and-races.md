@@ -270,7 +270,7 @@ Worked values for Varra Kesh-Ember (8,740 Max HP):
 | 2,000 Fire | ceil(300 × 2,000 / 8,740) = 69; × 1.5 = 103.5 → 104 | 100 (capped) |
 | 40 Water (chip) | max(3, 2) | 3 |
 
-At 100 Heat (Primed), the next weapon skill either produces its natural L2/L3 transition with +25% detonation damage, or forces a Liquefaction L2 detonation. Heat then resets to 0.
+At 100 Heat (Primed), the next weapon skill either produces its natural L2/L3 transition with +25% detonation damage, or forces a Liquefaction L2 detonation. Heat then resets to 0. Thurga Ember-Maw's remainder is 30 (02 §2.12.4), and that remainder still decays. The racial +75 EPEN is added when resistance is resolved and stacks with gear EPEN; it is not written back onto the gear field. Burn immunity stops Burn pulses on the hero. Burns that hero inflicts still land.
 
 ### 1.6.5 Ash-Dravan heroes
 
