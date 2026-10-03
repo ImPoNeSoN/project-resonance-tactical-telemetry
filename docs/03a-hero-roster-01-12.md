@@ -29,7 +29,7 @@ Derived: Physical DR = 710/(710+500) = 58.7%. Magical DR = 240/(240+600) = 28.6%
 
 ### Unique Situational Bonus
 
-**Shelter of the Chanters.** While Korrith is the boss's current target (argmax VE+CE) AND at least 2 allies are in the Casting state at the same time, Korrith gains +25% DEF (multiplicative on his current DEF) and +30% CE generation from every ability. The condition is checked every tick; the bonus ends on the first tick where fewer than 2 allies are in the Casting state or Korrith is no longer the boss's target.
+**Shelter of the Chanters.** While Korrith (formation slot 0) is the Core-table argmax and at least two other heroes are casting, his DEF is multiplied by 1.25 and his flat CE generation is multiplied by 1.30, after Enmity+ and before the Aethel-Born ×0.60. Only his CE is scaled, and only the Core table is checked. See 02 §2.12.6.
 
 ### Abilities
 

@@ -14,6 +14,13 @@ public static class AbilityCatalog
     public const int PhaseSanctuary = 10;
     public const int PistonSweep = 11;
     public const int OverpressureLance = 12;
+    public const int GlacierSnap = 20;
+    public const int Kindling = 21;
+    public const int GaleCut = 22;
+    public const int PrismRay = 23;
+    public const int GloomBolt = 24;
+    public const int Shear = 25;
+    public const int CinderBrand = 26;
 
     private static readonly Dictionary<int, AbilityDef> ById = Build();
 
@@ -35,6 +42,13 @@ public static class AbilityCatalog
             New(PhaseSanctuary, "Phase Sanctuary", AbilityKind.Support, ChainProperty.None, ElementId.None, 14_000, 1_500, 260, 1_400, 200, 0, SupportEffect.PhaseSanctuary),
             New(PistonSweep, "Piston Sweep", AbilityKind.Physical, ChainProperty.None, ElementId.None, 10_000, 0, 0, 0, 0, 16_000, SupportEffect.None),
             New(OverpressureLance, "Overpressure Lance", AbilityKind.Magical, ChainProperty.Fire, ElementId.Fire, 10_000, 1_200, 0, 0, 0, 22_000, SupportEffect.None),
+            New(GlacierSnap, "Glacier Snap", AbilityKind.Magical, ChainProperty.Ice, ElementId.Ice, 10_000, 0, 0, 0, 0, 10_000, SupportEffect.None),
+            New(Kindling, "Kindling", AbilityKind.Magical, ChainProperty.Fire, ElementId.Fire, 10_000, 0, 0, 0, 0, 10_000, SupportEffect.None),
+            New(GaleCut, "Gale Cut", AbilityKind.Magical, ChainProperty.Wind, ElementId.Wind, 10_000, 0, 0, 0, 0, 10_000, SupportEffect.None),
+            New(PrismRay, "Prism Ray", AbilityKind.Magical, ChainProperty.Light, ElementId.Light, 10_000, 0, 0, 0, 0, 10_000, SupportEffect.None),
+            New(GloomBolt, "Gloom Bolt", AbilityKind.Magical, ChainProperty.Darkness, ElementId.Darkness, 10_000, 0, 0, 0, 0, 10_000, SupportEffect.None),
+            New(Shear, "Shear", AbilityKind.Physical, ChainProperty.Slashing, ElementId.None, 10_000, 0, 0, 0, 0, 10_000, SupportEffect.None),
+            New(CinderBrand, "Cinder Brand", AbilityKind.ElementalPhysical, ChainProperty.Fire, ElementId.Fire, 10_000, 0, 0, 0, 0, 10_000, SupportEffect.None),
         ];
 
         var map = new Dictionary<int, AbilityDef>(all.Length);

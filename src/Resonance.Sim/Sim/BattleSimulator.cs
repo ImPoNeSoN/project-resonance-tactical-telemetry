@@ -21,6 +21,7 @@ public sealed class BattleSimulator
     private readonly List<CombatEvent> _events = new();
     private readonly List<int> _turnOrder = new();
     private int _tick;
+    private int _windowsOpened;
     private bool _shelterWasActive;
     private HeroState? _pendingCadence;
 
@@ -130,6 +131,10 @@ public sealed class BattleSimulator
             Consider(hero.AllDtExpires);
             Consider(hero.ConcentrationBuffExpires);
             Consider(hero.RecoveryCutExpires);
+            if (hero.Heat > 0)
+            {
+                Consider(hero.HeatDecayTick);
+            }
         }
 
         if (_boss.Casting)
@@ -148,6 +153,11 @@ public sealed class BattleSimulator
         }
 
         Consider(_boss.SlowExpires);
+        if (_boss.ShatterBp > 0)
+        {
+            Consider(_boss.ShatterExpires);
+        }
+
         for (int p = 0; p < _boss.Parts.Length; p++)
         {
             BossPartState part = _boss.Parts[p];
@@ -159,6 +169,11 @@ public sealed class BattleSimulator
             if (part.BurstActive)
             {
                 Consider(part.BurstExpires);
+            }
+
+            if (part.BurnPulse > 0)
+            {
+                Consider(part.BurnNextTick);
             }
         }
 
@@ -212,6 +227,8 @@ public sealed class BattleSimulator
         }
 
         PulseRegen();
+        PulseBurns();
+        DecayHeat();
         ExpireStatuses();
         ResolveChants();
         ResolveReadyActions();
@@ -270,6 +287,12 @@ public sealed class BattleSimulator
             Log("Induration slow expired.");
         }
 
+        if (_boss.ShatterBp > 0 && _tick >= _boss.ShatterExpires)
+        {
+            _boss.ShatterBp = 0;
+            Log("DEF Shatter expired.");
+        }
+
         for (int i = 0; i < _heroes.Length; i++)
         {
             HeroState hero = _heroes[i];
@@ -313,6 +336,64 @@ public sealed class BattleSimulator
                 part.BurstActive = false;
                 Log($"{part.Name} burst window expired.");
             }
+
+            if (part.BurnPulse > 0 && _tick > part.BurnExpires)
+            {
+                part.BurnPulse = 0;
+                part.BurnIii = false;
+            }
+        }
+    }
+
+    private void PulseBurns()
+    {
+        for (int p = 0; p < _boss.Parts.Length; p++)
+        {
+            BossPartState part = _boss.Parts[p];
+            if (part.BurnPulse <= 0 || part.BurnNextTick != _tick)
+            {
+                continue;
+            }
+
+            part.Hp -= part.BurnPulse;
+            if (part.Hp < 0)
+            {
+                part.Hp = 0;
+            }
+
+            Log($"{part.Name} {(part.BurnIii ? "Burn III" : "Burn")} {part.BurnPulse}. HP {part.Hp}.");
+            int next = _tick + SimConst.GlobalPhase;
+            if (next > part.BurnExpires)
+            {
+                part.BurnPulse = 0;
+                part.BurnNextTick = 0;
+                part.BurnIii = false;
+            }
+            else
+            {
+                part.BurnNextTick = next;
+            }
+        }
+    }
+
+    private void DecayHeat()
+    {
+        for (int i = 0; i < _heroes.Length; i++)
+        {
+            HeroState hero = _heroes[i];
+            if (hero.Heat <= 0 || hero.HeatDecayTick != _tick)
+            {
+                continue;
+            }
+
+            hero.Heat -= SimConst.HeatDecay;
+            if (hero.Heat < 0)
+            {
+                hero.Heat = 0;
+            }
+
+            Log($"{hero.Name} Heat decays to {hero.Heat}.");
+            hero.HeatDecayTick = hero.Heat > 0 ? _tick + SimConst.HeatDecayTicks : 0;
         }
     }
 
@@ -539,9 +620,15 @@ public sealed class BattleSimulator
         int attack = Formulas.EffectiveAttack(hero.Atk, 0, hero.Gear.WsStr, hero.Gear.WsDex, property);
         int accuracy = hero.Acc + hero.Gear.WsDex;
         bool physicalBurst = PhysicalBurst(part, ability);
-        int hitBp = Formulas.HitChanceBp(accuracy, _boss.Eva);
-        int hitRoll = _rng.RollD10000(RngStream.Hit, ability.Name + " hit");
-        bool hit = hitRoll < hitBp;
+        int hitBp = SimConst.Bp;
+        int hitRoll = -1;
+        bool hit = true;
+        if (!physicalBurst)
+        {
+            hitBp = Formulas.HitChanceBp(accuracy, _boss.Eva);
+            hitRoll = _rng.RollD10000(RngStream.Hit, ability.Name + " hit");
+            hit = hitRoll < hitBp;
+        }
         int critBp = Formulas.PhysicalCritChanceBp(accuracy, _boss.Eva, hero.Gear.WsDex, hero.Gear.WsCritBp, physicalBurst);
         bool crit = false;
         int critRoll = -1;
@@ -573,7 +660,7 @@ public sealed class BattleSimulator
         {
             Power = attack,
             MultiplierBp = ability.MultiplierBp,
-            MitigationStat = _boss.Def,
+            MitigationStat = BossDef(),
             MitigationConstant = SimConst.PhysicalDrConstant,
             EffectiveResistanceBp = resistance,
             BypassPositiveResistance = physicalBurst,
@@ -592,9 +679,28 @@ public sealed class BattleSimulator
         bool linked = false;
         int detonation = 0;
         string chainNote = "no chain";
-        if (hit && ability.Property != ChainProperty.None)
+        bool primed = hit && hero.Race == RaceId.AshDravan && hero.Heat >= SimConst.HeatCap;
+        bool naturalPrime = primed && IsValidTransition(part, ability.Property);
+        if (primed && !naturalPrime)
         {
-            (linked, detonation, chainNote) = ApplyChain(part, ability.Property, dealt, physicalLink: true);
+            int baseDetonation = dealt * 5_000 / SimConst.Bp;
+            detonation = ThermalBattery.BonusDetonation(baseDetonation);
+            OpenL2(part, ResonanceId.Liquefaction, hero, attack > hero.Intel ? attack : hero.Intel);
+            chainNote = $"forced Liquefaction detonation {detonation}. L2 until {part.ChainExpires}. Burst until {part.BurstExpires}";
+            hero.Heat = 0;
+            hero.HeatDecayTick = 0;
+        }
+        else if (hit && ability.Property != ChainProperty.None)
+        {
+            (linked, detonation, chainNote) = ApplyChain(part, ability.Property, dealt, physicalLink: true, hero, attack > hero.Intel ? attack : hero.Intel, openerIsBurst: physicalBurst);
+            if (naturalPrime)
+            {
+                detonation = ThermalBattery.BonusDetonation(detonation);
+                hero.Heat = 0;
+                hero.HeatDecayTick = 0;
+                chainNote = $"primed +25% detonation {detonation}. {chainNote}";
+                linked = false;
+            }
         }
 
         if (hit)
@@ -611,12 +717,12 @@ public sealed class BattleSimulator
 
         int damageForCe = hit ? dealt + detonation + result.TrueDamage : 0;
         GrantEnmity(partIndex, hero, ability, damageForCe, hpRestored: 0, useIdleEnmity: false);
-        if (linked || crit)
+        if (hero.Race == RaceId.SylvariMor && (linked || crit))
         {
             _pendingCadence = hero;
         }
 
-        Log($"{hero.Name} {ability.Name} → {part.Name}. ATK_eff {attack}. Hit {hitBp}bp roll {hitRoll} {(hit ? "hit" : "miss")}. Crit {critBp}bp roll {critRoll}. Dmg {dealt}. {chainNote} Det {detonation}. {part.Name} HP {part.Hp}.");
+        Log($"{hero.Name} {ability.Name} → {part.Name}. ATK_eff {attack}. Hit {hitBp}bp {RollText(hitRoll)} {(hit ? "hit" : "miss")}. Crit {critBp}bp {RollText(critRoll)}. Dmg {dealt}. {chainNote} Det {detonation}. {part.Name} HP {part.Hp}.");
     }
 
     private void ResolveSpell(HeroState hero, AbilityDef ability, int partIndex)
@@ -667,13 +773,22 @@ public sealed class BattleSimulator
             TrueBonusBp = magicBurst ? profile.True : 0,
         };
         DamageResult result = DamagePipeline.Resolve(request);
-        int detonation = 0;
-        string chainNote = magicBurst ? "Magic Burst does not rewrite the chain" : "no chain";
-        if (!magicBurst && ability.Property != ChainProperty.None)
+        int windowsBefore = _windowsOpened;
+        if (magicBurst)
         {
-            (_, detonation, chainNote) = ApplyChain(part, ability.Property, result.Dealt, physicalLink: false);
+            // Count this spell against the window it qualified in. A closing burst does not replace that window.
+            part.BurstsLanded = burstIndex;
         }
 
+        int detonation = 0;
+        string chainNote = "no chain";
+        if (ability.Property != ChainProperty.None)
+        {
+            int power = intel > hero.Atk ? intel : hero.Atk;
+            (_, detonation, chainNote) = ApplyChain(part, ability.Property, result.Dealt, physicalLink: false, hero, power, openerIsBurst: magicBurst);
+        }
+
+        bool windowReplaced = _windowsOpened != windowsBefore;
         int inflicted = result.Dealt + detonation + result.TrueDamage;
         part.Hp -= inflicted;
         if (part.Hp < 0)
@@ -683,21 +798,23 @@ public sealed class BattleSimulator
 
         if (magicBurst)
         {
-            part.BurstsLanded = burstIndex;
             int refundBp = Formulas.BurstRefundBp(hero.Race == RaceId.KithLir, 0);
             int refund = Formulas.MpRefund(ability.MpCost, refundBp);
             hero.Mp += refund;
-            if (hero.Race == RaceId.KithLir)
+            if (hero.Race == RaceId.KithLir && !windowReplaced)
             {
                 ExtendBurst(part, early);
             }
 
-            Log($"{hero.Name} Magic Burst #{burstIndex} refunds {refund} MP → {hero.Mp}. Window ends {part.BurstExpires}.");
+            string windowNote = windowReplaced
+                ? $"detonation replaced the burst window, now ends {part.BurstExpires}"
+                : $"window ends {part.BurstExpires}";
+            Log($"{hero.Name} Magic Burst #{burstIndex} refunds {refund} MP → {hero.Mp}. {windowNote}.");
         }
 
         TryInterruptBoss(partIndex, result.Dealt);
         GrantEnmity(partIndex, hero, ability, result.Dealt + detonation + result.TrueDamage, hpRestored: 0, useIdleEnmity: false);
-        Log($"{hero.Name} {ability.Name} → {part.Name}. INT {intel}. Hit {hitBp}bp roll {hitRoll}{(resisted ? " resisted" : " hit")}. Crit {critBp}bp roll {critRoll} {(crit ? "crit" : "no crit")}. Dmg {result.Dealt}. {chainNote}. {part.Name} HP {part.Hp}.");
+        Log($"{hero.Name} {ability.Name} → {part.Name}. INT {intel}. Hit {hitBp}bp {RollText(hitRoll)}{(resisted ? " resisted" : " hit")}. Crit {critBp}bp {RollText(critRoll)} {(crit ? "crit" : "no crit")}. Dmg {result.Dealt}. {chainNote}. {part.Name} HP {part.Hp}.");
     }
 
     private void ResolveHeal(HeroState hero, AbilityDef ability, int allyIndex)
@@ -874,9 +991,17 @@ public sealed class BattleSimulator
             Log($"{target.Name} Chitinous Grounding +{ve} VE on {_boss.Parts[partIndex].Name}.");
         }
 
+        if (target.Race == RaceId.AshDravan && ability.Element != ElementId.None && (magical || hit))
+        {
+            int gain = Formulas.HeatGain(result.Total, target.MaxHp, ability.Element == ElementId.Fire);
+            target.Heat = Formulas.ApplyHeat(target.Heat, gain);
+            target.HeatDecayTick = _tick + SimConst.HeatDecayTicks;
+            Log($"{target.Name} Heat +{gain} → {target.Heat}.");
+        }
+
         _boss.Ap.PayRecovery(ability.RecoveryAp);
         _boss.PounceAvailable = true;
-        Log($"Boss {ability.Name} → {target.Name}. Hit {hitBp}bp roll {hitRoll} {(hit ? "hit" : "miss")}. Crit {critBp}bp roll {critRoll}. Dmg {taken}. {target.Name} HP {target.Hp}. Boss AP {ApGauge.Format(_boss.Ap.Centi)}.");
+        Log($"Boss {ability.Name} → {target.Name}. Hit {hitBp}bp {RollText(hitRoll)} {(hit ? "hit" : "miss")}. Crit {critBp}bp {RollText(critRoll)}. Dmg {taken}. {target.Name} HP {target.Hp}. Boss AP {ApGauge.Format(_boss.Ap.Centi)}.");
     }
 
     private void Shed(int tableIndex, int heroIndex, int damage, int maxHp)
@@ -887,9 +1012,16 @@ public sealed class BattleSimulator
         Log($"{_heroes[heroIndex].Name} sheds {shed} CE on {_boss.Parts[tableIndex].Name}. CE {slot.Ce}.");
     }
 
-    private (bool Linked, int Detonation, string Note) ApplyChain(BossPartState part, ChainProperty incoming, int closingDamage, bool physicalLink)
+    private (bool Linked, int Detonation, string Note) ApplyChain(
+        BossPartState part,
+        ChainProperty incoming,
+        int closingDamage,
+        bool physicalLink,
+        HeroState closer,
+        int attackOrInt,
+        bool openerIsBurst)
     {
-        if (part.Tier == 0)
+        if (part.Tier == 0 || _tick >= part.ChainExpires)
         {
             OpenL1(part, incoming);
             return (false, 0, $"chain L1({incoming}) until {part.ChainExpires}");
@@ -905,7 +1037,15 @@ public sealed class BattleSimulator
             }
 
             int detonation = closingDamage * 5_000 / SimConst.Bp;
-            OpenL2(part, resonance);
+            if (openerIsBurst)
+            {
+                // Detonate and spend the chain. Do not open the L2 resonance window or a new burst window.
+                ApplyResonanceEffect(resonance, part, closer, attackOrInt);
+                ClearChain(part);
+                return (physicalLink, detonation, $"{resonance} detonation {detonation}. Chain closed; burst closer opens no resonance window and no burst window");
+            }
+
+            OpenL2(part, resonance, closer, attackOrInt);
             return (physicalLink, detonation, $"{resonance} detonation {detonation}. L2 until {part.ChainExpires}. Burst until {part.BurstExpires}");
         }
 
@@ -917,8 +1057,31 @@ public sealed class BattleSimulator
         }
 
         ClearChain(part);
-        OpenBurst(part, ResonanceTable.Profile(apex));
-        return (physicalLink, closingDamage, $"{apex} true detonation {closingDamage}");
+        ApplyApexEffect(apex, part, closer, attackOrInt);
+        if (!openerIsBurst)
+        {
+            OpenBurst(part, ResonanceTable.Profile(apex));
+        }
+
+        string note = openerIsBurst
+            ? $"{apex} true detonation {closingDamage}. Chain closed; burst closer opens no burst window"
+            : $"{apex} true detonation {closingDamage}";
+        return (physicalLink, closingDamage, note);
+    }
+
+    private bool IsValidTransition(BossPartState part, ChainProperty incoming)
+    {
+        if (incoming == ChainProperty.None || part.Tier == 0 || _tick >= part.ChainExpires)
+        {
+            return false;
+        }
+
+        if (part.Tier == 1)
+        {
+            return ResonanceTable.LookupL2(part.Property, incoming) != ResonanceId.None;
+        }
+
+        return ResonanceTable.LookupL3(part.Resonance, incoming) != ApexId.None;
     }
 
     private void OpenL1(BossPartState part, ChainProperty property)
@@ -929,19 +1092,14 @@ public sealed class BattleSimulator
         part.ChainExpires = _tick + SimConst.ChainWindowTicks;
     }
 
-    private void OpenL2(BossPartState part, ResonanceId resonance)
+    private void OpenL2(BossPartState part, ResonanceId resonance, HeroState closer, int attackOrInt)
     {
         part.Tier = 2;
         part.Property = ChainProperty.None;
         part.Resonance = resonance;
         part.ChainExpires = _tick + SimConst.ChainWindowTicks;
         OpenBurst(part, ResonanceTable.Profile(resonance));
-        if (resonance == ResonanceId.Induration)
-        {
-            // One Induration source refreshes. It does not stack with itself; other slows still cap at −50%.
-            _boss.SlowBp = SimConst.IndurationSlowBp;
-            _boss.SlowExpires = _tick + SimConst.IndurationSlowTicks;
-        }
+        ApplyResonanceEffect(resonance, part, closer, attackOrInt);
     }
 
     private static void ClearChain(BossPartState part)
@@ -962,6 +1120,153 @@ public sealed class BattleSimulator
         part.BurstMask = profile.Mask;
         part.BurstBucketBp = profile.BucketBonusBp;
         part.BurstTrueBp = profile.TrueBonusBp;
+        _windowsOpened++;
+    }
+
+    private void ApplyResonanceEffect(ResonanceId resonance, BossPartState part, HeroState closer, int attackOrInt)
+    {
+        switch (resonance)
+        {
+            case ResonanceId.Liquefaction:
+                ApplyBurn(part, closer, attackOrInt, burnIii: false);
+                break;
+            case ResonanceId.Induration:
+                _boss.SlowBp = SimConst.IndurationSlowBp;
+                _boss.SlowExpires = _tick + SimConst.IndurationSlowTicks;
+                Log($"Induration slow −30% AGI until {_boss.SlowExpires}.");
+                break;
+            case ResonanceId.Fragmentation:
+                ApplyShatter(SimConst.ShatterFragmentationBp, SimConst.ShatterFragmentationTicks);
+                break;
+            case ResonanceId.Distortion:
+                PurgeBeneficial();
+                break;
+        }
+    }
+
+    private void ApplyApexEffect(ApexId apex, BossPartState part, HeroState closer, int attackOrInt)
+    {
+        switch (apex)
+        {
+            case ApexId.SolarApex:
+                ResetVolatileToAnchor(part);
+                break;
+            case ApexId.MagmaCore:
+                ApplyBurn(part, closer, attackOrInt, burnIii: true);
+                ApplyShatter(SimConst.ShatterMagmaBp, SimConst.ShatterMagmaTicks);
+                break;
+        }
+    }
+
+    private void ApplyBurn(BossPartState part, HeroState closer, int attackOrInt, bool burnIii)
+    {
+        int power = attackOrInt;
+        int ratio = burnIii ? SimConst.BurnIiiRatioBp : SimConst.BurnRatioBp;
+        int raw = (int)((long)power * ratio / SimConst.Bp);
+        int resistance = Formulas.EffectiveResistanceBp(PartResistance(0, ElementId.Fire), closer.Epen);
+        int kept = SimConst.Bp - resistance;
+        if (kept < 0)
+        {
+            kept = 0;
+        }
+
+        part.BurnPulse = (int)((long)raw * kept / SimConst.Bp);
+        part.BurnIii = burnIii;
+        part.BurnExpires = _tick + SimConst.BurnDuration;
+        part.BurnNextTick = _tick + SimConst.GlobalPhase;
+        Log($"{part.Name} {(burnIii ? "Burn III" : "Burn")} pulse {part.BurnPulse} until {part.BurnExpires}.");
+    }
+
+    private void ApplyShatter(int bp, int ticks)
+    {
+        bool active = _boss.ShatterBp > 0 && _tick < _boss.ShatterExpires;
+        if (active && _boss.ShatterBp > bp)
+        {
+            Log($"DEF Shatter stays {_boss.ShatterBp}bp until {_boss.ShatterExpires}.");
+            return;
+        }
+
+        _boss.ShatterBp = bp;
+        _boss.ShatterExpires = _tick + ticks;
+        Log($"DEF Shatter {_boss.ShatterBp}bp until {_boss.ShatterExpires}. DEF {BossDef()}.");
+    }
+
+    private void PurgeBeneficial()
+    {
+        int removed = 0;
+        while (removed < SimConst.PurgeCount && _boss.Beneficial.Count > 0)
+        {
+            int last = _boss.Beneficial.Count - 1;
+            string name = _boss.Beneficial[last];
+            _boss.Beneficial.RemoveAt(last);
+            removed++;
+            Log($"Buff Purge removes {name}.");
+        }
+
+        if (removed == 0)
+        {
+            Log("Buff Purge finds no beneficial effects.");
+        }
+    }
+
+    private void ResetVolatileToAnchor(BossPartState part)
+    {
+        int sum = 0;
+        for (int i = 0; i < part.Enmity.Length; i++)
+        {
+            sum += part.Enmity[i].Ve;
+            part.Enmity[i].NormalVe = 0;
+            part.Enmity[i].HeavyVe = 0;
+        }
+
+        int tank = AnchorIndex(part);
+        if (tank >= 0 && sum > 0)
+        {
+            EnmityMath.AddVolatile(ref part.Enmity[tank], sum, heavy: false);
+        }
+
+        string tankName = tank >= 0 ? _heroes[tank].Name : "nobody";
+        Log($"Solar Apex VE reset. {sum} VE moved to {tankName}.");
+    }
+
+    private int AnchorIndex(BossPartState part)
+    {
+        for (int i = 0; i < _heroes.Length; i++)
+        {
+            if (_heroes[i].IsAnchor && _heroes[i].IsAlive)
+            {
+                return i;
+            }
+        }
+
+        int best = -1;
+        int bestCe = -1;
+        for (int i = 0; i < _heroes.Length; i++)
+        {
+            if (!_heroes[i].IsAlive || i >= part.Enmity.Length)
+            {
+                continue;
+            }
+
+            int ce = part.Enmity[i].Ce;
+            if (ce > bestCe)
+            {
+                bestCe = ce;
+                best = i;
+            }
+        }
+
+        return best;
+    }
+
+    private int BossDef()
+    {
+        if (_boss.ShatterBp <= 0 || _tick >= _boss.ShatterExpires)
+        {
+            return _boss.Def;
+        }
+
+        return (int)((long)_boss.Def * (SimConst.Bp - _boss.ShatterBp) / SimConst.Bp);
     }
 
     private void ExtendBurst(BossPartState part, bool early)
@@ -1199,17 +1504,18 @@ public sealed class BattleSimulator
 
     private static int RaceFastCast(HeroState hero) => hero.Race == RaceId.AethelBorn ? SimConst.AethelFastCastBp : 0;
 
-    private static int PartResistance(int partIndex, ElementId element)
+    private int PartResistance(int partIndex, ElementId element)
     {
-        // Carapace Engine Mk. II: Ice +10%, Fire +30%, shared by every part in the worked log.
         _ = partIndex;
-        return element switch
+        if (element < 0 || _boss.ResistBp.Length <= (int)element)
         {
-            ElementId.Ice => 1_000,
-            ElementId.Fire => 3_000,
-            _ => 0,
-        };
+            return 0;
+        }
+
+        return _boss.ResistBp[(int)element];
     }
+
+    private static string RollText(int roll) => roll < 0 ? "no roll" : $"roll {roll}";
 
     private void Log(string text)
     {

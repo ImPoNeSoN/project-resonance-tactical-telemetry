@@ -9,7 +9,7 @@ namespace Resonance.Game;
 /// </summary>
 public partial class SimBridge : Node
 {
-    private BattleSimulator _sim = TrainingArena.CreateGolden().Sim;
+    private BattleSimulator _sim = TrainingArena.CreateGolden();
     private int _shown;
     private bool _auto;
     private double _wait;
@@ -23,13 +23,16 @@ public partial class SimBridge : Node
     [Signal]
     public delegate void LogClearedEventHandler();
 
+    [Signal]
+    public delegate void ResonanceChangedEventHandler(string summary);
+
     public BattleSimulator Simulation => _sim;
 
     public bool AutoRunning => _auto;
 
     public override void _Ready()
     {
-        EmitSignal(SignalName.StateChanged);
+        Publish();
     }
 
     public override void _Process(double delta)
@@ -49,25 +52,25 @@ public partial class SimBridge : Node
         if (!Step())
         {
             _auto = false;
-            EmitSignal(SignalName.StateChanged);
+            Publish();
         }
     }
 
     public void Reset()
     {
-        _sim = TrainingArena.CreateGolden().Sim;
+        _sim = TrainingArena.CreateGolden();
         _shown = 0;
         _auto = false;
         _wait = 0;
         EmitSignal(SignalName.LogCleared);
-        EmitSignal(SignalName.StateChanged);
+        Publish();
     }
 
     public bool Step()
     {
         bool advanced = _sim.TryStep();
         Flush();
-        EmitSignal(SignalName.StateChanged);
+        Publish();
         return advanced;
     }
 
@@ -75,6 +78,12 @@ public partial class SimBridge : Node
     {
         _auto = !_auto;
         _wait = 0;
+        Publish();
+    }
+
+    private void Publish()
+    {
+        EmitSignal(SignalName.ResonanceChanged, ResonanceReadout.Summarize(_sim));
         EmitSignal(SignalName.StateChanged);
     }
 

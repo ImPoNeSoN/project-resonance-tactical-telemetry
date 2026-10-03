@@ -123,6 +123,57 @@ public class FormulaTests
         Assert.Equal(440, Formulas.EffectiveAttack(415, 0, 0, 50, WeaponProperty.ElementalPhysical));
         Assert.Equal(313, Formulas.EffectiveAttack(273, 0, 40, 0, WeaponProperty.Blunt));
         Assert.Equal(115, Formulas.EffectiveAttack(100, 1_000, 0, 10, WeaponProperty.Slashing));
+        // Odd inputs truncate. 1/2 → 0, (1+2)/2 → 1.
+        Assert.Equal(51, Formulas.EffectiveAttack(0, 0, 1, 51, WeaponProperty.Piercing));
+        Assert.Equal(0, Formulas.EffectiveAttack(0, 0, 0, 1, WeaponProperty.Blunt));
+        Assert.Equal(1, Formulas.EffectiveAttack(0, 0, 1, 2, WeaponProperty.ElementalPhysical));
+    }
+
+    [Fact]
+    public void Magic_accuracy_truncates_odd_sums()
+    {
+        Assert.Equal(3, Formulas.MagicAccuracy(5, 2, 0));
+        Assert.Equal(13, Formulas.MagicAccuracy(5, 2, 10));
+    }
+
+    [Fact]
+    public void Level3_bonus_is_true_damage_outside_the_burst_bucket()
+    {
+        BurstProfile magma = ResonanceTable.Profile(ApexId.MagmaCore);
+        BurstProfile tempest = ResonanceTable.Profile(ApexId.TempestCrown);
+        Assert.Equal(0, magma.BucketBonusBp);
+        Assert.Equal(11_000, magma.TrueBonusBp);
+        Assert.Equal(0, tempest.BucketBonusBp);
+        Assert.Equal(11_000, tempest.TrueBonusBp);
+
+        var asWritten = DamagePipeline.Resolve(new DamageRequest
+        {
+            Power = 1_000,
+            MultiplierBp = 10_000,
+            MitigationStat = 0,
+            MitigationConstant = SimConst.MagicalDrConstant,
+            CritMultiplierBp = 10_000,
+            BurstBucketBp = 2_000,
+            BurstDiminishBp = 10_000,
+            TrueBonusBp = magma.TrueBonusBp,
+        });
+        Assert.Equal(1_200, asWritten.Dealt);
+        Assert.Equal(1_320, asWritten.TrueDamage);
+
+        var foldedIntoBucket = DamagePipeline.Resolve(new DamageRequest
+        {
+            Power = 1_000,
+            MultiplierBp = 10_000,
+            MitigationStat = 0,
+            MitigationConstant = SimConst.MagicalDrConstant,
+            CritMultiplierBp = 10_000,
+            BurstBucketBp = 2_000 + 11_000,
+            BurstDiminishBp = 10_000,
+            TrueBonusBp = 0,
+        });
+        Assert.Equal(2_300, foldedIntoBucket.Dealt);
+        Assert.Equal(0, foldedIntoBucket.TrueDamage);
+        Assert.NotEqual(asWritten.Total, foldedIntoBucket.Total);
     }
 
     [Fact]

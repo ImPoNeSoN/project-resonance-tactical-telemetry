@@ -69,4 +69,16 @@ public static class SimConst
     public const int ShelterDefBp = 2_500;
     public const int ShelterCeBp = 3_000;
     public const int ShelterCastingAllies = 2;
+
+    public const int BurnRatioBp = 3_500;
+    public const int BurnIiiRatioBp = 7_000;
+    public const int BurnDuration = 4_000;
+    public const int ShatterFragmentationBp = 2_500;
+    public const int ShatterFragmentationTicks = 4_000;
+    public const int ShatterMagmaBp = 3_000;
+    public const int ShatterMagmaTicks = 6_000;
+    public const int HeatCap = 100;
+    public const int HeatDecay = 5;
+    public const int HeatDecayTicks = 1_000;
+    public const int PurgeCount = 2;
 }
