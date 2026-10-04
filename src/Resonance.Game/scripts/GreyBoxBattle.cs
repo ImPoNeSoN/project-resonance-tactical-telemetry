@@ -114,7 +114,7 @@ public partial class GreyBoxBattle : Control
         _bridge.LogCleared += () => _log.Clear();
         _bridge.StateChanged += Refresh;
         Refresh();
-        _picker.Visible = true;
+        _picker.Visible = false;
         GetTree().Root.SizeChanged += FitToViewport;
     }
 
@@ -584,7 +584,7 @@ public partial class GreyBoxBattle : Control
         _replay.Pressed += Replay;
         box.AddChild(_replay);
         _change = new Button { Text = "Change party" };
-        _change.Pressed += ShowPicker;
+        _change.Pressed += LeaveToParty;
         box.AddChild(_change);
         _continue = new Button { Text = "Continue", Visible = false };
         _continue.Pressed += ContinueFloor;
@@ -680,6 +680,9 @@ public partial class GreyBoxBattle : Control
     [Signal]
     public delegate void ReturnedToFloorEventHandler();
 
+    [Signal]
+    public delegate void ReturnedToPartyEventHandler();
+
     public void OpenFloorFight()
     {
         _actor = 0;
@@ -691,15 +694,18 @@ public partial class GreyBoxBattle : Control
         _bridge.LoadFloorFight();
     }
 
-    public void ShowBossPicker()
+    public void OpenBossFight()
     {
         _actor = 0;
         _part = 0;
         _ally = 2;
         _abilityActor = -1;
-        _bridge.StartBossOnly();
-        ShowPicker();
+        _picker.Visible = false;
+        _overlay.Visible = false;
+        _bridge.StartBoss(_bridge.PartyIds);
     }
+
+    public void ShowBossPicker() => OpenBossFight();
 
     private void ShowPicker()
     {
@@ -728,7 +734,7 @@ public partial class GreyBoxBattle : Control
         _ally = 2;
         _abilityActor = -1;
         _picker.Visible = false;
-        _bridge.StartEncounter(_bridge.Preset);
+        _bridge.StartBoss(_bridge.PartyIds);
     }
 
     private void Restart()
@@ -743,7 +749,29 @@ public partial class GreyBoxBattle : Control
             return;
         }
 
-        ShowPicker();
+        if (_bridge.BossOnly && _bridge.Simulation.Outcome == FightOutcome.Ongoing)
+        {
+            _actor = 0;
+            _part = 0;
+            _ally = 2;
+            _abilityActor = -1;
+            _bridge.StartBoss(_bridge.PartyIds);
+            return;
+        }
+
+        LeaveToParty();
+    }
+
+    private void LeaveToParty()
+    {
+        if (_bridge.AutoRunning)
+        {
+            _bridge.ToggleAuto();
+        }
+
+        _picker.Visible = false;
+        _overlay.Visible = false;
+        EmitSignal(SignalName.ReturnedToParty);
     }
 
     private void ContinueFloor()
@@ -826,7 +854,7 @@ public partial class GreyBoxBattle : Control
         bool ended = sim.Outcome != FightOutcome.Ongoing;
         string paused = sim.Paused ? "PAUSED" : "running";
         string frenzy = sim.Boss.FrenzyBp > 0 ? $"   Frenzy +{sim.Boss.FrenzyBp}bp" : "";
-        string party = PartyPreset.Name(_bridge.Preset);
+        string party = _bridge.PartyLabel;
         _status.Text = ended
             ? $"{party}   Tick {sim.Tick}   {sim.Outcome}   Seed {_bridge.Seed}"
             : $"{party}   Tick {sim.Tick}   {paused}{frenzy}   Seed {_bridge.Seed}";

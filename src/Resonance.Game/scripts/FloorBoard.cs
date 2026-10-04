@@ -15,14 +15,13 @@ public partial class FloorBoard : Control
     private static readonly Color Current = new("ffe08a");
 
     private SimBridge _bridge = null!;
-    private int _preset = PartyPreset.IceLattice;
     private VBoxContainer _body = null!;
 
     [Signal]
     public delegate void FightRequestedEventHandler();
 
     [Signal]
-    public delegate void BossOnlyRequestedEventHandler();
+    public delegate void PartyRequestedEventHandler();
 
     public override void _Ready()
     {
@@ -82,7 +81,7 @@ public partial class FloorBoard : Control
         _body.AddChild(Heading("Cinder Throat · Floor 1", 16, Dim));
         string blurb = run == null
             ? "Five rooms. Two trash fights, an elite, a rest, then the Carapace Engine. HP and MP carry."
-            : $"{PartyPreset.Name(run.Preset)} · seed {run.Seed} · combat ticks {run.Ticks}";
+            : $"{run.PartyLabel} · seed {run.Seed} · combat ticks {run.Ticks}";
         _body.AddChild(Wrap(blurb, 14, Ink));
 
         var columns = new HBoxContainer
@@ -110,43 +109,25 @@ public partial class FloorBoard : Control
         columns.AddChild(side);
         side.AddChild(PanelBlock(PartyBlock(run)));
 
-        if (run == null)
+        var actions = new HBoxContainer();
+        actions.AddThemeConstantOverride("separation", 8);
+        _body.AddChild(actions);
+        if (run != null)
         {
-            var presets = new HBoxContainer();
-            presets.AddThemeConstantOverride("separation", 8);
-            _body.AddChild(presets);
-            for (int preset = 0; preset < PartyPreset.Count; preset++)
-            {
-                int chosen = preset;
-                var button = new Button { Text = PartyPreset.Name(preset) };
-                if (preset == _preset)
-                {
-                    button.Modulate = Current;
-                }
-
-                button.Pressed += () =>
-                {
-                    _preset = chosen;
-                    CallDeferred(MethodName.Rebuild);
-                };
-                presets.AddChild(button);
-            }
-
-            var actions = new HBoxContainer();
-            actions.AddThemeConstantOverride("separation", 8);
-            _body.AddChild(actions);
-            var begin = new Button { Text = "Begin floor" };
-            begin.Pressed += () => _bridge.StartFloor(_preset);
-            actions.AddChild(begin);
-            var boss = new Button { Text = "Boss only" };
-            boss.Pressed += () => EmitSignal(SignalName.BossOnlyRequested);
-            actions.AddChild(boss);
-            return;
+            var enter = new Button { Text = $"Enter {run.Current.Name}" };
+            enter.Pressed += () => EmitSignal(SignalName.FightRequested);
+            actions.AddChild(enter);
         }
 
-        var enter = new Button { Text = $"Enter {run.Current.Name}" };
-        enter.Pressed += () => EmitSignal(SignalName.FightRequested);
-        _body.AddChild(enter);
+        var back = new Button { Text = "Back to party" };
+        back.Pressed += LeaveToParty;
+        actions.AddChild(back);
+    }
+
+    private void LeaveToParty()
+    {
+        _bridge.LeaveFloor();
+        EmitSignal(SignalName.PartyRequested);
     }
 
     private void BuildRest(FloorRun run)
@@ -195,7 +176,7 @@ public partial class FloorBoard : Control
         }
 
         var again = new Button { Text = "New floor" };
-        again.Pressed += () => _bridge.LeaveFloor();
+        again.Pressed += LeaveToParty;
         _body.AddChild(again);
     }
 
@@ -260,12 +241,7 @@ public partial class FloorBoard : Control
         box.AddChild(Heading(run == null ? "Party" : "Carried vitals", 14, Dim));
         if (run == null)
         {
-            HeroState[] fresh = CarapaceEncounter.CreateParty(_preset);
-            for (int i = 0; i < fresh.Length; i++)
-            {
-                box.AddChild(Heading($"{fresh[i].Name}  HP {fresh[i].Hp}/{fresh[i].MaxHp}  MP {fresh[i].Mp}/{fresh[i].MaxMp}", 13, Ink));
-            }
-
+            box.AddChild(Heading("Choose four heroes on the party screen.", 13, Ink));
             return box;
         }
 

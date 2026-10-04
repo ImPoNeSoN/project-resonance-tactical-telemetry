@@ -42,6 +42,26 @@ public partial class SimBridge : Node
 
     public int Preset { get; private set; } = PartyPreset.IceLattice;
 
+    public int[] PartyIds { get; private set; } = HeroRoster.PresetIds(PartyPreset.IceLattice);
+
+    public string PartyLabel
+    {
+        get
+        {
+            if (_floor != null)
+            {
+                return _floor.PartyLabel;
+            }
+
+            if (Preset >= 0 && Preset < PartyPreset.Count)
+            {
+                return PartyPreset.Name(Preset);
+            }
+
+            return HeroRoster.Label(PartyIds);
+        }
+    }
+
     public bool AutoRunning => _auto;
 
     public bool Paused => _sim.Paused;
@@ -106,11 +126,56 @@ public partial class SimBridge : Node
             preset = PartyPreset.IceLattice;
         }
 
-        Preset = preset;
+        StartFloor(HeroRoster.PresetIds(preset));
+    }
+
+    /// <summary>Opens the floor for a chosen four. A preset match keeps that preset's decks.</summary>
+    public void StartFloor(IReadOnlyList<int> ids)
+    {
+        if (!HeroRoster.Check(ids).CanStart)
+        {
+            return;
+        }
+
+        PartyIds = CopyIds(ids);
+        Preset = HeroRoster.MatchPreset(PartyIds);
         BossOnly = false;
         InFloorFight = false;
-        _floor = FloorRun.Start(preset, CarapaceEncounter.ShowcaseSeed);
+        Seed = CarapaceEncounter.ShowcaseSeed;
+        _floor = FloorRun.StartCustom(PartyIds, Seed);
         EmitSignal(SignalName.FloorChanged);
+    }
+
+    /// <summary>Boss only, on the showcase seed, for the chosen four.</summary>
+    public void StartBoss(IReadOnlyList<int> ids)
+    {
+        if (!HeroRoster.Check(ids).CanStart)
+        {
+            return;
+        }
+
+        PartyIds = CopyIds(ids);
+        Preset = HeroRoster.MatchPreset(PartyIds);
+        _floor = null;
+        InFloorFight = false;
+        BossOnly = true;
+        Seed = CarapaceEncounter.ShowcaseSeed;
+        HeroState[] heroes = Preset >= 0
+            ? HeroRoster.PresetParty(Preset)
+            : HeroRoster.CustomParty(PartyIds);
+        Swap(CarapaceEncounter.Create(heroes, Seed));
+        EmitSignal(SignalName.FloorChanged);
+    }
+
+    private static int[] CopyIds(IReadOnlyList<int> ids)
+    {
+        var copy = new int[ids.Count];
+        for (int i = 0; i < ids.Count; i++)
+        {
+            copy[i] = ids[i];
+        }
+
+        return copy;
     }
 
     public void LeaveFloor()

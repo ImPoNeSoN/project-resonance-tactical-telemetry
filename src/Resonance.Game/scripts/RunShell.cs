@@ -3,10 +3,11 @@ using Godot;
 namespace Resonance.Game;
 
 /// <summary>
-/// Main scene. The floor map is the front door. Boss only opens the grey-box battle.
+/// Main scene. Party select is the front door. The floor map and the boss fight sit behind it.
 /// </summary>
 public partial class RunShell : Control
 {
+    private PartySelect _party = null!;
     private FloorBoard _floor = null!;
     private GreyBoxBattle _battle = null!;
 
@@ -19,7 +20,11 @@ public partial class RunShell : Control
         window.ContentScaleFactor = 1f;
 
         AnchorFull(this);
-        _floor = new FloorBoard();
+        _party = new PartySelect();
+        AddChild(_party);
+        AnchorFull(_party);
+
+        _floor = new FloorBoard { Visible = false };
         AddChild(_floor);
         AnchorFull(_floor);
 
@@ -27,9 +32,27 @@ public partial class RunShell : Control
         AddChild(_battle);
         AnchorFull(_battle);
 
+        _party.FloorChosen += ShowFloorFromParty;
+        _party.BossChosen += ShowBossFromParty;
         _floor.FightRequested += ShowFight;
-        _floor.BossOnlyRequested += ShowBossOnly;
+        _floor.PartyRequested += ShowParty;
         _battle.ReturnedToFloor += ShowFloor;
+        _battle.ReturnedToParty += ShowParty;
+    }
+
+    private void ShowFloorFromParty()
+    {
+        _party.Visible = false;
+        _battle.Visible = false;
+        _floor.Visible = true;
+    }
+
+    private void ShowBossFromParty()
+    {
+        _party.Visible = false;
+        _floor.Visible = false;
+        _battle.Visible = true;
+        _battle.OpenBossFight();
     }
 
     private void ShowFight()
@@ -39,17 +62,18 @@ public partial class RunShell : Control
         _battle.OpenFloorFight();
     }
 
-    private void ShowBossOnly()
-    {
-        _floor.Visible = false;
-        _battle.Visible = true;
-        _battle.ShowBossPicker();
-    }
-
     private void ShowFloor()
     {
         _battle.Visible = false;
+        _party.Visible = false;
         _floor.Visible = true;
+    }
+
+    private void ShowParty()
+    {
+        _battle.Visible = false;
+        _floor.Visible = false;
+        _party.Visible = true;
     }
 
     private static void AnchorFull(Control control)
