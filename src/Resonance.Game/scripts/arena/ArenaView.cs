@@ -47,6 +47,8 @@ public partial class ArenaView : Node3D
     private bool _didKaelis;
     private bool _didSeraphine;
     private bool _didZeph;
+    private int _gallery;
+    private string _galleryFilter = "";
     private bool _openingSent;
     private double _hold;
     private bool _frozen;
@@ -68,7 +70,8 @@ public partial class ArenaView : Node3D
         _bridge.LogLine += OnLog;
         _bridge.StateChanged += OnState;
         _capture = OS.GetEnvironment("RESONANCE_ARENA_CAPTURE");
-        if (_capture is "sequence" or "signatures")
+        _galleryFilter = OS.GetEnvironment("RESONANCE_ARENA_GALLERY");
+        if (_capture is "sequence" or "signatures" or "gallery")
         {
             try
             {
@@ -552,18 +555,21 @@ public partial class ArenaView : Node3D
                     actor.BastionBone = actor.Skeleton.FindBone("FX_Bastion");
                     actor.HandBone = actor.Skeleton.FindBone("RightHand_Prop");
                     AttachTrail(actor, hero.Name);
-                    if (hero.Name.StartsWith("Kaelis", StringComparison.Ordinal))
+                    string who = hero.Name.Split(' ')[0];
+                    GD.Print($"ARENA_BONES {who} {actor.Skeleton.GetBoneCount().ToString(CultureInfo.InvariantCulture)}");
+                    if (hero.Name.StartsWith("Kaelis", StringComparison.Ordinal) || hero.Name.StartsWith("Saeli", StringComparison.Ordinal))
                     {
-                        int tails = 0;
-                        for (int bone = 1; bone <= 7; bone++)
-                        {
-                            if (actor.Skeleton.FindBone("Tail" + bone.ToString(CultureInfo.InvariantCulture)) >= 0)
-                            {
-                                tails++;
-                            }
-                        }
+                        GD.Print($"ARENA_TAIL {who} {CountNamed(actor.Skeleton, "Tail", 7).ToString(CultureInfo.InvariantCulture)}");
+                    }
 
-                        GD.Print($"ARENA_TAIL Kaelis {tails.ToString(CultureInfo.InvariantCulture)}");
+                    if (hero.Name.StartsWith("Saeli", StringComparison.Ordinal))
+                    {
+                        GD.Print($"ARENA_BRAID Saeli {CountNamed(actor.Skeleton, "Braid", 3).ToString(CultureInfo.InvariantCulture)}");
+                    }
+
+                    if (hero.Name.StartsWith("Aurel", StringComparison.Ordinal))
+                    {
+                        GD.Print($"ARENA_HALO Aurel {(actor.Skeleton.FindBone("FX_Halo") >= 0 ? "yes" : "no")}");
                     }
                 }
 
@@ -623,6 +629,20 @@ public partial class ArenaView : Node3D
         {
             path = "res://assets/models/heroes/kaelis_moon_ravel.glb";
             plate = 2.15f;
+            return true;
+        }
+
+        if (name.StartsWith("Saeli", StringComparison.Ordinal))
+        {
+            path = "res://assets/models/heroes/saeli_thorn_vesper.glb";
+            plate = 2.00f;
+            return true;
+        }
+
+        if (name.StartsWith("Aurel", StringComparison.Ordinal))
+        {
+            path = "res://assets/models/heroes/aurel_nine_vesper.glb";
+            plate = 2.20f;
             return true;
         }
 
@@ -920,13 +940,7 @@ public partial class ArenaView : Node3D
             return;
         }
 
-        Vector3 at = kind switch
-        {
-            SignatureKind.PhaseSanctuary => PartyCenter() + new Vector3(0f, 0.35f, 0f),
-            SignatureKind.PyreLattice => hero.Root.GlobalPosition + new Vector3(0f, 1.6f, 0f),
-            SignatureKind.HexLance => PartPoint("Core"),
-            _ => hero.Root.GlobalPosition + new Vector3(0f, 1.2f, 0f),
-        };
+        Vector3 at = SignaturePoint(kind, hero);
         SignatureBurst.Spawn(this, kind, at, hero.Root.GlobalPosition + new Vector3(0f, 1.1f, 0f), true);
     }
 
@@ -967,7 +981,12 @@ public partial class ArenaView : Node3D
                 SignatureKind.HexLance => "hex_lance",
                 SignatureKind.PyreLattice => "pyre_lattice",
                 SignatureKind.CrescentSever => "crescent_sever",
-                _ => "ravel_execution",
+                SignatureKind.RavelExecution => "ravel_execution",
+                SignatureKind.RendPulse => "rend_pulse",
+                SignatureKind.NeedleFlicker => "needle_flicker",
+                SignatureKind.PhotonSermon => "photon_sermon",
+                SignatureKind.SolarFilament => "solar_filament",
+                _ => "attack",
             };
         }
 
@@ -1186,7 +1205,7 @@ public partial class ArenaView : Node3D
 
     private void PollCapture(double delta)
     {
-        if (_capture is not ("sequence" or "signatures") || _bridge == null || _shotsLeft <= 0)
+        if (_capture is not ("sequence" or "signatures" or "gallery") || _bridge == null || _shotsLeft <= 0)
         {
             return;
         }
@@ -1208,8 +1227,18 @@ public partial class ArenaView : Node3D
             _frozen = false;
             ArenaVfx.HoldFrames = false;
             WriteShot("opening");
-            _hold = 14;
+            _hold = _capture == "gallery" ? 6 : 14;
             _recent.Clear();
+            return;
+        }
+
+        if (_capture == "gallery")
+        {
+            if (!TryGalleryShot())
+            {
+                _shotsLeft = 0;
+            }
+
             return;
         }
 
@@ -1323,8 +1352,84 @@ public partial class ArenaView : Node3D
         Vector3 from = hero == null ? fxAt : hero.Root.GlobalPosition + new Vector3(0f, 1.1f, 0f);
         SignatureBurst.Spawn(this, kind, fxAt, from, hero != null);
         WriteShot(shot);
-        _hold = 14;
+        _hold = _capture == "gallery" ? 6 : 14;
         _recent.Clear();
+    }
+
+    private readonly record struct GalleryShot(string Shot, string Hero, string Clip, double At, SignatureKind Kind);
+
+    // Dev-only stills. RESONANCE_ARENA_CAPTURE=gallery poses each signature whose
+    // hero is in the party. RESONANCE_ARENA_GALLERY limits the shot names.
+    private static readonly GalleryShot[] Gallery =
+    [
+        new("rend-pulse", "Saeli Thorn-Vesper", "rend_pulse", 0.43, SignatureKind.RendPulse),
+        new("needle-flicker", "Saeli Thorn-Vesper", "needle_flicker", 0.43, SignatureKind.NeedleFlicker),
+        new("photon-sermon", "Aurel Nine-Vesper", "photon_sermon", 0.93, SignatureKind.PhotonSermon),
+        new("solar-filament", "Aurel Nine-Vesper", "solar_filament", 1.77, SignatureKind.SolarFilament),
+        new("phase-sanctuary", "Seraphine Vol-Ivory", "phase_sanctuary", 1.23, SignatureKind.PhaseSanctuary),
+        new("hex-lance", "Zeph Tri-Lumen", "hex_lance", 0.47, SignatureKind.HexLance),
+        new("ravel-execution", "Kaelis Moon-Ravel", "ravel_execution", 0.77, SignatureKind.RavelExecution),
+    ];
+
+    private bool TryGalleryShot()
+    {
+        while (_gallery < Gallery.Length)
+        {
+            GalleryShot shot = Gallery[_gallery];
+            _gallery++;
+            if (_galleryFilter.Length > 0 && !_galleryFilter.Contains(shot.Shot, StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            Actor? hero = FindActor(shot.Hero);
+            if (hero == null)
+            {
+                continue;
+            }
+
+            FinishSignature(shot.Shot, shot.Hero, shot.Clip, shot.At, shot.Kind, SignaturePoint(shot.Kind, hero));
+            return true;
+        }
+
+        return false;
+    }
+
+    private Vector3 SignaturePoint(SignatureKind kind, Actor hero)
+    {
+        Vector3 feet = hero.Root.GlobalPosition;
+        Vector3 core = PartPoint("Core");
+        return kind switch
+        {
+            SignatureKind.PhaseSanctuary => PartyCenter() + new Vector3(0f, 0.35f, 0f),
+            SignatureKind.PyreLattice => feet + new Vector3(0f, 1.6f, 0f),
+            SignatureKind.PhotonSermon => feet + new Vector3(0f, 2.15f, 0f),
+            SignatureKind.RendPulse => ArcPoint(feet, core),
+            SignatureKind.HexLance or SignatureKind.NeedleFlicker or SignatureKind.SolarFilament => core + new Vector3(0f, 1.2f, 0f),
+            SignatureKind.CrescentSever or SignatureKind.RavelExecution => core + new Vector3(0f, 1.15f, 0f),
+            _ => feet + new Vector3(0f, 1.2f, 0f),
+        };
+    }
+
+    private static Vector3 ArcPoint(Vector3 feet, Vector3 core)
+    {
+        Vector3 mid = feet.Lerp(core, 0.28f);
+        mid.Y = 1.25f;
+        return mid;
+    }
+
+    private static int CountNamed(Skeleton3D skeleton, string prefix, int max)
+    {
+        int count = 0;
+        for (int bone = 1; bone <= max; bone++)
+        {
+            if (skeleton.FindBone(prefix + bone.ToString(CultureInfo.InvariantCulture)) >= 0)
+            {
+                count++;
+            }
+        }
+
+        return count;
     }
 
     private void FinishShot(BattleSimulator sim, string shot)
