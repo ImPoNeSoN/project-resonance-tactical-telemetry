@@ -11,22 +11,24 @@ namespace Resonance.Game;
 /// </summary>
 public partial class ArenaView : Node3D
 {
-    // Staggered diagonal, Korrith in front nearest the Carapace. Each step
-    // runs across the camera's right and back in depth (~3.8 m) so bodies
-    // sit in separate columns and a Keratin Bastion dome (radius 1.15 m)
-    // does not swallow the neighbor.
+    // Same staggered diagonal as before (neighbor spacing 3.42–3.51 m), translated
+    // so its center sits on the Carapace forward axis at 1.5× the previous
+    // center-to-boss distance. Korrith stays the front of the wedge.
     private static readonly Vector3[] Formation =
     [
-        new(-3.4f, 0f, -0.7f),
-        new(-6.5f, 0f, -2.35f),
-        new(-9.6f, 0f, -4.0f),
-        new(-12.6f, 0f, -5.65f),
+        new(4.29f, 0f, -10.27f),
+        new(1.19f, 0f, -11.92f),
+        new(-1.91f, 0f, -13.57f),
+        new(-4.91f, 0f, -15.22f),
     ];
 
     private static readonly Vector3 BossSpot = new(0.35f, 0f, 6.9f);
-    private static readonly Vector3 CameraLook = new(-2.2f, 0.85f, 0.2f);
-    private static readonly Vector3 CameraBack = new(0.48f, 0.24f, -0.84f);
-    private const float CameraDistance = 22.5f;
+    // Looks at the midpoint between the party center and the boss. The offset is
+    // the previous camera, swung 10° clockwise from above around that midpoint.
+    // Yaw is clockwise from world +Z.
+    private static readonly Vector3 CameraLook = new(0.01f, 1.70f, -2.92f);
+    private static readonly Vector3 CameraBack = new(0.309f, 0.246f, -0.919f);
+    private const float CameraDistance = 22.51f;
     private const float FrameMargin = 0.60f;
 
     private SimBridge? _bridge;
@@ -228,8 +230,8 @@ public partial class ArenaView : Node3D
 
         var floor = new MeshInstance3D
         {
-            Mesh = new BoxMesh { Size = new Vector3(30f, 0.16f, 24f) },
-            Position = new Vector3(0f, -0.08f, 2f),
+            Mesh = new BoxMesh { Size = new Vector3(32f, 0.16f, 42f) },
+            Position = new Vector3(0f, -0.08f, -4f),
         };
         var floorMat = new StandardMaterial3D
         {
@@ -1299,7 +1301,19 @@ public partial class ArenaView : Node3D
         _camera.LookAt(CameraLook, Vector3.Up);
         if (!_fpsPrinted && _frames == 30)
         {
-            GD.Print($"ARENA_FRAME aspect {aspect.ToString("0.00", CultureInfo.InvariantCulture)} fov {fov.ToString("0.0", CultureInfo.InvariantCulture)} distance {distance.ToString("0.0", CultureInfo.InvariantCulture)} view {view.X.ToString("0", CultureInfo.InvariantCulture)}x{view.Y.ToString("0", CultureInfo.InvariantCulture)}");
+            Vector3 center = Vector3.Zero;
+            foreach (Vector3 spot in Formation)
+            {
+                center += spot;
+            }
+
+            center /= Formation.Length;
+            Vector3 mid = (center + BossSpot) * 0.5f;
+            Vector3 flat = new Vector3(eye.X - mid.X, 0f, eye.Z - mid.Z);
+            float yaw = Mathf.RadToDeg(Mathf.Atan2(flat.X, flat.Z));
+            float centerDist = new Vector3(center.X - BossSpot.X, 0f, center.Z - BossSpot.Z).Length();
+            float frontDist = new Vector3(Formation[0].X - BossSpot.X, 0f, Formation[0].Z - BossSpot.Z).Length();
+            GD.Print($"ARENA_FRAME aspect {aspect.ToString("0.00", CultureInfo.InvariantCulture)} fov {fov.ToString("0.0", CultureInfo.InvariantCulture)} distance {distance.ToString("0.0", CultureInfo.InvariantCulture)} view {view.X.ToString("0", CultureInfo.InvariantCulture)}x{view.Y.ToString("0", CultureInfo.InvariantCulture)} center {centerDist.ToString("0.00", CultureInfo.InvariantCulture)} front {frontDist.ToString("0.00", CultureInfo.InvariantCulture)} yaw {yaw.ToString("0.0", CultureInfo.InvariantCulture)}");
         }
     }
 
