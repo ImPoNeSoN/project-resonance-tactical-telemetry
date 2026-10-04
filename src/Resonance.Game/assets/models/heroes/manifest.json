@@ -1728,6 +1728,731 @@
     "kaelis_moon_ravel_clips_contact.png",
     "kaelis_moon_ravel_legs_evidence.png"
    ]
+  },
+  {
+   "file": "saeli_thorn_vesper.glb",
+   "bytes": 10006548,
+   "sha256_16": "db20b071c2ececfe",
+   "character": {
+    "name": "Saeli Thorn-Vesper",
+    "race": "Sylvari-Mor",
+    "role": "physical linker (docs/03a Hero 05)",
+    "design_mapping": [
+     "dark feline Sylvari-Mor duelist, magenta/cyan neon (TRELLIS colour); 1.75 m (docs/01 Sylvari-Mor 5'6\"-6'2\"), shorter and slimmer than Kaelis (1.88 m)",
+     "TRUE digitigrade legs: TRELLIS leg reshaped in Blender (scripts/digi.py): knee forward at 0.52 m, hock raised and set back to 0.30 m (17% of height, ~35% of leg length), metatarsal slants forward to the paw, heel lifted 7 cm so she stands on the ball of the paw. Rig: LowerLeg = knee->hock, Foot = hock->ball, Toes = ball->toe",
+     "side braid over the right shoulder (TRELLIS mesh) -> Braid1-3 chain off Head, sways in every clip",
+     "long counterbalancing tail (procedural, 7-bone Tail1-Tail7 off Hips), sweeps back for the Sylvari-Mor Z silhouette; differs from Kaelis (her tail hangs to her left)",
+     "Rend Pulse (Slashing opener) -> thorn sickle in the right hand + Saeli_RendPulseFX arc on FX_Rend (Root)",
+     "Needle Flicker (Piercing, stance-cost) -> needle stiletto in the left hand + Saeli_NeedleFlickerFX streak on FX_Needle (child of LeftHand_Prop)"
+    ]
+   },
+   "generator": {
+    "tool": "TRELLIS-image-large",
+    "license": "MIT",
+    "chosen": "saeli_nt seed 1",
+    "seeds_tried": [
+     "saeli 1-8 (tail painted in front of the thigh in every seed)",
+     "saeli_nt (tail painted out of the input) 1-6"
+    ],
+    "input": "concepts/saeli_apose.jpg with the tail painted out (TRELLIS fused it in front of the thigh); tail rebuilt procedurally"
+   },
+   "height_m": 1.75,
+   "triangles_total": 23312,
+   "triangles_by_mesh": {
+    "Saeli_Body": 22000,
+    "Saeli_NeedleFlickerFX": 100,
+    "Saeli_NeedleStiletto": 36,
+    "Saeli_RendPulseFX": 56,
+    "Saeli_Tail": 998,
+    "Saeli_ThornSickle": 122
+   },
+   "meshes": {
+    "Saeli_Body": "TRELLIS body, legs reshaped, decimated to 22k tris, xatlas UV, 2K bake; bone-heat weights + braid reassignment + joint blends, max 4 influences",
+    "Saeli_Tail": "procedural tapered tail with cyan/magenta bands, skinned to Tail1-Tail7",
+    "Saeli_ThornSickle": "procedural curved blade with thorn barbs, rigid to RightHand_Prop",
+    "Saeli_NeedleStiletto": "procedural triangular needle, rigid to LeftHand_Prop",
+    "Saeli_RendPulseFX": "procedural crescent ribbon, rigid to FX_Rend; scale 0.001 unless casting",
+    "Saeli_NeedleFlickerFX": "procedural streak spike + hex rings, rigid to FX_Needle; scale 0.001 unless casting"
+   },
+   "textures": [
+    {
+     "set": "saeli_body",
+     "size": 2048,
+     "maps": [
+      "basecolor",
+      "metallicRoughness (G=rough,B=metal)",
+      "normal (tangent)",
+      "emissive"
+     ]
+    },
+    {
+     "set": "FX/prop materials",
+     "size": 0,
+     "maps": [
+      "untextured constant PBR + emissive (KHR_materials_emissive_strength)"
+     ]
+    }
+   ],
+   "skeleton": {
+    "node": "Saeli_Rig/Skeleton3D",
+    "naming": "Godot SkeletonProfileHumanoid names and hierarchy as Korrith (all 56 profile bones present, verified in Godot 4.7.2) + extras",
+    "extras": [
+     "Root",
+     "Braid1",
+     "Braid2",
+     "Braid3",
+     "LeftHand_Prop",
+     "FX_Needle",
+     "RightHand_Prop",
+     "Tail1",
+     "Tail2",
+     "Tail3",
+     "Tail4",
+     "Tail5",
+     "Tail6",
+     "Tail7",
+     "FX_Rend"
+    ],
+    "bone_count": 70,
+    "bones": [
+     "Root",
+     "Hips",
+     "Spine",
+     "Chest",
+     "UpperChest",
+     "Neck",
+     "Head",
+     "LeftEye",
+     "RightEye",
+     "Jaw",
+     "Braid1",
+     "Braid2",
+     "Braid3",
+     "LeftShoulder",
+     "LeftUpperArm",
+     "LeftLowerArm",
+     "LeftHand",
+     "LeftIndexProximal",
+     "LeftIndexIntermediate",
+     "LeftIndexDistal",
+     "LeftMiddleProximal",
+     "LeftMiddleIntermediate",
+     "LeftMiddleDistal",
+     "LeftRingProximal",
+     "LeftRingIntermediate",
+     "LeftRingDistal",
+     "LeftLittleProximal",
+     "LeftLittleIntermediate",
+     "LeftLittleDistal",
+     "LeftThumbMetacarpal",
+     "LeftThumbProximal",
+     "LeftThumbDistal",
+     "LeftHand_Prop",
+     "FX_Needle",
+     "RightShoulder",
+     "RightUpperArm",
+     "RightLowerArm",
+     "RightHand",
+     "RightIndexProximal",
+     "RightIndexIntermediate",
+     "RightIndexDistal",
+     "RightMiddleProximal",
+     "RightMiddleIntermediate",
+     "RightMiddleDistal",
+     "RightRingProximal",
+     "RightRingIntermediate",
+     "RightRingDistal",
+     "RightLittleProximal",
+     "RightLittleIntermediate",
+     "RightLittleDistal",
+     "RightThumbMetacarpal",
+     "RightThumbProximal",
+     "RightThumbDistal",
+     "RightHand_Prop",
+     "LeftUpperLeg",
+     "LeftLowerLeg",
+     "LeftFoot",
+     "LeftToes",
+     "RightUpperLeg",
+     "RightLowerLeg",
+     "RightFoot",
+     "RightToes",
+     "Tail1",
+     "Tail2",
+     "Tail3",
+     "Tail4",
+     "Tail5",
+     "Tail6",
+     "Tail7",
+     "FX_Rend"
+    ],
+    "rest_pose": "A-pose as generated by TRELLIS from the A-pose concept",
+    "feet": "feet IK-locked during authoring (empties removed before export) and baked to FK keys"
+   },
+   "clips": [
+    {
+     "name": "idle",
+     "frame_start": 0,
+     "frame_end": 90,
+     "frames": 90,
+     "fps": 30,
+     "duration_s": 3.0,
+     "loop": true,
+     "note": "3 s loop, weight on the balls of the paws, tail flick every 1.5 s, braid sway"
+    },
+    {
+     "name": "ready",
+     "frame_start": 0,
+     "frame_end": 40,
+     "frames": 40,
+     "fps": 30,
+     "duration_s": 1.333,
+     "loop": true,
+     "note": "duelist stance: sickle high, needle low"
+    },
+    {
+     "name": "attack",
+     "frame_start": 0,
+     "frame_end": 28,
+     "frames": 28,
+     "fps": 30,
+     "duration_s": 0.933,
+     "loop": false,
+     "note": "sickle cut: wind f6, cut f10"
+    },
+    {
+     "name": "rend_pulse",
+     "frame_start": 0,
+     "frame_end": 36,
+     "frames": 36,
+     "fps": 30,
+     "duration_s": 1.2,
+     "loop": false,
+     "note": "coil f7, spin-step sweep f13 (lead paw steps then plants), arc FX f10-22, recover f36"
+    },
+    {
+     "name": "needle_flicker",
+     "frame_start": 0,
+     "frame_end": 28,
+     "frames": 28,
+     "fps": 30,
+     "duration_s": 0.933,
+     "loop": false,
+     "note": "two stiletto thrusts f7 and f13, streak FX on each"
+    },
+    {
+     "name": "hit_react",
+     "frame_start": 0,
+     "frame_end": 20,
+     "frames": 20,
+     "fps": 30,
+     "duration_s": 0.667,
+     "loop": false,
+     "note": "recoil f3, recover f20"
+    },
+    {
+     "name": "stunned",
+     "frame_start": 0,
+     "frame_end": 60,
+     "frames": 60,
+     "fps": 30,
+     "duration_s": 2.0,
+     "loop": true,
+     "note": "head sway, tail droops"
+    },
+    {
+     "name": "death",
+     "frame_start": 0,
+     "frame_end": 64,
+     "frames": 64,
+     "fps": 30,
+     "duration_s": 2.133,
+     "loop": false,
+     "note": "stagger f6, knees f24, fall forward f46"
+    }
+   ],
+   "sockets": {
+    "LeftHand_Prop": "needle stiletto grip; parent of FX_Needle",
+    "RightHand_Prop": "thorn sickle grip",
+    "FX_Rend": "Rend Pulse arc (scale tracks)",
+    "FX_Needle": "Needle Flicker streak (scale tracks)",
+    "Braid1-Braid3": "side braid chain (deform bones, not in the humanoid profile)",
+    "Tail1-Tail7": "tail chain (deform bones, not in the humanoid profile)"
+   },
+   "validation": {
+    "gltf_validator": {
+     "errors": 0,
+     "warnings": 7,
+     "warning_types": [
+      "MESH_PRIMITIVE_GENERATED_TANGENT_SPACE",
+      "NODE_SKINNED_MESH_NON_ROOT"
+     ]
+    },
+    "blender_reimport": {
+     "actions": [
+      "attack_Saeli_Rig",
+      "death_Saeli_Rig",
+      "hit_react_Saeli_Rig",
+      "idle_Saeli_Rig",
+      "needle_flicker_Saeli_Rig",
+      "ready_Saeli_Rig",
+      "rend_pulse_Saeli_Rig",
+      "stunned_Saeli_Rig"
+     ],
+     "skinned_meshes": [
+      "Saeli_Body",
+      "Saeli_NeedleFlickerFX",
+      "Saeli_NeedleStiletto",
+      "Saeli_RendPulseFX",
+      "Saeli_Tail",
+      "Saeli_ThornSickle"
+     ],
+     "max_vertex_motion_m": {
+      "attack_Saeli_Rig": {
+       "Saeli_Body": 1.182,
+       "Saeli_NeedleFlickerFX": 0.433,
+       "Saeli_NeedleStiletto": 0.489,
+       "Saeli_RendPulseFX": 0.0,
+       "Saeli_Tail": 0.518,
+       "Saeli_ThornSickle": 1.172
+      },
+      "death_Saeli_Rig": {
+       "Saeli_Body": 0.854,
+       "Saeli_NeedleFlickerFX": 0.497,
+       "Saeli_NeedleStiletto": 1.124,
+       "Saeli_RendPulseFX": 0.0,
+       "Saeli_Tail": 0.586,
+       "Saeli_ThornSickle": 1.112
+      },
+      "hit_react_Saeli_Rig": {
+       "Saeli_Body": 0.167,
+       "Saeli_NeedleFlickerFX": 0.045,
+       "Saeli_NeedleStiletto": 0.049,
+       "Saeli_RendPulseFX": 0.0,
+       "Saeli_Tail": 0.156,
+       "Saeli_ThornSickle": 0.113
+      },
+      "idle_Saeli_Rig": {
+       "Saeli_Body": 0.031,
+       "Saeli_NeedleFlickerFX": 0.0,
+       "Saeli_NeedleStiletto": 0.0,
+       "Saeli_RendPulseFX": 0.0,
+       "Saeli_Tail": 0.128,
+       "Saeli_ThornSickle": 0.0
+      },
+      "needle_flicker_Saeli_Rig": {
+       "Saeli_Body": 0.493,
+       "Saeli_NeedleFlickerFX": 1.06,
+       "Saeli_NeedleStiletto": 0.619,
+       "Saeli_RendPulseFX": 0.0,
+       "Saeli_Tail": 0.252,
+       "Saeli_ThornSickle": 0.571
+      },
+      "ready_Saeli_Rig": {
+       "Saeli_Body": 0.028,
+       "Saeli_NeedleFlickerFX": 0.026,
+       "Saeli_NeedleStiletto": 0.041,
+       "Saeli_RendPulseFX": 0.0,
+       "Saeli_Tail": 0.204,
+       "Saeli_ThornSickle": 0.0
+      },
+      "rend_pulse_Saeli_Rig": {
+       "Saeli_Body": 1.307,
+       "Saeli_NeedleFlickerFX": 0.345,
+       "Saeli_NeedleStiletto": 0.402,
+       "Saeli_RendPulseFX": 0.557,
+       "Saeli_Tail": 1.143,
+       "Saeli_ThornSickle": 1.299
+      },
+      "stunned_Saeli_Rig": {
+       "Saeli_Body": 0.088,
+       "Saeli_NeedleFlickerFX": 0.083,
+       "Saeli_NeedleStiletto": 0.09,
+       "Saeli_RendPulseFX": 0.0,
+       "Saeli_Tail": 0.058,
+       "Saeli_ThornSickle": 0.051
+      }
+     }
+    },
+    "godot_4_7_2_headless": [
+     "SCENE res://saeli_thorn_vesper.glb root=saeli_thorn_vesper",
+     "ANIM attack len=0.933 tracks=62 loop=0",
+     "ANIM death len=2.133 tracks=62 loop=0",
+     "ANIM hit_react len=0.667 tracks=62 loop=0",
+     "ANIM idle len=3.0 tracks=62 loop=1",
+     "ANIM needle_flicker len=0.933 tracks=62 loop=0",
+     "ANIM ready len=1.333 tracks=62 loop=1",
+     "ANIM rend_pulse len=1.2 tracks=62 loop=0",
+     "ANIM stunned len=2.0 tracks=62 loop=1",
+     "HUMANOID_PROFILE bones=56 missing=[]"
+    ]
+   },
+   "sources": [
+    {
+     "name": "Microsoft TRELLIS (TRELLIS-image-large) image-to-3D, run locally on gregspc (RTX 4070, torch 2.5.1+cu124)",
+     "url": "https://huggingface.co/microsoft/TRELLIS-image-large",
+     "code": "https://github.com/microsoft/TRELLIS",
+     "license": "MIT (code and TRELLIS-image-large weights)",
+     "note": "Output used: TRELLIS sparse-structure -> SLAT -> mesh decoder (FlexiCubes) with per-vertex colour. TRELLIS own GLB texture baking (to_glb) was NOT used because it needs nvdiffrast; colour was baked in Blender from the TRELLIS vertex colours instead."
+    },
+    {
+     "name": "concept image",
+     "path": "concepts/saeli_apose.jpg",
+     "note": "concepts/saeli_apose.jpg with the tail painted out (TRELLIS fused it in front of the thigh); tail rebuilt procedurally"
+    }
+   ],
+   "previews": [
+    "saeli_thorn_vesper_turntable.png",
+    "saeli_thorn_vesper_clips_contact.png",
+    "saeli_thorn_vesper_legs_evidence.png"
+   ]
+  },
+  {
+   "file": "aurel_nine_vesper.glb",
+   "bytes": 10642212,
+   "sha256_16": "1a88efc543684ebd",
+   "character": {
+    "name": "Aurel Nine-Vesper",
+    "race": "Aethel-Born",
+    "role": "arcane lightwright, Solar Apex finisher (docs/03b Hero 20); referred to as \"it\"",
+    "design_mapping": [
+     "graphite porcelain shell (dark grey gloss ceramic, cool cyan/magenta traces) vs Seraphine's ivory; 1.85 m (docs/01 Aethel-Born 5'10\"-6'4\"; Seraphine 1.80 m)",
+     "ring of nine floating hex light tiles -> Aurel_HexHalo: separate procedural mesh (graphite frames, magenta light faces, cyan glyph rings) on FX_Halo (child of Head); idle = still body + slow halo pendulum (docs: still apart from the ring)",
+     "split armour coat-tail panels -> 6 panel bones (CoatL/R_Front, _Mid, _Back off Hips); panel verts rigidly assigned by azimuth sector, blended to Hips at the waist, so panels stay flat; they follow the thighs by a fixed ratio and lag 1 frame",
+     "Photon Sermon (Light nuke, 900-tick chant) -> Aurel_LightFocusFX prism + hex rings on FX_Focus (Root)",
+     "Solar Filament (Tier-3, 1,600-tick chant, Solar Apex closer) -> Aurel_SolarFilamentFX 3 m hex beam on FX_Filament (Root)"
+    ]
+   },
+   "generator": {
+    "tool": "TRELLIS-image-large",
+    "license": "MIT",
+    "chosen": "seed 3",
+    "seeds_tried": [
+     "aurel 1-8"
+    ],
+    "input": "concepts/aurel_apose.jpg with the nine hex halo tiles erased (rebuilt procedurally)"
+   },
+   "height_m": 1.85,
+   "triangles_total": 25292,
+   "triangles_by_mesh": {
+    "Aurel_Body": 24000,
+    "Aurel_HexHalo": 972,
+    "Aurel_LightFocusFX": 104,
+    "Aurel_SolarFilamentFX": 216
+   },
+   "meshes": {
+    "Aurel_Body": "TRELLIS body, decimated to 24k tris, xatlas UV, 2K bake; bone-heat weights + rigid coat-panel sector weights + joint blends, max 4 influences",
+    "Aurel_HexHalo": "procedural 9-tile hex halo, rigid to FX_Halo",
+    "Aurel_LightFocusFX": "procedural octahedral focus + hex rings, rigid to FX_Focus; scale 0.001 unless casting",
+    "Aurel_SolarFilamentFX": "procedural hex beam + collars, rigid to FX_Filament; scale 0.001 unless casting"
+   },
+   "textures": [
+    {
+     "set": "aurel_body",
+     "size": 2048,
+     "maps": [
+      "basecolor",
+      "metallicRoughness (G=rough,B=metal)",
+      "normal (tangent)",
+      "emissive"
+     ]
+    },
+    {
+     "set": "FX/prop materials",
+     "size": 0,
+     "maps": [
+      "untextured constant PBR + emissive (KHR_materials_emissive_strength)"
+     ]
+    }
+   ],
+   "skeleton": {
+    "node": "Aurel_Rig/Skeleton3D",
+    "naming": "Godot SkeletonProfileHumanoid names and hierarchy as Korrith (all 56 profile bones present, verified in Godot 4.7.2) + extras",
+    "extras": [
+     "Root",
+     "FX_Halo",
+     "LeftHand_Prop",
+     "RightHand_Prop",
+     "CoatL_Front",
+     "CoatR_Front",
+     "CoatL_Mid",
+     "CoatR_Mid",
+     "CoatL_Back",
+     "CoatR_Back",
+     "FX_Focus",
+     "FX_Filament"
+    ],
+    "bone_count": 67,
+    "bones": [
+     "Root",
+     "Hips",
+     "Spine",
+     "Chest",
+     "UpperChest",
+     "Neck",
+     "Head",
+     "LeftEye",
+     "RightEye",
+     "Jaw",
+     "FX_Halo",
+     "LeftShoulder",
+     "LeftUpperArm",
+     "LeftLowerArm",
+     "LeftHand",
+     "LeftIndexProximal",
+     "LeftIndexIntermediate",
+     "LeftIndexDistal",
+     "LeftMiddleProximal",
+     "LeftMiddleIntermediate",
+     "LeftMiddleDistal",
+     "LeftRingProximal",
+     "LeftRingIntermediate",
+     "LeftRingDistal",
+     "LeftLittleProximal",
+     "LeftLittleIntermediate",
+     "LeftLittleDistal",
+     "LeftThumbMetacarpal",
+     "LeftThumbProximal",
+     "LeftThumbDistal",
+     "LeftHand_Prop",
+     "RightShoulder",
+     "RightUpperArm",
+     "RightLowerArm",
+     "RightHand",
+     "RightIndexProximal",
+     "RightIndexIntermediate",
+     "RightIndexDistal",
+     "RightMiddleProximal",
+     "RightMiddleIntermediate",
+     "RightMiddleDistal",
+     "RightRingProximal",
+     "RightRingIntermediate",
+     "RightRingDistal",
+     "RightLittleProximal",
+     "RightLittleIntermediate",
+     "RightLittleDistal",
+     "RightThumbMetacarpal",
+     "RightThumbProximal",
+     "RightThumbDistal",
+     "RightHand_Prop",
+     "LeftUpperLeg",
+     "LeftLowerLeg",
+     "LeftFoot",
+     "LeftToes",
+     "RightUpperLeg",
+     "RightLowerLeg",
+     "RightFoot",
+     "RightToes",
+     "CoatL_Front",
+     "CoatR_Front",
+     "CoatL_Mid",
+     "CoatR_Mid",
+     "CoatL_Back",
+     "CoatR_Back",
+     "FX_Focus",
+     "FX_Filament"
+    ],
+    "rest_pose": "A-pose as generated by TRELLIS from the A-pose concept",
+    "feet": "feet IK-locked during authoring (empties removed before export) and baked to FK keys"
+   },
+   "clips": [
+    {
+     "name": "idle",
+     "frame_start": 0,
+     "frame_end": 90,
+     "frames": 90,
+     "fps": 30,
+     "duration_s": 3.0,
+     "loop": true,
+     "note": "perfectly still apart from the halo pendulum + faint breath"
+    },
+    {
+     "name": "ready",
+     "frame_start": 0,
+     "frame_end": 40,
+     "frames": 40,
+     "fps": 30,
+     "duration_s": 1.333,
+     "loop": true,
+     "note": "casting guard, palms open"
+    },
+    {
+     "name": "attack",
+     "frame_start": 0,
+     "frame_end": 30,
+     "frames": 30,
+     "fps": 30,
+     "duration_s": 1.0,
+     "loop": false,
+     "note": "light dart palm push f14, focus flash"
+    },
+    {
+     "name": "photon_sermon",
+     "frame_start": 0,
+     "frame_end": 48,
+     "frames": 48,
+     "fps": 30,
+     "duration_s": 1.6,
+     "loop": false,
+     "note": "gather f10-22, tiles swell, release burst f28"
+    },
+    {
+     "name": "solar_filament",
+     "frame_start": 0,
+     "frame_end": 72,
+     "frames": 72,
+     "fps": 30,
+     "duration_s": 2.4,
+     "loop": false,
+     "note": "arms rise f26, focus overhead f26-48, beam driven forward f53-60, gone by f64"
+    },
+    {
+     "name": "hit_react",
+     "frame_start": 0,
+     "frame_end": 20,
+     "frames": 20,
+     "fps": 30,
+     "duration_s": 0.667,
+     "loop": false,
+     "note": "recoil f3, recover f20"
+    },
+    {
+     "name": "stunned",
+     "frame_start": 0,
+     "frame_end": 60,
+     "frames": 60,
+     "fps": 30,
+     "duration_s": 2.0,
+     "loop": true,
+     "note": "head loll, halo wobble"
+    },
+    {
+     "name": "death",
+     "frame_start": 0,
+     "frame_end": 64,
+     "frames": 64,
+     "fps": 30,
+     "duration_s": 2.133,
+     "loop": false,
+     "note": "sag f8, kneel f26, fall forward f48; halo shrinks to 0 by f52"
+    }
+   ],
+   "sockets": {
+    "LeftHand_Prop": "empty (no handheld prop in concept)",
+    "RightHand_Prop": "empty",
+    "FX_Halo": "halo pivot behind the head (rotation + scale tracks)",
+    "FX_Focus": "light focus (scale + location tracks)",
+    "FX_Filament": "Solar Filament beam (scale tracks)",
+    "CoatL_Front/Mid/Back, CoatR_Front/Mid/Back": "coat-tail panel bones (deform, not in the humanoid profile)"
+   },
+   "validation": {
+    "gltf_validator": {
+     "errors": 0,
+     "warnings": 5,
+     "warning_types": [
+      "MESH_PRIMITIVE_GENERATED_TANGENT_SPACE",
+      "NODE_SKINNED_MESH_NON_ROOT"
+     ]
+    },
+    "blender_reimport": {
+     "actions": [
+      "attack_Aurel_Rig",
+      "death_Aurel_Rig",
+      "hit_react_Aurel_Rig",
+      "idle_Aurel_Rig",
+      "photon_sermon_Aurel_Rig",
+      "ready_Aurel_Rig",
+      "solar_filament_Aurel_Rig",
+      "stunned_Aurel_Rig"
+     ],
+     "skinned_meshes": [
+      "Aurel_Body",
+      "Aurel_HexHalo",
+      "Aurel_LightFocusFX",
+      "Aurel_SolarFilamentFX"
+     ],
+     "max_vertex_motion_m": {
+      "attack_Aurel_Rig": {
+       "Aurel_Body": 0.459,
+       "Aurel_HexHalo": 0.216,
+       "Aurel_LightFocusFX": 0.123,
+       "Aurel_SolarFilamentFX": 0.0
+      },
+      "death_Aurel_Rig": {
+       "Aurel_Body": 0.849,
+       "Aurel_HexHalo": 0.865,
+       "Aurel_LightFocusFX": 0.0,
+       "Aurel_SolarFilamentFX": 0.0
+      },
+      "hit_react_Aurel_Rig": {
+       "Aurel_Body": 0.131,
+       "Aurel_HexHalo": 0.161,
+       "Aurel_LightFocusFX": 0.0,
+       "Aurel_SolarFilamentFX": 0.0
+      },
+      "idle_Aurel_Rig": {
+       "Aurel_Body": 0.0,
+       "Aurel_HexHalo": 0.0,
+       "Aurel_LightFocusFX": 0.0,
+       "Aurel_SolarFilamentFX": 0.0
+      },
+      "photon_sermon_Aurel_Rig": {
+       "Aurel_Body": 0.36,
+       "Aurel_HexHalo": 0.076,
+       "Aurel_LightFocusFX": 0.269,
+       "Aurel_SolarFilamentFX": 0.0
+      },
+      "ready_Aurel_Rig": {
+       "Aurel_Body": 0.026,
+       "Aurel_HexHalo": 0.0,
+       "Aurel_LightFocusFX": 0.0,
+       "Aurel_SolarFilamentFX": 0.0
+      },
+      "solar_filament_Aurel_Rig": {
+       "Aurel_Body": 0.73,
+       "Aurel_HexHalo": 0.387,
+       "Aurel_LightFocusFX": 0.989,
+       "Aurel_SolarFilamentFX": 0.0
+      },
+      "stunned_Aurel_Rig": {
+       "Aurel_Body": 0.057,
+       "Aurel_HexHalo": 0.152,
+       "Aurel_LightFocusFX": 0.0,
+       "Aurel_SolarFilamentFX": 0.0
+      }
+     }
+    },
+    "godot_4_7_2_headless": [
+     "SCENE res://aurel_nine_vesper.glb root=aurel_nine_vesper",
+     "ANIM attack len=1.0 tracks=61 loop=0",
+     "ANIM death len=2.133 tracks=61 loop=0",
+     "ANIM hit_react len=0.667 tracks=61 loop=0",
+     "ANIM idle len=3.0 tracks=61 loop=1",
+     "ANIM photon_sermon len=1.6 tracks=61 loop=0",
+     "ANIM ready len=1.333 tracks=61 loop=1",
+     "ANIM solar_filament len=2.4 tracks=61 loop=0",
+     "ANIM stunned len=2.0 tracks=61 loop=1",
+     "HUMANOID_PROFILE bones=56 missing=[]"
+    ]
+   },
+   "sources": [
+    {
+     "name": "Microsoft TRELLIS (TRELLIS-image-large) image-to-3D, run locally on gregspc (RTX 4070, torch 2.5.1+cu124)",
+     "url": "https://huggingface.co/microsoft/TRELLIS-image-large",
+     "code": "https://github.com/microsoft/TRELLIS",
+     "license": "MIT (code and TRELLIS-image-large weights)",
+     "note": "Output used: TRELLIS sparse-structure -> SLAT -> mesh decoder (FlexiCubes) with per-vertex colour. TRELLIS own GLB texture baking (to_glb) was NOT used because it needs nvdiffrast; colour was baked in Blender from the TRELLIS vertex colours instead."
+    },
+    {
+     "name": "concept image",
+     "path": "concepts/aurel_apose.jpg",
+     "note": "concepts/aurel_apose.jpg with the nine hex halo tiles erased (rebuilt procedurally)"
+    }
+   ],
+   "previews": [
+    "aurel_nine_vesper_turntable.png",
+    "aurel_nine_vesper_clips_contact.png"
+   ]
   }
  ],
  "previews": [
@@ -1741,14 +2466,21 @@
   "zeph_tri_lumen_clips_contact.png",
   "kaelis_moon_ravel_turntable.png",
   "kaelis_moon_ravel_clips_contact.png",
-  "kaelis_moon_ravel_legs_evidence.png"
+  "kaelis_moon_ravel_legs_evidence.png",
+  "saeli_thorn_vesper_turntable.png",
+  "saeli_thorn_vesper_clips_contact.png",
+  "saeli_thorn_vesper_legs_evidence.png",
+  "aurel_nine_vesper_turntable.png",
+  "aurel_nine_vesper_clips_contact.png"
  ],
  "import_settings": [
   "korrith_vael_dun.glb.import",
   "carapace_engine_mk2.glb.import",
   "seraphine_vol_ivory.glb.import",
   "zeph_tri_lumen.glb.import",
-  "kaelis_moon_ravel.glb.import"
+  "kaelis_moon_ravel.glb.import",
+  "saeli_thorn_vesper.glb.import",
+  "aurel_nine_vesper.glb.import"
  ],
  "cc0_check": "Checked Quaternius Universal Animation Library (CC0, UE-style rig: pelvis/spine_01..). Not used: it has no shield bash / defensive brace / maul clips and would need retargeting onto a non-standard bulky A-pose mesh; all clips are hand-keyed by script. No CC0 meshes used.",
  "pipeline": [
@@ -1830,5 +2562,28 @@
    "Validation: Khronos gltf-validator, Blender re-import, Godot 4.7.2 headless import with the shipped .glb.import"
   ],
   "scripts": "vs4-3d/scripts (stage1t.py, stage2_hero.py, hero_rig.py, hero_*.py, fxlib.py, trellis_io.py, make_import.py, manifest_heroes.py); PC: C:\\Users\\liftd\\AI3D\\gen_trellis.py, setup_trellis.ps1, run_trellis.ps1"
+ },
+ "hero_batch_3": {
+  "generator": {
+   "name": "Microsoft TRELLIS (TRELLIS-image-large) image-to-3D, run locally on gregspc (RTX 4070, torch 2.5.1+cu124)",
+   "url": "https://huggingface.co/microsoft/TRELLIS-image-large",
+   "code": "https://github.com/microsoft/TRELLIS",
+   "license": "MIT (code and TRELLIS-image-large weights)",
+   "note": "Output used: TRELLIS sparse-structure -> SLAT -> mesh decoder (FlexiCubes) with per-vertex colour. TRELLIS own GLB texture baking (to_glb) was NOT used because it needs nvdiffrast; colour was baked in Blender from the TRELLIS vertex colours instead."
+  },
+  "dependencies": "same as hero_batch_2 (no new dependencies)",
+  "avoided_non_commercial": [
+   "nvdiffrast (NVIDIA Source Code License: non-commercial): not installed; TRELLIS to_glb texture bake skipped",
+   "diff-gaussian-rasterization (Inria/MPII Gaussian-Splatting License: non-commercial): not installed; gaussian renders not used",
+   "kaolin and open3d: stubbed in gen_trellis.py (not needed for mesh extraction)",
+   "Hunyuan3D-2: not used for this batch (proof-only per user)"
+  ],
+  "pipeline": [
+   "PC (gregspc): TRELLIS-image-large only (no Hunyuan), concept -> mesh with vertex colour; Saeli 8 seeds + 6 seeds on a tail-free input, Aurel 8 seeds on a halo-free input",
+   "Box (Blender 4.2.23 LTS headless): same stage-1 cleanup/bake as batch 2; Saeli lower-leg digitigrade reshape (digi.py) before the bake",
+   "Same scripted Korrith-matched skeleton, weights and FootIK-authored clips as batch 2; new sector weight rule for Aurel's rigid coat panels",
+   "Validation: Khronos gltf-validator, Blender re-import, Godot 4.7.2 headless import with the shipped .glb.import"
+  ],
+  "scripts": "vs4-3d/scripts/trellis_heroes2 (stage1t.py, digi.py, stage2_hero.py, hero_saeli.py, hero_aurel.py, cfg/*.json, validate_final.sh, manifest_heroes3.py)"
  }
 }

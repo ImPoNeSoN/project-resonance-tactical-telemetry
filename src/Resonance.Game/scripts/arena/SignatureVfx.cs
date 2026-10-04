@@ -10,6 +10,10 @@ public enum SignatureKind
     PyreLattice,
     CrescentSever,
     RavelExecution,
+    RendPulse,
+    NeedleFlicker,
+    PhotonSermon,
+    SolarFilament,
 }
 
 /// <summary>
@@ -69,12 +73,37 @@ public partial class SignatureBurst : Node3D
             return true;
         }
 
+        if (ability.Contains("Rend Pulse", StringComparison.Ordinal))
+        {
+            kind = SignatureKind.RendPulse;
+            return true;
+        }
+
+        if (ability.Contains("Needle Flicker", StringComparison.Ordinal))
+        {
+            kind = SignatureKind.NeedleFlicker;
+            return true;
+        }
+
+        if (ability.Contains("Photon Sermon", StringComparison.Ordinal))
+        {
+            kind = SignatureKind.PhotonSermon;
+            return true;
+        }
+
+        if (ability.Contains("Solar Filament", StringComparison.Ordinal))
+        {
+            kind = SignatureKind.SolarFilament;
+            return true;
+        }
+
         kind = SignatureKind.CureCascade;
         return false;
     }
 
     public static bool IsChant(SignatureKind kind) =>
-        kind is SignatureKind.CureCascade or SignatureKind.PhaseSanctuary or SignatureKind.HexLance or SignatureKind.PyreLattice;
+        kind is SignatureKind.CureCascade or SignatureKind.PhaseSanctuary or SignatureKind.HexLance
+            or SignatureKind.PyreLattice or SignatureKind.PhotonSermon or SignatureKind.SolarFilament;
 
     public static void Spawn(Node parent, SignatureKind kind, Vector3 at, Vector3 from, bool hasFrom)
     {
@@ -125,6 +154,28 @@ public partial class SignatureBurst : Node3D
                 _life = 0.9f;
                 Light(Cyan, 7f, 6f);
                 break;
+            case SignatureKind.RendPulse:
+                Fan(Magenta, Cyan);
+                Ring(Cyan, 1.35f, new Vector3(-90f, 0f, 0f));
+                _life = 0.95f;
+                Light(Magenta, 6f, 5f);
+                break;
+            case SignatureKind.NeedleFlicker:
+                Beam(Cyan, Magenta, 0.035f, 0.012f);
+                Flash(Cyan, 0.12f);
+                _life = 0.55f;
+                Light(Cyan, 5f, 4f);
+                break;
+            case SignatureKind.PhotonSermon:
+                Sermon(Magenta, Cyan);
+                _life = 1.5f;
+                Light(Magenta, 7f, 6f);
+                break;
+            case SignatureKind.SolarFilament:
+                Filament(Cyan, Magenta);
+                _life = 1.2f;
+                Light(Cyan, 8f, 7f);
+                break;
             default:
                 Spike(Magenta, Cyan);
                 Ring(Cyan, 0.85f, new Vector3(-90f, 0f, 0f));
@@ -163,20 +214,20 @@ public partial class SignatureBurst : Node3D
         AddChild(mesh);
     }
 
-    private void Beam(Color core, Color edge)
+    private void Beam(Color core, Color edge, float outerSize = 0.16f, float innerSize = 0.05f)
     {
         Vector3 hero = _hasFrom ? ToLocal(_from) : new Vector3(0f, 1.2f, -2f);
         Vector3 mid = hero * 0.5f;
         float length = Mathf.Max(0.4f, hero.Length());
         var outer = new MeshInstance3D
         {
-            Mesh = new BoxMesh { Size = new Vector3(0.16f, 0.16f, 1f) },
+            Mesh = new BoxMesh { Size = new Vector3(outerSize, outerSize, 1f) },
             MaterialOverride = AddMat(edge),
             CastShadow = GeometryInstance3D.ShadowCastingSetting.Off,
         };
         var inner = new MeshInstance3D
         {
-            Mesh = new BoxMesh { Size = new Vector3(0.05f, 0.05f, 1f) },
+            Mesh = new BoxMesh { Size = new Vector3(innerSize, innerSize, 1f) },
             MaterialOverride = AddMat(core),
             CastShadow = GeometryInstance3D.ShadowCastingSetting.Off,
         };
@@ -190,6 +241,68 @@ public partial class SignatureBurst : Node3D
             beam.Scale = new Vector3(1f, 1f, length);
             beam.LookAt(GlobalPosition, up);
         }
+    }
+
+    private void Fan(Color a, Color b)
+    {
+        for (int i = 0; i < 5; i++)
+        {
+            float yaw = -48f + (i * 24f);
+            var plate = Quad(i % 2 == 0 ? a : b, new Vector2(0.16f, 1.25f), billboard: false);
+            float rad = Mathf.DegToRad(yaw);
+            plate.Position = new Vector3(Mathf.Sin(rad) * 0.7f, 0.2f, Mathf.Cos(rad) * 0.7f);
+            plate.RotationDegrees = new Vector3(80f, yaw, 0f);
+            AddChild(plate);
+            _spun.Add(plate);
+        }
+    }
+
+    private void Sermon(Color body, Color ring)
+    {
+        var column = new MeshInstance3D
+        {
+            Mesh = new CylinderMesh { TopRadius = 0.08f, BottomRadius = 0.34f, Height = 1.7f, RadialSegments = 6 },
+            MaterialOverride = AddMat(body),
+            Position = new Vector3(0f, 0.85f, 0f),
+            CastShadow = GeometryInstance3D.ShadowCastingSetting.Off,
+        };
+        AddChild(column);
+        for (int i = 0; i < 3; i++)
+        {
+            var mesh = new MeshInstance3D
+            {
+                Mesh = new TorusMesh { InnerRadius = 0.28f + (i * 0.16f), OuterRadius = 0.4f + (i * 0.16f), Rings = 6, RingSegments = 6 },
+                MaterialOverride = AddMat(i == 1 ? ring : body),
+                Position = new Vector3(0f, 0.35f + (i * 0.45f), 0f),
+                RotationDegrees = new Vector3(-90f, i * 20f, 0f),
+                CastShadow = GeometryInstance3D.ShadowCastingSetting.Off,
+            };
+            AddChild(mesh);
+            _spun.Add(mesh);
+        }
+    }
+
+    private void Filament(Color a, Color b)
+    {
+        Vector3 hero = _hasFrom ? ToLocal(_from) : new Vector3(0f, 1.2f, -3f);
+        Vector3 aim = hero.LengthSquared() < 0.0001f ? Vector3.Back : hero.Normalized();
+        Vector3 up = Mathf.Abs(aim.Dot(Vector3.Up)) > 0.92f ? Vector3.Right : Vector3.Up;
+        const int count = 8;
+        for (int i = 0; i < count; i++)
+        {
+            float t = (i + 0.5f) / count;
+            var seg = new MeshInstance3D
+            {
+                Mesh = new BoxMesh { Size = new Vector3(i % 2 == 0 ? 0.1f : 0.05f, i % 2 == 0 ? 0.1f : 0.05f, 0.42f) },
+                MaterialOverride = AddMat(i % 2 == 0 ? a : b),
+                Position = hero * (1f - t),
+                CastShadow = GeometryInstance3D.ShadowCastingSetting.Off,
+            };
+            AddChild(seg);
+            seg.LookAt(GlobalPosition, up);
+        }
+
+        Flash(a, 0.16f);
     }
 
     private void Lattice(Color face, Color edge)

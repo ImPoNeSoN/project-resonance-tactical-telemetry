@@ -327,3 +327,129 @@ Scripts: vs4-3d/scripts (stage1t.py, stage2_hero.py, hero_rig.py, hero_*.py, fxl
 | Kaelis Moon-Ravel | **Shipped, flagged for review** | Tail OK: 7-bone chain, free-hanging, clean weights (tail verts reassigned, leg/tail cross-weights removed), animated in every clip. Legs: TRELLIS produced **semi-digitigrade** legs (long paw-foot, raised heel, low hock), not a true high-hock leg. The geometry is intact and deforms cleanly, so it passed the gate, but it is not fully digitigrade. Evidence: `kaelis_moon_ravel_legs_evidence.png`. The inner hood lining glows magenta; the face itself stays dark as in the concept. The crescent blades are a design addition (the concept shows claws only). |
 
 Common: textures are baked from TRELLIS vertex colour (not projected from the concept), so they cover the whole model but are softer than Korrith's concept-projected bake. TRELLIS's own texture baker was not used because it needs nvdiffrast (non-commercial).
+
+---
+
+# Hero batch 3 (TRELLIS): Saeli, Aurel
+
+Added 2026-10-04. Same axes, scale (1 u = 1 m, glTF +Y up, front faces +Z), 30 fps and loop handling as Korrith (see top).
+
+## saeli_thorn_vesper.glb: Saeli Thorn-Vesper (Sylvari-Mor, physical linker (docs/03a Hero 05))
+
+- Generator: TRELLIS-image-large (MIT), saeli_nt seed 1; seeds tried: saeli 1-8 (tail painted in front of the thigh in every seed); saeli_nt (tail painted out of the input) 1-6. Input: concepts/saeli_apose.jpg with the tail painted out (TRELLIS fused it in front of the thigh); tail rebuilt procedurally. Height 1.75 m.
+- Size: 10.0 MB. Triangles total: **23,312**. By mesh: Saeli_Body 22,000, Saeli_NeedleFlickerFX 100, Saeli_NeedleStiletto 36, Saeli_RendPulseFX 56, Saeli_Tail 998, Saeli_ThornSickle 122
+- Textures (embedded PNG): body 2048px basecolor / metallicRoughness / normal / emissive; FX and props use untextured emissive materials.
+- Design mapping:
+  - dark feline Sylvari-Mor duelist, magenta/cyan neon (TRELLIS colour); 1.75 m (docs/01 Sylvari-Mor 5'6"-6'2"), shorter and slimmer than Kaelis (1.88 m)
+  - TRUE digitigrade legs: TRELLIS leg reshaped in Blender (scripts/digi.py): knee forward at 0.52 m, hock raised and set back to 0.30 m (17% of height, ~35% of leg length), metatarsal slants forward to the paw, heel lifted 7 cm so she stands on the ball of the paw. Rig: LowerLeg = knee->hock, Foot = hock->ball, Toes = ball->toe
+  - side braid over the right shoulder (TRELLIS mesh) -> Braid1-3 chain off Head, sways in every clip
+  - long counterbalancing tail (procedural, 7-bone Tail1-Tail7 off Hips), sweeps back for the Sylvari-Mor Z silhouette; differs from Kaelis (her tail hangs to her left)
+  - Rend Pulse (Slashing opener) -> thorn sickle in the right hand + Saeli_RendPulseFX arc on FX_Rend (Root)
+  - Needle Flicker (Piercing, stance-cost) -> needle stiletto in the left hand + Saeli_NeedleFlickerFX streak on FX_Needle (child of LeftHand_Prop)
+
+### Prop and FX bones
+
+- `LeftHand_Prop`: needle stiletto grip; parent of FX_Needle
+- `RightHand_Prop`: thorn sickle grip
+- `FX_Rend`: Rend Pulse arc (scale tracks)
+- `FX_Needle`: Needle Flicker streak (scale tracks)
+- `Braid1-Braid3`: side braid chain (deform bones, not in the humanoid profile)
+- `Tail1-Tail7`: tail chain (deform bones, not in the humanoid profile)
+
+### Clips
+
+| Clip | Frames | Duration | Loop | Notes |
+|---|---|---|---|---|
+| `idle` | 0-90 | 3.0 s | yes | 3 s loop, weight on the balls of the paws, tail flick every 1.5 s, braid sway |
+| `ready` | 0-40 | 1.333 s | yes | duelist stance: sickle high, needle low |
+| `attack` | 0-28 | 0.933 s | no | sickle cut: wind f6, cut f10 |
+| `rend_pulse` | 0-36 | 1.2 s | no | coil f7, spin-step sweep f13 (lead paw steps then plants), arc FX f10-22, recover f36 |
+| `needle_flicker` | 0-28 | 0.933 s | no | two stiletto thrusts f7 and f13, streak FX on each |
+| `hit_react` | 0-20 | 0.667 s | no | recoil f3, recover f20 |
+| `stunned` | 0-60 | 2.0 s | yes | head sway, tail droops |
+| `death` | 0-64 | 2.133 s | no | stagger f6, knees f24, fall forward f46 |
+
+### Bones (70)
+
+`Root`, `Hips`, `Spine`, `Chest`, `UpperChest`, `Neck`, `Head`, `LeftEye`, `RightEye`, `Jaw`, `Braid1`, `Braid2`, `Braid3`, `LeftShoulder`, `LeftUpperArm`, `LeftLowerArm`, `LeftHand`, `LeftIndexProximal`, `LeftIndexIntermediate`, `LeftIndexDistal`, `LeftMiddleProximal`, `LeftMiddleIntermediate`, `LeftMiddleDistal`, `LeftRingProximal`, `LeftRingIntermediate`, `LeftRingDistal`, `LeftLittleProximal`, `LeftLittleIntermediate`, `LeftLittleDistal`, `LeftThumbMetacarpal`, `LeftThumbProximal`, `LeftThumbDistal`, `LeftHand_Prop`, `FX_Needle`, `RightShoulder`, `RightUpperArm`, `RightLowerArm`, `RightHand`, `RightIndexProximal`, `RightIndexIntermediate`, `RightIndexDistal`, `RightMiddleProximal`, `RightMiddleIntermediate`, `RightMiddleDistal`, `RightRingProximal`, `RightRingIntermediate`, `RightRingDistal`, `RightLittleProximal`, `RightLittleIntermediate`, `RightLittleDistal`, `RightThumbMetacarpal`, `RightThumbProximal`, `RightThumbDistal`, `RightHand_Prop`, `LeftUpperLeg`, `LeftLowerLeg`, `LeftFoot`, `LeftToes`, `RightUpperLeg`, `RightLowerLeg`, `RightFoot`, `RightToes`, `Tail1`, `Tail2`, `Tail3`, `Tail4`, `Tail5`, `Tail6`, `Tail7`, `FX_Rend`
+
+- Naming: Godot SkeletonProfileHumanoid names and hierarchy as Korrith (all 56 profile bones present, verified in Godot 4.7.2) + extras
+- Feet: feet IK-locked during authoring (empties removed before export) and baked to FK keys
+
+### Validation
+
+- Khronos glTF-Validator: 0 errors, 7 warnings (MESH_PRIMITIVE_GENERATED_TANGENT_SPACE, NODE_SKINNED_MESH_NON_ROOT; same Blender-exporter warnings as Korrith).
+- Blender re-import: 8 actions; skinned meshes: Saeli_Body, Saeli_NeedleFlickerFX, Saeli_NeedleStiletto, Saeli_RendPulseFX, Saeli_Tail, Saeli_ThornSickle.
+- Godot 4.7.2 headless import: ANIM attack len=0.933 tracks=62 loop=0; ANIM death len=2.133 tracks=62 loop=0; ANIM hit_react len=0.667 tracks=62 loop=0; ANIM idle len=3.0 tracks=62 loop=1; ANIM needle_flicker len=0.933 tracks=62 loop=0; ANIM ready len=1.333 tracks=62 loop=1; ANIM rend_pulse len=1.2 tracks=62 loop=0; ANIM stunned len=2.0 tracks=62 loop=1; HUMANOID_PROFILE bones=56 missing=[]
+
+Previews: `saeli_thorn_vesper_turntable.png`, `saeli_thorn_vesper_clips_contact.png`, `saeli_thorn_vesper_legs_evidence.png`
+
+## aurel_nine_vesper.glb: Aurel Nine-Vesper (Aethel-Born, arcane lightwright, Solar Apex finisher (docs/03b Hero 20); referred to as "it")
+
+- Generator: TRELLIS-image-large (MIT), seed 3; seeds tried: aurel 1-8. Input: concepts/aurel_apose.jpg with the nine hex halo tiles erased (rebuilt procedurally). Height 1.85 m.
+- Size: 10.6 MB. Triangles total: **25,292**. By mesh: Aurel_Body 24,000, Aurel_HexHalo 972, Aurel_LightFocusFX 104, Aurel_SolarFilamentFX 216
+- Textures (embedded PNG): body 2048px basecolor / metallicRoughness / normal / emissive; FX and props use untextured emissive materials.
+- Design mapping:
+  - graphite porcelain shell (dark grey gloss ceramic, cool cyan/magenta traces) vs Seraphine's ivory; 1.85 m (docs/01 Aethel-Born 5'10"-6'4"; Seraphine 1.80 m)
+  - ring of nine floating hex light tiles -> Aurel_HexHalo: separate procedural mesh (graphite frames, magenta light faces, cyan glyph rings) on FX_Halo (child of Head); idle = still body + slow halo pendulum (docs: still apart from the ring)
+  - split armour coat-tail panels -> 6 panel bones (CoatL/R_Front, _Mid, _Back off Hips); panel verts rigidly assigned by azimuth sector, blended to Hips at the waist, so panels stay flat; they follow the thighs by a fixed ratio and lag 1 frame
+  - Photon Sermon (Light nuke, 900-tick chant) -> Aurel_LightFocusFX prism + hex rings on FX_Focus (Root)
+  - Solar Filament (Tier-3, 1,600-tick chant, Solar Apex closer) -> Aurel_SolarFilamentFX 3 m hex beam on FX_Filament (Root)
+
+### Prop and FX bones
+
+- `LeftHand_Prop`: empty (no handheld prop in concept)
+- `RightHand_Prop`: empty
+- `FX_Halo`: halo pivot behind the head (rotation + scale tracks)
+- `FX_Focus`: light focus (scale + location tracks)
+- `FX_Filament`: Solar Filament beam (scale tracks)
+- `CoatL_Front/Mid/Back, CoatR_Front/Mid/Back`: coat-tail panel bones (deform, not in the humanoid profile)
+
+### Clips
+
+| Clip | Frames | Duration | Loop | Notes |
+|---|---|---|---|---|
+| `idle` | 0-90 | 3.0 s | yes | perfectly still apart from the halo pendulum + faint breath |
+| `ready` | 0-40 | 1.333 s | yes | casting guard, palms open |
+| `attack` | 0-30 | 1.0 s | no | light dart palm push f14, focus flash |
+| `photon_sermon` | 0-48 | 1.6 s | no | gather f10-22, tiles swell, release burst f28 |
+| `solar_filament` | 0-72 | 2.4 s | no | arms rise f26, focus overhead f26-48, beam driven forward f53-60, gone by f64 |
+| `hit_react` | 0-20 | 0.667 s | no | recoil f3, recover f20 |
+| `stunned` | 0-60 | 2.0 s | yes | head loll, halo wobble |
+| `death` | 0-64 | 2.133 s | no | sag f8, kneel f26, fall forward f48; halo shrinks to 0 by f52 |
+
+### Bones (67)
+
+`Root`, `Hips`, `Spine`, `Chest`, `UpperChest`, `Neck`, `Head`, `LeftEye`, `RightEye`, `Jaw`, `FX_Halo`, `LeftShoulder`, `LeftUpperArm`, `LeftLowerArm`, `LeftHand`, `LeftIndexProximal`, `LeftIndexIntermediate`, `LeftIndexDistal`, `LeftMiddleProximal`, `LeftMiddleIntermediate`, `LeftMiddleDistal`, `LeftRingProximal`, `LeftRingIntermediate`, `LeftRingDistal`, `LeftLittleProximal`, `LeftLittleIntermediate`, `LeftLittleDistal`, `LeftThumbMetacarpal`, `LeftThumbProximal`, `LeftThumbDistal`, `LeftHand_Prop`, `RightShoulder`, `RightUpperArm`, `RightLowerArm`, `RightHand`, `RightIndexProximal`, `RightIndexIntermediate`, `RightIndexDistal`, `RightMiddleProximal`, `RightMiddleIntermediate`, `RightMiddleDistal`, `RightRingProximal`, `RightRingIntermediate`, `RightRingDistal`, `RightLittleProximal`, `RightLittleIntermediate`, `RightLittleDistal`, `RightThumbMetacarpal`, `RightThumbProximal`, `RightThumbDistal`, `RightHand_Prop`, `LeftUpperLeg`, `LeftLowerLeg`, `LeftFoot`, `LeftToes`, `RightUpperLeg`, `RightLowerLeg`, `RightFoot`, `RightToes`, `CoatL_Front`, `CoatR_Front`, `CoatL_Mid`, `CoatR_Mid`, `CoatL_Back`, `CoatR_Back`, `FX_Focus`, `FX_Filament`
+
+- Naming: Godot SkeletonProfileHumanoid names and hierarchy as Korrith (all 56 profile bones present, verified in Godot 4.7.2) + extras
+- Feet: feet IK-locked during authoring (empties removed before export) and baked to FK keys
+
+### Validation
+
+- Khronos glTF-Validator: 0 errors, 5 warnings (MESH_PRIMITIVE_GENERATED_TANGENT_SPACE, NODE_SKINNED_MESH_NON_ROOT; same Blender-exporter warnings as Korrith).
+- Blender re-import: 8 actions; skinned meshes: Aurel_Body, Aurel_HexHalo, Aurel_LightFocusFX, Aurel_SolarFilamentFX.
+- Godot 4.7.2 headless import: ANIM attack len=1.0 tracks=61 loop=0; ANIM death len=2.133 tracks=61 loop=0; ANIM hit_react len=0.667 tracks=61 loop=0; ANIM idle len=3.0 tracks=61 loop=1; ANIM photon_sermon len=1.6 tracks=61 loop=0; ANIM ready len=1.333 tracks=61 loop=1; ANIM solar_filament len=2.4 tracks=61 loop=0; ANIM stunned len=2.0 tracks=61 loop=1; HUMANOID_PROFILE bones=56 missing=[]
+
+Previews: `aurel_nine_vesper_turntable.png`, `aurel_nine_vesper_clips_contact.png`
+
+## Hero batch 3: sources, licenses, pipeline
+
+- **Microsoft TRELLIS (TRELLIS-image-large) image-to-3D, run locally on gregspc (RTX 4070, torch 2.5.1+cu124)**: https://huggingface.co/microsoft/TRELLIS-image-large (MIT (code and TRELLIS-image-large weights)). Dependencies and avoided non-commercial packages: same as hero batch 2.
+- Procedural additions authored by script: Saeli tail, thorn sickle, needle stiletto, Rend/Needle FX, leg reshape; Aurel nine-tile hex halo, light focus, Solar Filament beam. All rigs, weights and clips are scripted.
+
+- PC (gregspc): TRELLIS-image-large only (no Hunyuan), concept -> mesh with vertex colour; Saeli 8 seeds + 6 seeds on a tail-free input, Aurel 8 seeds on a halo-free input
+- Box (Blender 4.2.23 LTS headless): same stage-1 cleanup/bake as batch 2; Saeli lower-leg digitigrade reshape (digi.py) before the bake
+- Same scripted Korrith-matched skeleton, weights and FootIK-authored clips as batch 2; new sector weight rule for Aurel's rigid coat panels
+- Validation: Khronos gltf-validator, Blender re-import, Godot 4.7.2 headless import with the shipped .glb.import
+
+Scripts: vs4-3d/scripts/trellis_heroes2 (stage1t.py, digi.py, stage2_hero.py, hero_saeli.py, hero_aurel.py, cfg/*.json, validate_final.sh, manifest_heroes3.py)
+
+## Hero batch 3: quality assessment (honest)
+
+| Hero | Gate result | Notes |
+|---|---|---|
+| Saeli Thorn-Vesper | **Shipped** (digitigrade achieved by Blender reshape, not by TRELLIS) | Legs: real high hock. Knee at 0.52 m, hock at 0.30 m (17% of height; Kaelis is ~8.5%), forward-slanting metatarsal, heel lifted 7 cm. Evidence: `saeli_thorn_vesper_legs_evidence.png`. Caveats: the reshape stretches the texture a little on the front of the knee and leaves a small step at the knee plate; the paw is still large and flat-soled at the front. Tail: TRELLIS fused it in front of the thigh in all 8 seeds, so it was painted out of the input and rebuilt as a procedural 7-bone tail that sweeps back (Kaelis's hangs to her left). Braid: TRELLIS mesh over the right shoulder, Braid1-3 chain (it lies on the chest, so sway is kept small). Distinct from Kaelis: shorter (1.75 vs 1.88 m) and slimmer, unhooded with a braid, sickle + stiletto instead of twin crescents, magenta-forward palette. |
+| Aurel Nine-Vesper | **Shipped** | Graphite porcelain reads clearly darker and cooler than Seraphine's ivory; the back is dark. The nine hex tiles were erased from the input and rebuilt as `Aurel_HexHalo` on FX_Halo (child of Head); each tile reads as a hex at turntable size. Coat-tail panels: 6 panel bones with rigid sector weights, so no shredding in any clip. The panels follow the Hips rather than the IK legs, with extra keys in death so they lie flat. In the kneel (death f26) the front panels can touch the thighs. The arms are TRELLIS A-pose with open hands (no props). |
+
+Common: textures are baked from TRELLIS vertex colour, the same as batch 2. Props and FX are untextured emissive materials.
