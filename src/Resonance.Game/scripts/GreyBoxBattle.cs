@@ -29,6 +29,7 @@ public partial class GreyBoxBattle : Control
 
     private SimBridge _bridge = null!;
     private Label _status = null!;
+    private Label _banner = null!;
     private Label _bossTitle = null!;
     private Label _resonance = null!;
     private Label _abilityDetail = null!;
@@ -196,9 +197,9 @@ public partial class GreyBoxBattle : Control
 
         var top = new HBoxContainer();
         top.AddThemeConstantOverride("separation", 12);
-        var title = new Label { Text = "Project Resonance  ·  Grey-Box Battle  ·  Carapace Engine" };
-        title.AddThemeFontSizeOverride("font_size", 15);
-        top.AddChild(title);
+        _banner = new Label { Text = "Project Resonance  ·  Grey-Box Battle" };
+        _banner.AddThemeFontSizeOverride("font_size", 15);
+        top.AddChild(_banner);
 
         _status = new Label
         {
@@ -831,6 +832,7 @@ public partial class GreyBoxBattle : Control
             : $"{party}   Tick {sim.Tick}   {paused}{frenzy}   Seed {_bridge.Seed}";
         _auto.Text = _bridge.AutoRunning ? "Stop" : "Auto-run";
         _pause.Text = sim.Paused ? "Resume" : "Pause";
+        _banner.Text = $"Project Resonance  ·  Grey-Box Battle  ·  {sim.Boss.Name}";
         _bossTitle.Text = sim.Boss.Name;
         _resonance.Text = ResonanceReadout.Summarize(sim);
         _order.Text = OrderText(sim);
