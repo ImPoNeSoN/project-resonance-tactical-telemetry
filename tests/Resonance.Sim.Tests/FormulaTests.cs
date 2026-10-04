@@ -279,6 +279,27 @@ public class FormulaTests
     }
 
     [Fact]
+    public void Charge_fills_from_ticks_until_the_next_action()
+    {
+        int full = ApGauge.TicksUntilReady(0, 1_800);
+        int left = ApGauge.TicksUntilReady(540_000, 1_800);
+        Assert.Equal(256, left);
+        Assert.Equal(0, ApGauge.ChargeBp(full, full));
+        Assert.Equal(10_000, ApGauge.ChargeBp(0, full));
+        Assert.Equal(0, ApGauge.ChargeBp(full + 40, full));
+        Assert.Equal((full - left) * 10_000 / full, ApGauge.ChargeBp(left, full));
+        Assert.Equal(5_395, ApGauge.NextActionChargeBp(540_000, 1_800, casting: false, 0, 0, 0));
+        Assert.Equal(10_000, ApGauge.NextActionChargeBp(SimConst.ReadyCenti, 1_800, casting: false, 0, 0, 0));
+        Assert.Equal(0, ApGauge.NextActionChargeBp(-50_000, 1_800, casting: false, 0, 0, 0));
+        Assert.Equal(0, ApGauge.NextActionChargeBp(0, 0, casting: false, 0, 0, 0));
+        Assert.Equal(10_000, ApGauge.NextActionChargeBp(SimConst.ReadyCenti, 0, casting: false, 0, 0, 0));
+
+        Assert.Equal(0, ApGauge.NextActionChargeBp(SimConst.ReadyCenti, 1_800, casting: true, 100, 300, 100));
+        Assert.Equal(5_000, ApGauge.NextActionChargeBp(SimConst.ReadyCenti, 1_800, casting: true, 100, 300, 200));
+        Assert.Equal(10_000, ApGauge.NextActionChargeBp(SimConst.ReadyCenti, 1_800, casting: true, 100, 300, 300));
+    }
+
+    [Fact]
     public void Haste_and_slow_change_centi_ap_and_cap()
     {
         Assert.Equal(840, Formulas.AgiCentiPerTick(12, 0, 3_000));

@@ -1,0 +1,405 @@
+{
+  "pack": "Project Resonance VS-4 art pack",
+  "scope": "HUD 9-slice kit + status/element icons only (hero portraits and boss layers descoped by coordinator 2026-10-03; none were produced)",
+  "engine": "Godot 4.7.2 (C#)",
+  "scale_note": "All files ship at 2x the target size. Import with Texture filter Linear, mipmaps off; for StyleBoxTexture use the 2x margins with the texture at 2x, or the 1x margins if you scale the texture to 1x.",
+  "nine_slice_note": "Margins are texture_margin_left/top/right/bottom. Center and edge stretch zones are mathematically uniform (one repeated row/column), so axis_stretch Stretch, Tile, or TileFit are all seam-free.",
+  "hud": [
+    {
+      "file": "hud/hud_party_card@2x.png",
+      "target": [
+        192,
+        96
+      ],
+      "shipped": [
+        384,
+        192
+      ],
+      "margins_2x": [
+        32,
+        32,
+        32,
+        32
+      ],
+      "margins_1x": [
+        16,
+        16,
+        16,
+        16
+      ],
+      "purpose": "Hero card in the bottom-left party panel (HP/MP/Heat bars, statuses)."
+    },
+    {
+      "file": "hud/hud_boss_part_panel@2x.png",
+      "target": [
+        224,
+        72
+      ],
+      "shipped": [
+        448,
+        144
+      ],
+      "margins_2x": [
+        32,
+        24,
+        32,
+        24
+      ],
+      "margins_1x": [
+        16,
+        12,
+        16,
+        12
+      ],
+      "purpose": "Row panel for one boss sub-target (Core / Shield / Weapon Arm) in the anatomy panel."
+    },
+    {
+      "file": "hud/hud_ability_panel@2x.png",
+      "target": [
+        160,
+        64
+      ],
+      "shipped": [
+        320,
+        128
+      ],
+      "margins_2x": [
+        24,
+        24,
+        24,
+        24
+      ],
+      "margins_1x": [
+        12,
+        12,
+        12,
+        12
+      ],
+      "purpose": "Pinned ability details card / ability bar backing in bottom-center."
+    },
+    {
+      "file": "hud/hud_timeline_bar@2x.png",
+      "target": [
+        320,
+        32
+      ],
+      "shipped": [
+        640,
+        64
+      ],
+      "margins_2x": [
+        48,
+        24,
+        48,
+        24
+      ],
+      "margins_1x": [
+        24,
+        12,
+        24,
+        12
+      ],
+      "purpose": "10,000-AP timeline track backing (top band); ticks and chips drawn by TimelineBar.cs."
+    },
+    {
+      "file": "hud/hud_button_normal@2x.png",
+      "target": [
+        128,
+        40
+      ],
+      "shipped": [
+        256,
+        80
+      ],
+      "margins_2x": [
+        24,
+        24,
+        24,
+        24
+      ],
+      "margins_1x": [
+        12,
+        12,
+        12,
+        12
+      ],
+      "purpose": "Generic command button, normal state."
+    },
+    {
+      "file": "hud/hud_button_hover@2x.png",
+      "target": [
+        128,
+        40
+      ],
+      "shipped": [
+        256,
+        80
+      ],
+      "margins_2x": [
+        24,
+        24,
+        24,
+        24
+      ],
+      "margins_1x": [
+        12,
+        12,
+        12,
+        12
+      ],
+      "purpose": "Generic command button, hover state (brighter glow and trim)."
+    },
+    {
+      "file": "hud/hud_button_pressed@2x.png",
+      "target": [
+        128,
+        40
+      ],
+      "shipped": [
+        256,
+        80
+      ],
+      "margins_2x": [
+        24,
+        24,
+        24,
+        24
+      ],
+      "margins_1x": [
+        12,
+        12,
+        12,
+        12
+      ],
+      "purpose": "Generic command button, pressed state (darker fill, inset bevel, dim glow)."
+    }
+  ],
+  "icons": [
+    {
+      "file": "icons/icon_status_stun@2x.png",
+      "label": "Stun",
+      "color": "#FFC93C",
+      "target": [
+        32,
+        32
+      ],
+      "shipped": [
+        64,
+        64
+      ],
+      "purpose": "Status: stunned (no AP gain)."
+    },
+    {
+      "file": "icons/icon_status_shield@2x.png",
+      "label": "Shield",
+      "color": "#00E5FF",
+      "target": [
+        32,
+        32
+      ],
+      "shipped": [
+        64,
+        64
+      ],
+      "purpose": "Status: absorb shield active."
+    },
+    {
+      "file": "icons/icon_status_regen@2x.png",
+      "label": "Regen",
+      "color": "#5CFF9D",
+      "target": [
+        32,
+        32
+      ],
+      "shipped": [
+        64,
+        64
+      ],
+      "purpose": "Status: HP regen pulses."
+    },
+    {
+      "file": "icons/icon_element_fire@2x.png",
+      "label": "Fire",
+      "color": "#FF7A1F",
+      "target": [
+        32,
+        32
+      ],
+      "shipped": [
+        64,
+        64
+      ],
+      "purpose": "Element/property: Fire."
+    },
+    {
+      "file": "icons/icon_element_ice@2x.png",
+      "label": "Ice",
+      "color": "#8FE3FF",
+      "target": [
+        32,
+        32
+      ],
+      "shipped": [
+        64,
+        64
+      ],
+      "purpose": "Element/property: Ice."
+    },
+    {
+      "file": "icons/icon_element_wind@2x.png",
+      "label": "Wind",
+      "color": "#7CF2B0",
+      "target": [
+        32,
+        32
+      ],
+      "shipped": [
+        64,
+        64
+      ],
+      "purpose": "Element/property: Wind."
+    },
+    {
+      "file": "icons/icon_element_light@2x.png",
+      "label": "Light",
+      "color": "#FFF2B3",
+      "target": [
+        32,
+        32
+      ],
+      "shipped": [
+        64,
+        64
+      ],
+      "purpose": "Element/property: Light."
+    },
+    {
+      "file": "icons/icon_element_darkness@2x.png",
+      "label": "Darkness",
+      "color": "#5A3FA8",
+      "target": [
+        32,
+        32
+      ],
+      "shipped": [
+        64,
+        64
+      ],
+      "purpose": "Element/property: Darkness (glyph tinted lighter for legibility)."
+    },
+    {
+      "file": "icons/icon_element_earth@2x.png",
+      "label": "Earth",
+      "color": "#C69A3A",
+      "target": [
+        32,
+        32
+      ],
+      "shipped": [
+        64,
+        64
+      ],
+      "purpose": "Element/property: Earth."
+    },
+    {
+      "file": "icons/icon_element_blunt@2x.png",
+      "label": "Blunt",
+      "color": "#B8A99A",
+      "target": [
+        32,
+        32
+      ],
+      "shipped": [
+        64,
+        64
+      ],
+      "purpose": "Physical property: Blunt."
+    },
+    {
+      "file": "icons/icon_element_slashing@2x.png",
+      "label": "Slashing",
+      "color": "#E0414F",
+      "target": [
+        32,
+        32
+      ],
+      "shipped": [
+        64,
+        64
+      ],
+      "purpose": "Physical property: Slashing."
+    },
+    {
+      "file": "icons/icon_element_piercing@2x.png",
+      "label": "Piercing",
+      "color": "#E6EDF2",
+      "target": [
+        32,
+        32
+      ],
+      "shipped": [
+        64,
+        64
+      ],
+      "purpose": "Physical property: Piercing."
+    },
+    {
+      "file": "icons/icon_element_lightning@2x.png",
+      "label": "Lightning",
+      "color": "#C9A8FF",
+      "target": [
+        32,
+        32
+      ],
+      "shipped": [
+        64,
+        64
+      ],
+      "purpose": "Element/property: Lightning."
+    },
+    {
+      "file": "icons/icon_element_water@2x.png",
+      "label": "Water",
+      "color": "#2F7BFF",
+      "target": [
+        32,
+        32
+      ],
+      "shipped": [
+        64,
+        64
+      ],
+      "purpose": "Element/property: Water (glyph tinted lighter for legibility)."
+    },
+    {
+      "file": "icons/icon_element_umbral@2x.png",
+      "label": "Umbral",
+      "color": "#B0307A",
+      "target": [
+        32,
+        32
+      ],
+      "shipped": [
+        64,
+        64
+      ],
+      "purpose": "Damage type: Umbral true damage (glyph tinted lighter for legibility)."
+    },
+    {
+      "file": "icons/icon_element_true@2x.png",
+      "label": "True",
+      "color": "#FFFFFF",
+      "target": [
+        32,
+        32
+      ],
+      "shipped": [
+        64,
+        64
+      ],
+      "purpose": "Damage type: True damage (white with black outline)."
+    }
+  ],
+  "preview": "preview_contact_sheet.png",
+  "sources": "Procedural (Python/Pillow/numpy): tools in /workspace/project-resonance-art/tools/hud.py, icons.py, build_sheet.py, manifest.py"
+}
