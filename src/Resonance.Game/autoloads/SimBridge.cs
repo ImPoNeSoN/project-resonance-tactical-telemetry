@@ -13,6 +13,7 @@ public partial class SimBridge : Node
     private int _shown;
     private bool _auto;
     private double _wait;
+    private FloorRun? _floor;
 
     [Signal]
     public delegate void LogLineEventHandler(string line);
@@ -26,7 +27,16 @@ public partial class SimBridge : Node
     [Signal]
     public delegate void ResonanceChangedEventHandler(string summary);
 
+    [Signal]
+    public delegate void FloorChangedEventHandler();
+
     public BattleSimulator Simulation => _sim;
+
+    public FloorRun? Floor => _floor;
+
+    public bool InFloorFight { get; private set; }
+
+    public bool BossOnly { get; private set; }
 
     public ulong Seed { get; private set; } = CarapaceEncounter.ShowcaseSeed;
 
@@ -84,7 +94,94 @@ public partial class SimBridge : Node
 
         Preset = preset;
         Seed = CarapaceEncounter.ShowcaseSeed;
+        InFloorFight = false;
         Swap(CarapaceEncounter.Create(preset, Seed));
+    }
+
+    /// <summary>Opens a linear Cinder Throat floor on the showcase seed.</summary>
+    public void StartFloor(int preset)
+    {
+        if (preset < 0 || preset >= PartyPreset.Count)
+        {
+            preset = PartyPreset.IceLattice;
+        }
+
+        Preset = preset;
+        BossOnly = false;
+        InFloorFight = false;
+        _floor = FloorRun.Start(preset, CarapaceEncounter.ShowcaseSeed);
+        EmitSignal(SignalName.FloorChanged);
+    }
+
+    public void LeaveFloor()
+    {
+        _floor = null;
+        InFloorFight = false;
+        BossOnly = false;
+        EmitSignal(SignalName.FloorChanged);
+    }
+
+    /// <summary>Boss only. The floor map stays behind the existing party picker.</summary>
+    public void StartBossOnly()
+    {
+        _floor = null;
+        InFloorFight = false;
+        BossOnly = true;
+        EmitSignal(SignalName.FloorChanged);
+    }
+
+    public void LoadFloorFight()
+    {
+        if (_floor == null || _floor.Finished || _floor.Current.Kind == FloorRoomKind.Rest)
+        {
+            return;
+        }
+
+        InFloorFight = true;
+        BossOnly = false;
+        Preset = _floor.Preset;
+        Seed = _floor.FightSeed;
+        Swap(_floor.BeginFight());
+        EmitSignal(SignalName.FloorChanged);
+    }
+
+    public void CommitFloorFight()
+    {
+        if (_floor == null || !InFloorFight)
+        {
+            return;
+        }
+
+        _floor.Commit(_sim);
+        InFloorFight = false;
+        EmitSignal(SignalName.FloorChanged);
+    }
+
+    public void TakeFloorRest()
+    {
+        if (_floor == null || _floor.Finished || _floor.Current.Kind != FloorRoomKind.Rest)
+        {
+            return;
+        }
+
+        _floor.Rest();
+        InFloorFight = false;
+        EmitSignal(SignalName.FloorChanged);
+    }
+
+    /// <summary>Gambit auto-run, instantly. Used by the floor's To end button.</summary>
+    public void RunToEnd()
+    {
+        _auto = false;
+        _wait = 0;
+        if (_sim.Paused)
+        {
+            _sim.Resume();
+        }
+
+        _sim.RunToEnd();
+        Flush();
+        Publish();
     }
 
     private void Swap(BattleSimulator sim)

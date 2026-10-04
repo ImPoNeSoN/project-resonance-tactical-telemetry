@@ -128,6 +128,43 @@ public class BalanceHarnessTests
         Assert.InRange(share, 0, 60);
     }
 
+    [Fact]
+    public void Floor_clears_in_band()
+    {
+        const int n = 12;
+        const ulong first = 20261004UL;
+        for (int preset = 0; preset < PartyPreset.Count; preset++)
+        {
+            int clears = 0;
+            var wipes = new int[FloorRun.RoomCount];
+            for (int i = 0; i < n; i++)
+            {
+                FloorRun run = FloorRun.Simulate(preset, first + (ulong)i);
+                if (run.Cleared)
+                {
+                    clears++;
+                    Console.WriteLine($"floor {PartyPreset.Name(preset)} seed {first + (ulong)i} Cleared ticks {run.Ticks}");
+                }
+                else
+                {
+                    wipes[run.WipeRoom]++;
+                    Console.WriteLine($"floor {PartyPreset.Name(preset)} seed {first + (ulong)i} Wiped at {FloorRun.Rooms[run.WipeRoom].Name} ticks {run.Ticks}");
+                }
+            }
+
+            Console.WriteLine($"floor {PartyPreset.Name(preset)} clears {clears}/{n}");
+            for (int room = 0; room < wipes.Length; room++)
+            {
+                if (wipes[room] > 0)
+                {
+                    Console.WriteLine($"  wipe {FloorRun.Rooms[room].Name} {wipes[room]}");
+                }
+            }
+
+            Assert.InRange(clears, 6, 9);
+        }
+    }
+
     private static int Sum(int[] values)
     {
         int total = 0;

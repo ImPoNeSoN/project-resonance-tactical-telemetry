@@ -39,6 +39,8 @@ public static class AbilityCatalog
     public const int UmbralPierce = 57;
     public const int RavelExecution = 58;
     public const int ChoirAegis = 59;
+    public const int MiteSpit = 60;
+    public const int SkitterLash = 61;
 
     private static readonly Dictionary<int, AbilityDef> ById = Build();
     private static readonly Dictionary<string, AbilityDef> ByName = IndexNames();
@@ -116,6 +118,8 @@ public static class AbilityCatalog
             New(UmbralPierce, "Umbral Pierce", AbilityKind.ElementalPhysical, ChainProperty.Darkness, ElementId.Darkness, 10_000, 0, 30, 0, 600, 24_000, SupportEffect.None, "Darkness link. Closes Blunt into Distortion (Kiln Guard purge) and Induration into Umbral Zero."),
             New(RavelExecution, "Ravel Execution", AbilityKind.Physical, ChainProperty.Piercing, ElementId.None, 14_000, 0, 0, 0, 1_500, 52_000, SupportEffect.None, "Tier-3 finisher. Closes Slashing into Fragmentation and takes the physical burst bonus inside that window. Execution Frame raises crit damage by 40% and the cap to 2.90× while that part is below 35% HP."),
             New(ChoirAegis, "Choir Aegis", AbilityKind.Support, ChainProperty.None, ElementId.None, 4_000, 300, 80, 200, 100, 20_000, SupportEffect.ChoirAegis, "Single-ally damage shield. Fills that ally's absorb pool."),
+            New(MiteSpit, "Mite Spit", AbilityKind.Magical, ChainProperty.Fire, ElementId.Fire, 8_000, 500, 0, 0, 0, 10_000, SupportEffect.None, "Short fire chant. Floor trash, concentration 0, so damage interrupts it easily."),
+            New(SkitterLash, "Skitter Lash", AbilityKind.Physical, ChainProperty.None, ElementId.None, 8_000, 0, 0, 0, 0, 14_000, SupportEffect.None, "Instant physical bite with no chain property."),
         ];
 
         var map = new Dictionary<int, AbilityDef>(all.Length);
