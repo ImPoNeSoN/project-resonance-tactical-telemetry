@@ -1,0 +1,1834 @@
+{
+ "project": "Project Resonance VS4 3D proof",
+ "generated": "2026-10-04",
+ "common": {
+  "units": "meters (1 glTF unit = 1 m)",
+  "up_axis": "+Y (glTF)",
+  "forward_axis": "model front faces glTF +Z (Blender -Y on export)",
+  "godot_note": "Godot 4 imports glTF unchanged: model front faces +Z, i.e. Godot MODEL_FRONT (Vector3.MODEL_FRONT = +Z). A Node3D looking along its -Z (look_at) will show its back; rotate 180 deg about Y or use look_at(target, Vector3.UP, true) (use_model_front) to face a target.",
+  "fps": 30,
+  "loop_flags_note": "glTF has no loop flag. The provided *.glb.import files set settings/loop_mode=1 (linear loop) for the looping clips; verified in Godot 4.7.2 headless import. Otherwise set loop mode in the Advanced Import dialog or in code."
+ },
+ "assets": [
+  {
+   "file": "korrith_vael_dun.glb",
+   "bytes": 15271880,
+   "sha256_16": "6e2d1c279cb5026e",
+   "character": {
+    "name": "Korrith Vael-Dun",
+    "epithet": "The Unbroken Carapace",
+    "race": "Veth-Kari (chitin-fused subterranean vanguard; NOT Kith-Lir)",
+    "archetype": "Anchor Tank",
+    "docs": [
+     "docs/01-world-and-races.md 1.3",
+     "docs/03a-hero-roster-01-12.md Hero 01",
+     "docs/04-hud-and-visual-engine.md 4.4"
+    ],
+    "design_mapping": [
+     "broad trapezoidal torso + dorsal ridge of overlapping plates rising above the head line (procedural Korrith_DorsalRidge)",
+     "honeycomb keratin lattice on shoulders/forearms/shins (from concept, projected+baked)",
+     "forearm plates flare into bucklers (generated mesh)",
+     "vestigial eyes (no eye geometry; LeftEye/RightEye bones exist only for SkeletonProfileHumanoid)",
+     "Seismic Maul -> one-handed maul prop (right hand)",
+     "Keratin Bastion -> braced crouch + hex shell FX",
+     "palette: style lock overrides doc amber seams -> gunmetal + #00E5FF cyan / magenta emissive"
+    ]
+   },
+   "height_m": 2.12,
+   "triangles_total": 25752,
+   "triangles_by_mesh": {
+    "Korrith_BastionFX": 396,
+    "Korrith_Body": 22000,
+    "Korrith_DorsalRidge": 1432,
+    "Korrith_Maul": 1104,
+    "Korrith_Shield": 820
+   },
+   "meshes": {
+    "Korrith_Body": "image-to-3D body (Hunyuan3D-2), decimated 826k->22k tris, skinned (nearest-bone-segment weights, side-restricted, 2x smoothed, max 4 influences)",
+    "Korrith_Shield": "procedural hex tower shield, 100% rigid to LeftHand_Prop",
+    "Korrith_Maul": "procedural seismic maul, 100% rigid to RightHand_Prop",
+    "Korrith_DorsalRidge": "procedural dorsal keratin plates, rigid to Chest/UpperChest",
+    "Korrith_BastionFX": "hex-lattice shell, alpha-blend emissive cyan, rigid to FX_Bastion; scale ~0 (0.001) in every clip except keratin_bastion"
+   },
+   "textures": [
+    {
+     "set": "korrith_body",
+     "size": 2048,
+     "maps": [
+      "basecolor",
+      "metallicRoughness (G=rough,B=metal)",
+      "normal (tangent)",
+      "emissive"
+     ]
+    },
+    {
+     "set": "korrith_shield",
+     "size": 1024,
+     "maps": [
+      "basecolor",
+      "metallicRoughness",
+      "normal",
+      "emissive"
+     ]
+    },
+    {
+     "set": "korrith_maul",
+     "size": 1024,
+     "maps": [
+      "basecolor",
+      "metallicRoughness",
+      "normal",
+      "emissive"
+     ]
+    },
+    {
+     "set": "korrith_ridge",
+     "size": 512,
+     "maps": [
+      "basecolor",
+      "metallicRoughness",
+      "normal",
+      "emissive"
+     ]
+    }
+   ],
+   "skeleton": {
+    "node": "Korrith_Rig/Skeleton3D",
+    "naming": "Godot SkeletonProfileHumanoid names (all 56 profile bones present, verified in Godot 4.7.2) + extras",
+    "extras": [
+     "Root(profile root)",
+     "LeftHand_Prop",
+     "RightHand_Prop",
+     "FX_Bastion"
+    ],
+    "bone_count": 59,
+    "bones": [
+     "Root",
+     "Hips",
+     "Spine",
+     "Chest",
+     "UpperChest",
+     "Neck",
+     "Head",
+     "LeftEye",
+     "RightEye",
+     "Jaw",
+     "LeftShoulder",
+     "LeftUpperArm",
+     "LeftLowerArm",
+     "LeftHand",
+     "LeftIndexProximal",
+     "LeftIndexIntermediate",
+     "LeftIndexDistal",
+     "LeftMiddleProximal",
+     "LeftMiddleIntermediate",
+     "LeftMiddleDistal",
+     "LeftRingProximal",
+     "LeftRingIntermediate",
+     "LeftRingDistal",
+     "LeftLittleProximal",
+     "LeftLittleIntermediate",
+     "LeftLittleDistal",
+     "LeftThumbMetacarpal",
+     "LeftThumbProximal",
+     "LeftThumbDistal",
+     "LeftHand_Prop",
+     "FX_Bastion",
+     "RightShoulder",
+     "RightUpperArm",
+     "RightLowerArm",
+     "RightHand",
+     "RightIndexProximal",
+     "RightIndexIntermediate",
+     "RightIndexDistal",
+     "RightMiddleProximal",
+     "RightMiddleIntermediate",
+     "RightMiddleDistal",
+     "RightRingProximal",
+     "RightRingIntermediate",
+     "RightRingDistal",
+     "RightLittleProximal",
+     "RightLittleIntermediate",
+     "RightLittleDistal",
+     "RightThumbMetacarpal",
+     "RightThumbProximal",
+     "RightThumbDistal",
+     "RightHand_Prop",
+     "LeftUpperLeg",
+     "LeftLowerLeg",
+     "LeftFoot",
+     "LeftToes",
+     "RightUpperLeg",
+     "RightLowerLeg",
+     "RightFoot",
+     "RightToes"
+    ],
+    "rest_pose": "A-pose (arms ~35 deg below horizontal). Use Godot retarget \"Fix Silhouette\" if retargeting T-pose clips.",
+    "retarget_note": "Extra prop/FX bones are not in the humanoid profile; when retargeting clips from other rigs, props follow the hands but FX_Bastion/prop-local tracks are not transferred."
+   },
+   "clips": [
+    {
+     "name": "idle",
+     "frame_start": 0,
+     "frame_end": 72,
+     "frames": 72,
+     "fps": 30,
+     "duration_s": 2.4,
+     "loop": true,
+     "note": "slow side-to-side weight shift + breathing (docs 1.3.2)"
+    },
+    {
+     "name": "ready",
+     "frame_start": 0,
+     "frame_end": 40,
+     "frames": 40,
+     "fps": 30,
+     "duration_s": 1.333,
+     "loop": true,
+     "note": "combat guard: shield across torso, maul low, knees bent"
+    },
+    {
+     "name": "attack",
+     "frame_start": 0,
+     "frame_end": 40,
+     "frames": 40,
+     "fps": 30,
+     "duration_s": 1.333,
+     "loop": false,
+     "note": "Seismic Maul overhead slam: dip f5, wind-up f13, impact f18, settle f24, recover to ready f40"
+    },
+    {
+     "name": "shield_bash",
+     "frame_start": 0,
+     "frame_end": 36,
+     "frames": 36,
+     "fps": 30,
+     "duration_s": 1.2,
+     "loop": false,
+     "note": "coil f9, lunge, impact f15, recoil f17, recover f36 (heavy shield strike, interrupts chants)"
+    },
+    {
+     "name": "keratin_bastion",
+     "frame_start": 0,
+     "frame_end": 48,
+     "frames": 48,
+     "fps": 30,
+     "duration_s": 1.6,
+     "loop": false,
+     "note": "rise f6, slam into braced crouch f12-14, shield planted forward; FX_Bastion hex shell scales 0->1.25->0.95->1.12->1.0 (emissive pulse); ends HELD in brace"
+    },
+    {
+     "name": "hit_react",
+     "frame_start": 0,
+     "frame_end": 20,
+     "frames": 20,
+     "fps": 30,
+     "duration_s": 0.667,
+     "loop": false,
+     "note": "recoil f3, recover f20"
+    },
+    {
+     "name": "stunned",
+     "frame_start": 0,
+     "frame_end": 60,
+     "frames": 60,
+     "fps": 30,
+     "duration_s": 2.0,
+     "loop": true,
+     "note": "dazed head roll + sway, shield lowered"
+    },
+    {
+     "name": "death",
+     "frame_start": 0,
+     "frame_end": 64,
+     "frames": 64,
+     "fps": 30,
+     "duration_s": 2.133,
+     "loop": false,
+     "note": "stagger f6, knees buckle f26, topple forward onto shield f46, bounce f50"
+    }
+   ],
+   "sockets": {
+    "LeftHand_Prop": "shield grip (shield mesh bound here)",
+    "RightHand_Prop": "maul grip",
+    "FX_Bastion": "Keratin Bastion shell pivot at shield center"
+   },
+   "validation": {
+    "gltf_validator": {
+     "errors": 0,
+     "warnings": 9,
+     "warning_types": [
+      "MESH_PRIMITIVE_GENERATED_TANGENT_SPACE",
+      "NODE_SKINNED_MESH_NON_ROOT"
+     ]
+    },
+    "blender_reimport": {
+     "actions": [
+      "attack_Korrith_Rig",
+      "death_Korrith_Rig",
+      "hit_react_Korrith_Rig",
+      "idle_Korrith_Rig",
+      "keratin_bastion_Korrith_Rig",
+      "ready_Korrith_Rig",
+      "shield_bash_Korrith_Rig",
+      "stunned_Korrith_Rig"
+     ],
+     "skinned_meshes": [
+      "Korrith_BastionFX",
+      "Korrith_Body",
+      "Korrith_DorsalRidge",
+      "Korrith_Maul",
+      "Korrith_Shield"
+     ],
+     "max_vertex_motion_m": {
+      "attack_Korrith_Rig": {
+       "Korrith_BastionFX": 0.457,
+       "Korrith_Body": 0.781,
+       "Korrith_DorsalRidge": 0.764,
+       "Korrith_Maul": 0.904,
+       "Korrith_Shield": 0.506
+      },
+      "death_Korrith_Rig": {
+       "Korrith_BastionFX": 0.972,
+       "Korrith_Body": 1.057,
+       "Korrith_DorsalRidge": 0.65,
+       "Korrith_Maul": 1.356,
+       "Korrith_Shield": 1.166
+      },
+      "hit_react_Korrith_Rig": {
+       "Korrith_BastionFX": 0.09,
+       "Korrith_Body": 0.233,
+       "Korrith_DorsalRidge": 0.237,
+       "Korrith_Maul": 0.31,
+       "Korrith_Shield": 0.119
+      },
+      "idle_Korrith_Rig": {
+       "Korrith_BastionFX": 0.0,
+       "Korrith_Body": 0.005,
+       "Korrith_DorsalRidge": 0.0,
+       "Korrith_Maul": 0.0,
+       "Korrith_Shield": 0.0
+      },
+      "keratin_bastion_Korrith_Rig": {
+       "Korrith_BastionFX": 1.381,
+       "Korrith_Body": 0.645,
+       "Korrith_DorsalRidge": 0.695,
+       "Korrith_Maul": 1.165,
+       "Korrith_Shield": 0.526
+      },
+      "ready_Korrith_Rig": {
+       "Korrith_BastionFX": 0.02,
+       "Korrith_Body": 0.032,
+       "Korrith_DorsalRidge": 0.03,
+       "Korrith_Maul": 0.03,
+       "Korrith_Shield": 0.02
+      },
+      "shield_bash_Korrith_Rig": {
+       "Korrith_BastionFX": 0.474,
+       "Korrith_Body": 0.979,
+       "Korrith_DorsalRidge": 0.863,
+       "Korrith_Maul": 0.962,
+       "Korrith_Shield": 0.484
+      },
+      "stunned_Korrith_Rig": {
+       "Korrith_BastionFX": 0.136,
+       "Korrith_Body": 0.133,
+       "Korrith_DorsalRidge": 0.071,
+       "Korrith_Maul": 0.102,
+       "Korrith_Shield": 0.201
+      }
+     }
+    },
+    "godot_4_7_2_headless": [
+     "    - Skeleton3D [Skeleton3D] bones=59",
+     "  ANIM attack len=1.333 tracks=54 loop=0",
+     "  ANIM death len=2.133 tracks=54 loop=0",
+     "  ANIM hit_react len=0.667 tracks=54 loop=0",
+     "  ANIM idle len=2.4 tracks=54 loop=1",
+     "  ANIM keratin_bastion len=1.6 tracks=54 loop=0",
+     "  ANIM ready len=1.333 tracks=54 loop=1",
+     "  ANIM shield_bash len=1.2 tracks=54 loop=0",
+     "  ANIM stunned len=2.0 tracks=54 loop=1",
+     "  HUMANOID_PROFILE bones=56 missing=[]",
+     "    - Skeleton3D [Skeleton3D] bones=27",
+     "  ANIM attack len=1.467 tracks=23 loop=0"
+    ]
+   },
+   "sources": [
+    {
+     "name": "Tencent Hunyuan3D-2 (hunyuan3d-dit-v2-0-turbo, fp16) image-to-3D shape generation, run locally on gregspc RTX 4070",
+     "url": "https://huggingface.co/tencent/Hunyuan3D-2",
+     "code": "https://github.com/Tencent-Hunyuan/Hunyuan3D-2",
+     "license": "Tencent Hunyuan 3D 2.0 Community License Agreement (https://huggingface.co/tencent/Hunyuan3D-2/blob/main/LICENSE)",
+     "key_terms": [
+      "Not licensed in the European Union, United Kingdom or South Korea; use/distribution of Outputs outside the Territory is unauthorized",
+      "Tencent claims no rights in Outputs (section 4.d); user is responsible for Outputs",
+      "Outputs must not be used to improve other AI models",
+      "If Licensee products had >1M MAU on the model release date a separate Tencent license is required",
+      "Acceptable Use Policy applies"
+     ]
+    },
+    {
+     "name": "rembg isnet-general-use background removal",
+     "url": "https://github.com/danielgatis/rembg",
+     "license": "MIT (rembg); IS-Net weights Apache-2.0"
+    },
+    {
+     "name": "concept images",
+     "path": "concepts/korrith_body_apose_noweapons.jpg, concepts/korrith_apose_with_shield_maul.jpg",
+     "note": "provided by coordinator; body used as the image-to-3D input and front-projected for baked color/emissive"
+    }
+   ]
+  },
+  {
+   "file": "carapace_engine_mk2.glb",
+   "bytes": 13590264,
+   "sha256_16": "1f08a88d32423968",
+   "character": {
+    "name": "Carapace Engine Mk. II",
+    "docs": [
+     "docs/02-combat-engine.md 2.15 (Core 120k owns Overpressure Lance; Weapon Arm 45k owns Piston Sweep; Shield 30k)",
+     "docs/04 boss anatomy panel"
+    ],
+    "design_mapping": [
+     "six-legged carapace hull",
+     "caged magenta reactor Core with fire vent on top",
+     "piston-lance WeaponArm at glTF +X (boss own left; viewer right when facing camera, as in the concept)",
+     "curved Shield plate at glTF -X"
+    ]
+   },
+   "size_m": {
+    "height": 4.4,
+    "footprint_x": 6.6,
+    "length_with_lance": 7.6
+   },
+   "triangles_total": 35343,
+   "triangles_by_mesh": {
+    "Carapace_Core": 3040,
+    "Carapace_CoreGlow": 668,
+    "Carapace_Hull": 22613,
+    "Carapace_Shield": 3474,
+    "Carapace_WeaponArm": 5548
+   },
+   "part_nodes": {
+    "Core": {
+     "meshes": [
+      "Carapace_Core",
+      "Carapace_CoreGlow"
+     ],
+     "bones": [
+      "Core",
+      "Core_Glow"
+     ],
+     "note": "procedural cage + glow sphere/vent flame; hull keeps a socket bowl so hiding the Core leaves a crater, not a hole"
+    },
+    "WeaponArm": {
+     "meshes": [
+      "Carapace_WeaponArm"
+     ],
+     "bones": [
+      "WeaponArm_Shoulder",
+      "WeaponArm",
+      "WeaponArm_Lance"
+     ]
+    },
+    "Shield": {
+     "meshes": [
+      "Carapace_Shield"
+     ],
+     "bones": [
+      "Shield_Shoulder",
+      "Shield"
+     ]
+    },
+    "Hull": {
+     "meshes": [
+      "Carapace_Hull"
+     ],
+     "bones": [
+      "Body",
+      "Leg_*_Upper/Lower/Foot x6"
+     ]
+    }
+   },
+   "part_sides": "Boss faces glTF +Z. WeaponArm sits at glTF +X (the boss own left side; on the viewer right when the boss faces the camera, matching the concept), Shield at glTF -X. Korrith likewise has his left hand (shield) at +X.",
+   "textures": [
+    {
+     "set": "carapace (hull+arm+shield shared atlas)",
+     "size": 2048,
+     "maps": [
+      "basecolor",
+      "metallicRoughness",
+      "normal",
+      "emissive"
+     ]
+    },
+    {
+     "set": "carapace_core",
+     "size": 1024,
+     "maps": [
+      "basecolor",
+      "metallicRoughness",
+      "normal",
+      "emissive"
+     ]
+    },
+    {
+     "set": "carapace_socket",
+     "size": 512,
+     "maps": [
+      "basecolor",
+      "metallicRoughness",
+      "normal",
+      "emissive"
+     ]
+    },
+    {
+     "set": "core_glow / vent_fire",
+     "size": 0,
+     "maps": [
+      "untextured emissive materials (KHR_materials_emissive_strength); vent_fire is alpha blend"
+     ]
+    }
+   ],
+   "skeleton": {
+    "node": "Carapace_Rig/Skeleton3D",
+    "bone_count": 27,
+    "bones": [
+     "Root",
+     "Body",
+     "Core",
+     "Core_Glow",
+     "WeaponArm_Shoulder",
+     "WeaponArm",
+     "WeaponArm_Lance",
+     "Shield_Shoulder",
+     "Shield",
+     "Leg_FL_Upper",
+     "Leg_FL_Lower",
+     "Leg_FL_Foot",
+     "Leg_FR_Upper",
+     "Leg_FR_Lower",
+     "Leg_FR_Foot",
+     "Leg_FC_Upper",
+     "Leg_FC_Lower",
+     "Leg_FC_Foot",
+     "Leg_BL_Upper",
+     "Leg_BL_Lower",
+     "Leg_BL_Foot",
+     "Leg_BR_Upper",
+     "Leg_BR_Lower",
+     "Leg_BR_Foot",
+     "Leg_BC_Upper",
+     "Leg_BC_Lower",
+     "Leg_BC_Foot"
+    ],
+    "legs": "6 legs (FL, FR, FC, BL, BR, BC) x Upper/Lower/Foot; leg motion solved with 2-bone IK during authoring and baked to FK keys"
+   },
+   "clips": [
+    {
+     "name": "idle",
+     "frame_start": 0,
+     "frame_end": 60,
+     "frames": 60,
+     "fps": 30,
+     "duration_s": 2.0,
+     "loop": true,
+     "note": "hull bob, arms sway, Core_Glow pulse"
+    },
+    {
+     "name": "attack",
+     "frame_start": 0,
+     "frame_end": 44,
+     "frames": 44,
+     "fps": 30,
+     "duration_s": 1.467,
+     "loop": false,
+     "note": "Piston Sweep: wind out f10, sweep f16-19, WeaponArm_Lance punches 1.1 m at f19, recover f44"
+    },
+    {
+     "name": "charge",
+     "frame_start": 0,
+     "frame_end": 40,
+     "frames": 40,
+     "fps": 30,
+     "duration_s": 1.333,
+     "loop": true,
+     "note": "Overpressure Lance chant (loop): braced low, Core rotates, Core_Glow swells 1.25+/-0.12, lance retracted & trembling"
+    },
+    {
+     "name": "stunned",
+     "frame_start": 0,
+     "frame_end": 60,
+     "frames": 60,
+     "fps": 30,
+     "duration_s": 2.0,
+     "loop": true,
+     "note": "sagged 0.55 m, legs splayed, Core flicker"
+    },
+    {
+     "name": "part_destroyed_core",
+     "frame_start": 0,
+     "frame_end": 40,
+     "frames": 40,
+     "fps": 30,
+     "duration_s": 1.333,
+     "loop": false,
+     "note": "Core shakes, glow bursts 1.9 then scales to 0; hide Carapace_Core + Carapace_CoreGlow after"
+    },
+    {
+     "name": "part_destroyed_weapon_arm",
+     "frame_start": 0,
+     "frame_end": 40,
+     "frames": 40,
+     "fps": 30,
+     "duration_s": 1.333,
+     "loop": false,
+     "note": "arm jerks then droops limp; hide Carapace_WeaponArm after"
+    },
+    {
+     "name": "part_destroyed_shield",
+     "frame_start": 0,
+     "frame_end": 40,
+     "frames": 40,
+     "fps": 30,
+     "duration_s": 1.333,
+     "loop": false,
+     "note": "shield arm jerks, shield drops to ground; hide Carapace_Shield after"
+    },
+    {
+     "name": "death",
+     "frame_start": 0,
+     "frame_end": 60,
+     "frames": 60,
+     "fps": 30,
+     "duration_s": 2.0,
+     "loop": false,
+     "note": "legs buckle (IK-baked), hull drops 1.2 m, Core glow fades to 0"
+    }
+   ],
+   "validation": {
+    "gltf_validator": {
+     "errors": 0,
+     "warnings": 10,
+     "warning_types": [
+      "MESH_PRIMITIVE_GENERATED_TANGENT_SPACE",
+      "NODE_SKINNED_MESH_NON_ROOT"
+     ]
+    },
+    "blender_reimport": {
+     "actions": [
+      "attack_Carapace_Rig",
+      "charge_Carapace_Rig",
+      "death_Carapace_Rig",
+      "idle_Carapace_Rig",
+      "part_destroyed_core_Carapace_Rig",
+      "part_destroyed_shield_Carapace_Rig",
+      "part_destroyed_weapon_arm_Carapace_Rig",
+      "stunned_Carapace_Rig"
+     ],
+     "skinned_meshes": [
+      "Carapace_Core",
+      "Carapace_CoreGlow",
+      "Carapace_Hull",
+      "Carapace_Shield",
+      "Carapace_WeaponArm"
+     ],
+     "max_vertex_motion_m": {
+      "attack_Carapace_Rig": {
+       "Carapace_Core": 0.909,
+       "Carapace_CoreGlow": 0.854,
+       "Carapace_Hull": 1.19,
+       "Carapace_Shield": 1.467,
+       "Carapace_WeaponArm": 5.35
+      },
+      "charge_Carapace_Rig": {
+       "Carapace_Core": 0.255,
+       "Carapace_CoreGlow": 0.236,
+       "Carapace_Hull": 0.0,
+       "Carapace_Shield": 0.0,
+       "Carapace_WeaponArm": 0.0
+      },
+      "death_Carapace_Rig": {
+       "Carapace_Core": 1.706,
+       "Carapace_CoreGlow": 2.057,
+       "Carapace_Hull": 1.926,
+       "Carapace_Shield": 2.065,
+       "Carapace_WeaponArm": 3.591
+      },
+      "idle_Carapace_Rig": {
+       "Carapace_Core": 0.1,
+       "Carapace_CoreGlow": 0.12,
+       "Carapace_Hull": 0.115,
+       "Carapace_Shield": 0.122,
+       "Carapace_WeaponArm": 0.194
+      },
+      "part_destroyed_core_Carapace_Rig": {
+       "Carapace_Core": 0.93,
+       "Carapace_CoreGlow": 0.942,
+       "Carapace_Hull": 0.295,
+       "Carapace_Shield": 0.254,
+       "Carapace_WeaponArm": 0.528
+      },
+      "part_destroyed_shield_Carapace_Rig": {
+       "Carapace_Core": 0.322,
+       "Carapace_CoreGlow": 0.373,
+       "Carapace_Hull": 0.438,
+       "Carapace_Shield": 3.101,
+       "Carapace_WeaponArm": 0.313
+      },
+      "part_destroyed_weapon_arm_Carapace_Rig": {
+       "Carapace_Core": 0.373,
+       "Carapace_CoreGlow": 0.424,
+       "Carapace_Hull": 0.314,
+       "Carapace_Shield": 0.314,
+       "Carapace_WeaponArm": 2.415
+      },
+      "stunned_Carapace_Rig": {
+       "Carapace_Core": 0.689,
+       "Carapace_CoreGlow": 0.742,
+       "Carapace_Hull": 0.885,
+       "Carapace_Shield": 1.292,
+       "Carapace_WeaponArm": 0.668
+      }
+     }
+    },
+    "godot_4_7_2_headless": [
+     "  ANIM charge len=1.333 tracks=23 loop=1",
+     "  ANIM death len=2.0 tracks=23 loop=0",
+     "  ANIM idle len=2.0 tracks=23 loop=1",
+     "  ANIM part_destroyed_core len=1.333 tracks=23 loop=0",
+     "  ANIM part_destroyed_shield len=1.333 tracks=23 loop=0",
+     "  ANIM part_destroyed_weapon_arm len=1.333 tracks=23 loop=0",
+     "  ANIM stunned len=2.0 tracks=23 loop=1",
+     ""
+    ]
+   },
+   "sources": [
+    {
+     "name": "Tencent Hunyuan3D-2 (hunyuan3d-dit-v2-0-turbo, fp16) image-to-3D shape generation, run locally on gregspc RTX 4070",
+     "url": "https://huggingface.co/tencent/Hunyuan3D-2",
+     "code": "https://github.com/Tencent-Hunyuan/Hunyuan3D-2",
+     "license": "Tencent Hunyuan 3D 2.0 Community License Agreement (https://huggingface.co/tencent/Hunyuan3D-2/blob/main/LICENSE)",
+     "key_terms": [
+      "Not licensed in the European Union, United Kingdom or South Korea; use/distribution of Outputs outside the Territory is unauthorized",
+      "Tencent claims no rights in Outputs (section 4.d); user is responsible for Outputs",
+      "Outputs must not be used to improve other AI models",
+      "If Licensee products had >1M MAU on the model release date a separate Tencent license is required",
+      "Acceptable Use Policy applies"
+     ]
+    },
+    {
+     "name": "rembg isnet-general-use background removal",
+     "url": "https://github.com/danielgatis/rembg",
+     "license": "MIT (rembg); IS-Net weights Apache-2.0"
+    },
+    {
+     "name": "concept image",
+     "path": "concepts/carapace_engine_mk2.jpg",
+     "note": "image-to-3D input; front-projected for baked color/emissive"
+    }
+   ]
+  },
+  {
+   "file": "seraphine_vol_ivory.glb",
+   "bytes": 11738300,
+   "sha256_16": "5fa5f8a3d8ebd90a",
+   "character": {
+    "name": "Seraphine Vol-Ivory",
+    "design_mapping": [
+     "porcelain ivory body (canon) from TRELLIS vertex colour, gloss ceramic shading",
+     "procedural cyan iso-line circuit traces baked on the porcelain (concept trace detail is finer than TRELLIS colour resolution)",
+     "dorsal halo ring -> Seraphine_Halo (6 neon nodes), rotates 60 deg per idle loop on FX_Halo (child of Head)",
+     "Cure Cascade -> Seraphine_CureFX hex glyph on FX_Cure",
+     "Phase Sanctuary -> Seraphine_SanctuaryFX hex-lattice dome on FX_Sanctuary (Root)"
+    ]
+   },
+   "generator": {
+    "tool": "TRELLIS-image-large",
+    "license": "MIT",
+    "seed": 2,
+    "seeds_tried": [
+     1,
+     2,
+     3,
+     4,
+     5
+    ]
+   },
+   "height_m": 1.8,
+   "triangles_total": 25480,
+   "triangles_by_mesh": {
+    "Seraphine_Body": 22000,
+    "Seraphine_CureFX": 144,
+    "Seraphine_Halo": 888,
+    "Seraphine_SanctuaryFX": 2448
+   },
+   "meshes": {
+    "Seraphine_Body": "TRELLIS body, cleaned + decimated to 22k tris, xatlas UV, 2K bake; bone-heat weights + joint blends, max 4 influences",
+    "Seraphine_Halo": "procedural ring + 6 nodes, rigid to FX_Halo",
+    "Seraphine_CureFX": "procedural hex glyph, rigid to FX_Cure; scale 0.001 unless casting",
+    "Seraphine_SanctuaryFX": "procedural hex-lattice dome, rigid to FX_Sanctuary; scale 0.001 unless casting"
+   },
+   "textures": [
+    {
+     "set": "seraphine_body",
+     "size": 2048,
+     "maps": [
+      "basecolor",
+      "metallicRoughness (G=rough,B=metal)",
+      "normal (tangent)",
+      "emissive"
+     ]
+    },
+    {
+     "set": "FX/prop materials",
+     "size": 0,
+     "maps": [
+      "untextured constant PBR + emissive (KHR_materials_emissive_strength)"
+     ]
+    }
+   ],
+   "skeleton": {
+    "node": "Seraphine_Rig/Skeleton3D",
+    "naming": "Godot SkeletonProfileHumanoid names and hierarchy as Korrith (all 56 profile bones present, verified in Godot 4.7.2) + extras",
+    "extras": [
+     "Root",
+     "FX_Halo",
+     "LeftHand_Prop",
+     "RightHand_Prop",
+     "FX_Cure",
+     "FX_Sanctuary"
+    ],
+    "bone_count": 61,
+    "bones": [
+     "Root",
+     "Hips",
+     "Spine",
+     "Chest",
+     "UpperChest",
+     "Neck",
+     "Head",
+     "LeftEye",
+     "RightEye",
+     "Jaw",
+     "FX_Halo",
+     "LeftShoulder",
+     "LeftUpperArm",
+     "LeftLowerArm",
+     "LeftHand",
+     "LeftIndexProximal",
+     "LeftIndexIntermediate",
+     "LeftIndexDistal",
+     "LeftMiddleProximal",
+     "LeftMiddleIntermediate",
+     "LeftMiddleDistal",
+     "LeftRingProximal",
+     "LeftRingIntermediate",
+     "LeftRingDistal",
+     "LeftLittleProximal",
+     "LeftLittleIntermediate",
+     "LeftLittleDistal",
+     "LeftThumbMetacarpal",
+     "LeftThumbProximal",
+     "LeftThumbDistal",
+     "LeftHand_Prop",
+     "RightShoulder",
+     "RightUpperArm",
+     "RightLowerArm",
+     "RightHand",
+     "RightIndexProximal",
+     "RightIndexIntermediate",
+     "RightIndexDistal",
+     "RightMiddleProximal",
+     "RightMiddleIntermediate",
+     "RightMiddleDistal",
+     "RightRingProximal",
+     "RightRingIntermediate",
+     "RightRingDistal",
+     "RightLittleProximal",
+     "RightLittleIntermediate",
+     "RightLittleDistal",
+     "RightThumbMetacarpal",
+     "RightThumbProximal",
+     "RightThumbDistal",
+     "RightHand_Prop",
+     "LeftUpperLeg",
+     "LeftLowerLeg",
+     "LeftFoot",
+     "LeftToes",
+     "RightUpperLeg",
+     "RightLowerLeg",
+     "RightFoot",
+     "RightToes",
+     "FX_Cure",
+     "FX_Sanctuary"
+    ],
+    "rest_pose": "A-pose as generated by TRELLIS from the A-pose concept",
+    "feet": "feet IK-locked during authoring (empties removed before export) and baked to FK keys; props have no wrist twist"
+   },
+   "clips": [
+    {
+     "name": "idle",
+     "frame_start": 0,
+     "frame_end": 72,
+     "frames": 72,
+     "fps": 30,
+     "duration_s": 2.4,
+     "loop": true,
+     "note": "perfectly still apart from the rotating halo + faint breath"
+    },
+    {
+     "name": "ready",
+     "frame_start": 0,
+     "frame_end": 40,
+     "frames": 40,
+     "fps": 30,
+     "duration_s": 1.333,
+     "loop": true,
+     "note": "casting guard, palms open"
+    },
+    {
+     "name": "attack",
+     "frame_start": 0,
+     "frame_end": 32,
+     "frames": 32,
+     "fps": 30,
+     "duration_s": 1.067,
+     "loop": false,
+     "note": "arcane palm pulse"
+    },
+    {
+     "name": "cure_cascade",
+     "frame_start": 0,
+     "frame_end": 48,
+     "frames": 48,
+     "fps": 30,
+     "duration_s": 1.6,
+     "loop": false,
+     "note": "gather f10, raise f22, pour f28; Cure glyph scales 0->1.35->0"
+    },
+    {
+     "name": "phase_sanctuary",
+     "frame_start": 0,
+     "frame_end": 60,
+     "frames": 60,
+     "fps": 30,
+     "duration_s": 2.0,
+     "loop": false,
+     "note": "open f24, float f30-44 (feet stay planted, heels lift); dome scales 0->1.08->1.0 and collapses by f60"
+    },
+    {
+     "name": "hit_react",
+     "frame_start": 0,
+     "frame_end": 20,
+     "frames": 20,
+     "fps": 30,
+     "duration_s": 0.667,
+     "loop": false,
+     "note": "recoil f3, recover f20"
+    },
+    {
+     "name": "stunned",
+     "frame_start": 0,
+     "frame_end": 60,
+     "frames": 60,
+     "fps": 30,
+     "duration_s": 2.0,
+     "loop": true,
+     "note": "head sway, halo wobbles without spinning"
+    },
+    {
+     "name": "death",
+     "frame_start": 0,
+     "frame_end": 64,
+     "frames": 64,
+     "fps": 30,
+     "duration_s": 2.133,
+     "loop": false,
+     "note": "sag f6, kneel f24, fall forward f46"
+    }
+   ],
+   "sockets": {
+    "LeftHand_Prop": "empty (no handheld prop in concept)",
+    "RightHand_Prop": "empty",
+    "FX_Halo": "halo ring pivot behind head (rotation tracks)",
+    "FX_Cure": "Cure glyph (scale tracks)",
+    "FX_Sanctuary": "dome at feet (scale tracks)"
+   },
+   "validation": {
+    "gltf_validator": {
+     "errors": 0,
+     "warnings": 5,
+     "warning_types": [
+      "MESH_PRIMITIVE_GENERATED_TANGENT_SPACE",
+      "NODE_SKINNED_MESH_NON_ROOT"
+     ]
+    },
+    "blender_reimport": {
+     "actions": [
+      "attack_Seraphine_Rig",
+      "cure_cascade_Seraphine_Rig",
+      "death_Seraphine_Rig",
+      "hit_react_Seraphine_Rig",
+      "idle_Seraphine_Rig",
+      "phase_sanctuary_Seraphine_Rig",
+      "ready_Seraphine_Rig",
+      "stunned_Seraphine_Rig"
+     ],
+     "skinned_meshes": [
+      "Seraphine_Body",
+      "Seraphine_CureFX",
+      "Seraphine_Halo",
+      "Seraphine_SanctuaryFX"
+     ],
+     "max_vertex_motion_m": {
+      "attack_Seraphine_Rig": {
+       "Seraphine_Body": 0.432,
+       "Seraphine_CureFX": 0.0,
+       "Seraphine_Halo": 0.228,
+       "Seraphine_SanctuaryFX": 0.0
+      },
+      "cure_cascade_Seraphine_Rig": {
+       "Seraphine_Body": 0.772,
+       "Seraphine_CureFX": 0.365,
+       "Seraphine_Halo": 0.247,
+       "Seraphine_SanctuaryFX": 0.0
+      },
+      "death_Seraphine_Rig": {
+       "Seraphine_Body": 0.778,
+       "Seraphine_CureFX": 0.0,
+       "Seraphine_Halo": 0.665,
+       "Seraphine_SanctuaryFX": 0.0
+      },
+      "hit_react_Seraphine_Rig": {
+       "Seraphine_Body": 0.173,
+       "Seraphine_CureFX": 0.0,
+       "Seraphine_Halo": 0.182,
+       "Seraphine_SanctuaryFX": 0.0
+      },
+      "idle_Seraphine_Rig": {
+       "Seraphine_Body": 0.0,
+       "Seraphine_CureFX": 0.0,
+       "Seraphine_Halo": 0.096,
+       "Seraphine_SanctuaryFX": 0.0
+      },
+      "phase_sanctuary_Seraphine_Rig": {
+       "Seraphine_Body": 0.691,
+       "Seraphine_CureFX": 0.0,
+       "Seraphine_Halo": 0.297,
+       "Seraphine_SanctuaryFX": 1.204
+      },
+      "ready_Seraphine_Rig": {
+       "Seraphine_Body": 0.028,
+       "Seraphine_CureFX": 0.0,
+       "Seraphine_Halo": 0.096,
+       "Seraphine_SanctuaryFX": 0.0
+      },
+      "stunned_Seraphine_Rig": {
+       "Seraphine_Body": 0.072,
+       "Seraphine_CureFX": 0.0,
+       "Seraphine_Halo": 0.065,
+       "Seraphine_SanctuaryFX": 0.0
+      }
+     }
+    },
+    "godot_4_7_2_headless": [
+     "SCENE res://seraphine_vol_ivory.glb root=seraphine_vol_ivory",
+     "- Skeleton3D [Skeleton3D] bones=61",
+     "- Seraphine_Body [MeshInstance3D] surfaces=1 skin=true",
+     "- Seraphine_CureFX [MeshInstance3D] surfaces=1 skin=true",
+     "- Seraphine_Halo [MeshInstance3D] surfaces=3 skin=true",
+     "- Seraphine_SanctuaryFX [MeshInstance3D] surfaces=1 skin=true",
+     "ANIM attack len=1.067 tracks=54 loop=0",
+     "ANIM cure_cascade len=1.6 tracks=54 loop=0",
+     "ANIM death len=2.133 tracks=54 loop=0",
+     "ANIM hit_react len=0.667 tracks=54 loop=0",
+     "ANIM idle len=2.4 tracks=54 loop=1",
+     "ANIM phase_sanctuary len=2.0 tracks=54 loop=0",
+     "ANIM ready len=1.333 tracks=54 loop=1",
+     "ANIM stunned len=2.0 tracks=54 loop=1",
+     "HUMANOID_PROFILE bones=56 missing=[]"
+    ]
+   },
+   "sources": [
+    {
+     "name": "Microsoft TRELLIS (TRELLIS-image-large) image-to-3D, run locally on gregspc (RTX 4070, torch 2.5.1+cu124)",
+     "url": "https://huggingface.co/microsoft/TRELLIS-image-large",
+     "code": "https://github.com/microsoft/TRELLIS",
+     "license": "MIT (code and TRELLIS-image-large weights)",
+     "note": "Output used: TRELLIS sparse-structure -> SLAT -> mesh decoder (FlexiCubes) with per-vertex colour. TRELLIS own GLB texture baking (to_glb) was NOT used because it needs nvdiffrast; colour was baked in Blender from the TRELLIS vertex colours instead."
+    },
+    {
+     "name": "concept image",
+     "path": "concepts/seraphine_apose.jpg",
+     "note": "TRELLIS input (background cut with rembg isnet, then TRELLIS preprocess_image)"
+    }
+   ],
+   "previews": [
+    "seraphine_vol_ivory_turntable.png",
+    "seraphine_vol_ivory_clips_contact.png"
+   ]
+  },
+  {
+   "file": "zeph_tri_lumen.glb",
+   "bytes": 12476392,
+   "sha256_16": "0d22375eb9680196",
+   "character": {
+    "name": "Zeph Tri-Lumen",
+    "design_mapping": [
+     "compact Kith-Lir caster, ~1.0 m",
+     "three-lens helmet visor with cyan glow (TRELLIS colour)",
+     "procedural hex bump on the dark armour plates",
+     "Hex Lance -> Zeph_HexLanceFX crystalline lance on FX_Lance (child of RightHand_Prop)",
+     "Pyre Lattice -> Zeph_PyreLatticeFX sub-hex glyph on FX_Lattice (Root): grows overhead, spins, slams forward"
+    ]
+   },
+   "generator": {
+    "tool": "TRELLIS-image-large",
+    "license": "MIT",
+    "seed": 1,
+    "seeds_tried": [
+     1,
+     2,
+     3,
+     4,
+     5
+    ]
+   },
+   "height_m": 1.0,
+   "triangles_total": 16370,
+   "triangles_by_mesh": {
+    "Zeph_Body": 16000,
+    "Zeph_HexLanceFX": 154,
+    "Zeph_PyreLatticeFX": 216
+   },
+   "meshes": {
+    "Zeph_Body": "TRELLIS body, decimated to 16k tris, xatlas UV, 2K bake with hex bump; bone-heat weights (backpack posts pinned to UpperChest)",
+    "Zeph_HexLanceFX": "procedural lance + hex collars, rigid to FX_Lance; scale 0.001 unless casting",
+    "Zeph_PyreLatticeFX": "procedural sub-hex glyph, rigid to FX_Lattice; scale 0.001 unless casting"
+   },
+   "textures": [
+    {
+     "set": "zeph_body",
+     "size": 2048,
+     "maps": [
+      "basecolor",
+      "metallicRoughness (G=rough,B=metal)",
+      "normal (tangent)",
+      "emissive"
+     ]
+    },
+    {
+     "set": "FX/prop materials",
+     "size": 0,
+     "maps": [
+      "untextured constant PBR + emissive (KHR_materials_emissive_strength)"
+     ]
+    }
+   ],
+   "skeleton": {
+    "node": "Zeph_Rig/Skeleton3D",
+    "naming": "Godot SkeletonProfileHumanoid names and hierarchy as Korrith (all 56 profile bones present, verified in Godot 4.7.2) + extras",
+    "extras": [
+     "Root",
+     "LeftHand_Prop",
+     "RightHand_Prop",
+     "FX_Lance",
+     "FX_Lattice"
+    ],
+    "bone_count": 60,
+    "bones": [
+     "Root",
+     "Hips",
+     "Spine",
+     "Chest",
+     "UpperChest",
+     "Neck",
+     "Head",
+     "LeftEye",
+     "RightEye",
+     "Jaw",
+     "LeftShoulder",
+     "LeftUpperArm",
+     "LeftLowerArm",
+     "LeftHand",
+     "LeftIndexProximal",
+     "LeftIndexIntermediate",
+     "LeftIndexDistal",
+     "LeftMiddleProximal",
+     "LeftMiddleIntermediate",
+     "LeftMiddleDistal",
+     "LeftRingProximal",
+     "LeftRingIntermediate",
+     "LeftRingDistal",
+     "LeftLittleProximal",
+     "LeftLittleIntermediate",
+     "LeftLittleDistal",
+     "LeftThumbMetacarpal",
+     "LeftThumbProximal",
+     "LeftThumbDistal",
+     "LeftHand_Prop",
+     "RightShoulder",
+     "RightUpperArm",
+     "RightLowerArm",
+     "RightHand",
+     "RightIndexProximal",
+     "RightIndexIntermediate",
+     "RightIndexDistal",
+     "RightMiddleProximal",
+     "RightMiddleIntermediate",
+     "RightMiddleDistal",
+     "RightRingProximal",
+     "RightRingIntermediate",
+     "RightRingDistal",
+     "RightLittleProximal",
+     "RightLittleIntermediate",
+     "RightLittleDistal",
+     "RightThumbMetacarpal",
+     "RightThumbProximal",
+     "RightThumbDistal",
+     "RightHand_Prop",
+     "FX_Lance",
+     "LeftUpperLeg",
+     "LeftLowerLeg",
+     "LeftFoot",
+     "LeftToes",
+     "RightUpperLeg",
+     "RightLowerLeg",
+     "RightFoot",
+     "RightToes",
+     "FX_Lattice"
+    ],
+    "rest_pose": "A-pose as generated by TRELLIS from the A-pose concept",
+    "feet": "feet IK-locked during authoring (empties removed before export) and baked to FK keys; props have no wrist twist"
+   },
+   "clips": [
+    {
+     "name": "idle",
+     "frame_start": 0,
+     "frame_end": 60,
+     "frames": 60,
+     "fps": 30,
+     "duration_s": 2.0,
+     "loop": true,
+     "note": "head-tilt scanning + breathing"
+    },
+    {
+     "name": "ready",
+     "frame_start": 0,
+     "frame_end": 40,
+     "frames": 40,
+     "fps": 30,
+     "duration_s": 1.333,
+     "loop": true,
+     "note": "low caster stance"
+    },
+    {
+     "name": "attack",
+     "frame_start": 0,
+     "frame_end": 32,
+     "frames": 32,
+     "fps": 30,
+     "duration_s": 1.067,
+     "loop": false,
+     "note": "twin-palm spark push, f13 release"
+    },
+    {
+     "name": "hex_lance",
+     "frame_start": 0,
+     "frame_end": 36,
+     "frames": 36,
+     "fps": 30,
+     "duration_s": 1.2,
+     "loop": false,
+     "note": "right-arm thrust f14, lance extends then retracts"
+    },
+    {
+     "name": "pyre_lattice",
+     "frame_start": 0,
+     "frame_end": 60,
+     "frames": 60,
+     "fps": 30,
+     "duration_s": 2.0,
+     "loop": false,
+     "note": "arms up f22, glyph grows/spins f22-40, slams forward f45, fades by f60"
+    },
+    {
+     "name": "hit_react",
+     "frame_start": 0,
+     "frame_end": 20,
+     "frames": 20,
+     "fps": 30,
+     "duration_s": 0.667,
+     "loop": false,
+     "note": "recoil f3, recover f20"
+    },
+    {
+     "name": "stunned",
+     "frame_start": 0,
+     "frame_end": 60,
+     "frames": 60,
+     "fps": 30,
+     "duration_s": 2.0,
+     "loop": true,
+     "note": "wobble"
+    },
+    {
+     "name": "death",
+     "frame_start": 0,
+     "frame_end": 60,
+     "frames": 60,
+     "fps": 30,
+     "duration_s": 2.0,
+     "loop": false,
+     "note": "stumble back, sit, topple"
+    }
+   ],
+   "sockets": {
+    "LeftHand_Prop": "empty",
+    "RightHand_Prop": "parent of FX_Lance",
+    "FX_Lance": "Hex Lance pivot in right hand (scale tracks)",
+    "FX_Lattice": "Pyre Lattice glyph overhead (rotation/location/scale tracks)"
+   },
+   "validation": {
+    "gltf_validator": {
+     "errors": 0,
+     "warnings": 4,
+     "warning_types": [
+      "MESH_PRIMITIVE_GENERATED_TANGENT_SPACE",
+      "NODE_SKINNED_MESH_NON_ROOT"
+     ]
+    },
+    "blender_reimport": {
+     "actions": [
+      "attack_Zeph_Rig",
+      "death_Zeph_Rig",
+      "hex_lance_Zeph_Rig",
+      "hit_react_Zeph_Rig",
+      "idle_Zeph_Rig",
+      "pyre_lattice_Zeph_Rig",
+      "ready_Zeph_Rig",
+      "stunned_Zeph_Rig"
+     ],
+     "skinned_meshes": [
+      "Zeph_Body",
+      "Zeph_HexLanceFX",
+      "Zeph_PyreLatticeFX"
+     ],
+     "max_vertex_motion_m": {
+      "attack_Zeph_Rig": {
+       "Zeph_Body": 0.373,
+       "Zeph_HexLanceFX": 0.227,
+       "Zeph_PyreLatticeFX": 0.0
+      },
+      "death_Zeph_Rig": {
+       "Zeph_Body": 0.495,
+       "Zeph_HexLanceFX": 0.4,
+       "Zeph_PyreLatticeFX": 0.0
+      },
+      "hex_lance_Zeph_Rig": {
+       "Zeph_Body": 0.332,
+       "Zeph_HexLanceFX": 0.696,
+       "Zeph_PyreLatticeFX": 0.0
+      },
+      "hit_react_Zeph_Rig": {
+       "Zeph_Body": 0.125,
+       "Zeph_HexLanceFX": 0.058,
+       "Zeph_PyreLatticeFX": 0.0
+      },
+      "idle_Zeph_Rig": {
+       "Zeph_Body": 0.056,
+       "Zeph_HexLanceFX": 0.0,
+       "Zeph_PyreLatticeFX": 0.0
+      },
+      "pyre_lattice_Zeph_Rig": {
+       "Zeph_Body": 0.537,
+       "Zeph_HexLanceFX": 0.374,
+       "Zeph_PyreLatticeFX": 0.418
+      },
+      "ready_Zeph_Rig": {
+       "Zeph_Body": 0.024,
+       "Zeph_HexLanceFX": 0.012,
+       "Zeph_PyreLatticeFX": 0.0
+      },
+      "stunned_Zeph_Rig": {
+       "Zeph_Body": 0.071,
+       "Zeph_HexLanceFX": 0.021,
+       "Zeph_PyreLatticeFX": 0.0
+      }
+     }
+    },
+    "godot_4_7_2_headless": [
+     "SCENE res://zeph_tri_lumen.glb root=zeph_tri_lumen",
+     "- Skeleton3D [Skeleton3D] bones=60",
+     "- Zeph_Body [MeshInstance3D] surfaces=1 skin=true",
+     "- Zeph_HexLanceFX [MeshInstance3D] surfaces=2 skin=true",
+     "- Zeph_PyreLatticeFX [MeshInstance3D] surfaces=2 skin=true",
+     "ANIM attack len=1.067 tracks=55 loop=0",
+     "ANIM death len=2.0 tracks=55 loop=0",
+     "ANIM hex_lance len=1.2 tracks=55 loop=0",
+     "ANIM hit_react len=0.667 tracks=55 loop=0",
+     "ANIM idle len=2.0 tracks=55 loop=1",
+     "ANIM pyre_lattice len=2.0 tracks=55 loop=0",
+     "ANIM ready len=1.333 tracks=55 loop=1",
+     "ANIM stunned len=2.0 tracks=55 loop=1",
+     "HUMANOID_PROFILE bones=56 missing=[]"
+    ]
+   },
+   "sources": [
+    {
+     "name": "Microsoft TRELLIS (TRELLIS-image-large) image-to-3D, run locally on gregspc (RTX 4070, torch 2.5.1+cu124)",
+     "url": "https://huggingface.co/microsoft/TRELLIS-image-large",
+     "code": "https://github.com/microsoft/TRELLIS",
+     "license": "MIT (code and TRELLIS-image-large weights)",
+     "note": "Output used: TRELLIS sparse-structure -> SLAT -> mesh decoder (FlexiCubes) with per-vertex colour. TRELLIS own GLB texture baking (to_glb) was NOT used because it needs nvdiffrast; colour was baked in Blender from the TRELLIS vertex colours instead."
+    },
+    {
+     "name": "concept image",
+     "path": "concepts/zeph_apose.jpg",
+     "note": "TRELLIS input (background cut with rembg isnet, then TRELLIS preprocess_image)"
+    }
+   ],
+   "previews": [
+    "zeph_tri_lumen_turntable.png",
+    "zeph_tri_lumen_clips_contact.png"
+   ]
+  },
+  {
+   "file": "kaelis_moon_ravel.glb",
+   "bytes": 10177240,
+   "sha256_16": "29a1f6cc8a754bca",
+   "character": {
+    "name": "Kaelis Moon-Ravel",
+    "design_mapping": [
+     "hooded feline Sylvari-Mor executioner, dark suit with cyan/magenta neon lines (TRELLIS colour)",
+     "tail -> 7-bone Tail1..Tail7 chain off Hips, animated in every clip",
+     "legs: TRELLIS gave semi-digitigrade legs (long paw-foot, raised heel, low hock). Rig puts the hock at the Foot bone head and keeps heels raised in combat clips",
+     "twin crescent claw-blades (design addition; the concept shows claws only), rigid on LeftHand_Prop / RightHand_Prop"
+    ]
+   },
+   "generator": {
+    "tool": "TRELLIS-image-large",
+    "license": "MIT",
+    "seed": 1,
+    "seeds_tried": [
+     1,
+     2,
+     3,
+     4,
+     5
+    ]
+   },
+   "height_m": 1.88,
+   "triangles_total": 22256,
+   "triangles_by_mesh": {
+    "Kaelis_BladeLeft": 128,
+    "Kaelis_BladeRight": 128,
+    "Kaelis_Body": 22000
+   },
+   "meshes": {
+    "Kaelis_Body": "TRELLIS body, decimated to 22k tris, xatlas UV, 2K bake (face emission suppressed); bone-heat weights + tail reassignment, max 4 influences",
+    "Kaelis_BladeLeft": "procedural crescent blade (metal, cyan edge, magenta grip), rigid to LeftHand_Prop",
+    "Kaelis_BladeRight": "same, rigid to RightHand_Prop"
+   },
+   "textures": [
+    {
+     "set": "kaelis_body",
+     "size": 2048,
+     "maps": [
+      "basecolor",
+      "metallicRoughness (G=rough,B=metal)",
+      "normal (tangent)",
+      "emissive"
+     ]
+    },
+    {
+     "set": "FX/prop materials",
+     "size": 0,
+     "maps": [
+      "untextured constant PBR + emissive (KHR_materials_emissive_strength)"
+     ]
+    }
+   ],
+   "skeleton": {
+    "node": "Kaelis_Rig/Skeleton3D",
+    "naming": "Godot SkeletonProfileHumanoid names and hierarchy as Korrith (all 56 profile bones present, verified in Godot 4.7.2) + extras",
+    "extras": [
+     "Root",
+     "LeftHand_Prop",
+     "RightHand_Prop",
+     "Tail1",
+     "Tail2",
+     "Tail3",
+     "Tail4",
+     "Tail5",
+     "Tail6",
+     "Tail7"
+    ],
+    "bone_count": 65,
+    "bones": [
+     "Root",
+     "Hips",
+     "Spine",
+     "Chest",
+     "UpperChest",
+     "Neck",
+     "Head",
+     "LeftEye",
+     "RightEye",
+     "Jaw",
+     "LeftShoulder",
+     "LeftUpperArm",
+     "LeftLowerArm",
+     "LeftHand",
+     "LeftIndexProximal",
+     "LeftIndexIntermediate",
+     "LeftIndexDistal",
+     "LeftMiddleProximal",
+     "LeftMiddleIntermediate",
+     "LeftMiddleDistal",
+     "LeftRingProximal",
+     "LeftRingIntermediate",
+     "LeftRingDistal",
+     "LeftLittleProximal",
+     "LeftLittleIntermediate",
+     "LeftLittleDistal",
+     "LeftThumbMetacarpal",
+     "LeftThumbProximal",
+     "LeftThumbDistal",
+     "LeftHand_Prop",
+     "RightShoulder",
+     "RightUpperArm",
+     "RightLowerArm",
+     "RightHand",
+     "RightIndexProximal",
+     "RightIndexIntermediate",
+     "RightIndexDistal",
+     "RightMiddleProximal",
+     "RightMiddleIntermediate",
+     "RightMiddleDistal",
+     "RightRingProximal",
+     "RightRingIntermediate",
+     "RightRingDistal",
+     "RightLittleProximal",
+     "RightLittleIntermediate",
+     "RightLittleDistal",
+     "RightThumbMetacarpal",
+     "RightThumbProximal",
+     "RightThumbDistal",
+     "RightHand_Prop",
+     "LeftUpperLeg",
+     "LeftLowerLeg",
+     "LeftFoot",
+     "LeftToes",
+     "RightUpperLeg",
+     "RightLowerLeg",
+     "RightFoot",
+     "RightToes",
+     "Tail1",
+     "Tail2",
+     "Tail3",
+     "Tail4",
+     "Tail5",
+     "Tail6",
+     "Tail7"
+    ],
+    "rest_pose": "A-pose as generated by TRELLIS from the A-pose concept",
+    "feet": "feet IK-locked during authoring (empties removed before export) and baked to FK keys; props have no wrist twist"
+   },
+   "clips": [
+    {
+     "name": "idle",
+     "frame_start": 0,
+     "frame_end": 90,
+     "frames": 90,
+     "fps": 30,
+     "duration_s": 3.0,
+     "loop": true,
+     "note": "3 s loop, weight on the balls of the feet, tail flick every 1.5 s"
+    },
+    {
+     "name": "ready",
+     "frame_start": 0,
+     "frame_end": 40,
+     "frames": 40,
+     "fps": 30,
+     "duration_s": 1.333,
+     "loop": true,
+     "note": "stalker crouch, heels raised, tail swaying"
+    },
+    {
+     "name": "attack",
+     "frame_start": 0,
+     "frame_end": 32,
+     "frames": 32,
+     "fps": 30,
+     "duration_s": 1.067,
+     "loop": false,
+     "note": "right-blade slash: wind f7, cut f12"
+    },
+    {
+     "name": "crescent_sever",
+     "frame_start": 0,
+     "frame_end": 40,
+     "frames": 40,
+     "fps": 30,
+     "duration_s": 1.333,
+     "loop": false,
+     "note": "coil f8, lunge step f15 (lead foot travels then plants), wide double slash, recover f40"
+    },
+    {
+     "name": "ravel_execution",
+     "frame_start": 0,
+     "frame_end": 48,
+     "frames": 48,
+     "fps": 30,
+     "duration_s": 1.6,
+     "loop": false,
+     "note": "crouch f10-14, leap f19, twin-blade pierce lands f23, recover f48"
+    },
+    {
+     "name": "hit_react",
+     "frame_start": 0,
+     "frame_end": 20,
+     "frames": 20,
+     "fps": 30,
+     "duration_s": 0.667,
+     "loop": false,
+     "note": "recoil f3, recover f20"
+    },
+    {
+     "name": "stunned",
+     "frame_start": 0,
+     "frame_end": 60,
+     "frames": 60,
+     "fps": 30,
+     "duration_s": 2.0,
+     "loop": true,
+     "note": "tail droops, head sway"
+    },
+    {
+     "name": "death",
+     "frame_start": 0,
+     "frame_end": 64,
+     "frames": 64,
+     "fps": 30,
+     "duration_s": 2.133,
+     "loop": false,
+     "note": "stagger f6, knees f24, fall forward f46"
+    }
+   ],
+   "sockets": {
+    "LeftHand_Prop": "left crescent blade grip",
+    "RightHand_Prop": "right crescent blade grip",
+    "Tail1-Tail7": "tail chain (deform bones, not in the humanoid profile)"
+   },
+   "validation": {
+    "gltf_validator": {
+     "errors": 0,
+     "warnings": 4,
+     "warning_types": [
+      "MESH_PRIMITIVE_GENERATED_TANGENT_SPACE",
+      "NODE_SKINNED_MESH_NON_ROOT"
+     ]
+    },
+    "blender_reimport": {
+     "actions": [
+      "attack_Kaelis_Rig",
+      "crescent_sever_Kaelis_Rig",
+      "death_Kaelis_Rig",
+      "hit_react_Kaelis_Rig",
+      "idle_Kaelis_Rig",
+      "ravel_execution_Kaelis_Rig",
+      "ready_Kaelis_Rig",
+      "stunned_Kaelis_Rig"
+     ],
+     "skinned_meshes": [
+      "Kaelis_BladeLeft",
+      "Kaelis_BladeRight",
+      "Kaelis_Body"
+     ],
+     "max_vertex_motion_m": {
+      "attack_Kaelis_Rig": {
+       "Kaelis_BladeLeft": 0.284,
+       "Kaelis_BladeRight": 0.397,
+       "Kaelis_Body": 0.43
+      },
+      "crescent_sever_Kaelis_Rig": {
+       "Kaelis_BladeLeft": 0.412,
+       "Kaelis_BladeRight": 0.388,
+       "Kaelis_Body": 0.668
+      },
+      "death_Kaelis_Rig": {
+       "Kaelis_BladeLeft": 1.189,
+       "Kaelis_BladeRight": 1.31,
+       "Kaelis_Body": 1.091
+      },
+      "hit_react_Kaelis_Rig": {
+       "Kaelis_BladeLeft": 0.048,
+       "Kaelis_BladeRight": 0.114,
+       "Kaelis_Body": 0.231
+      },
+      "idle_Kaelis_Rig": {
+       "Kaelis_BladeLeft": 0.0,
+       "Kaelis_BladeRight": 0.0,
+       "Kaelis_Body": 0.036
+      },
+      "ravel_execution_Kaelis_Rig": {
+       "Kaelis_BladeLeft": 0.864,
+       "Kaelis_BladeRight": 0.908,
+       "Kaelis_Body": 0.885
+      },
+      "ready_Kaelis_Rig": {
+       "Kaelis_BladeLeft": 0.0,
+       "Kaelis_BladeRight": 0.059,
+       "Kaelis_Body": 0.084
+      },
+      "stunned_Kaelis_Rig": {
+       "Kaelis_BladeLeft": 0.1,
+       "Kaelis_BladeRight": 0.074,
+       "Kaelis_Body": 0.103
+      }
+     }
+    },
+    "godot_4_7_2_headless": [
+     "SCENE res://kaelis_moon_ravel.glb root=kaelis_moon_ravel",
+     "- Skeleton3D [Skeleton3D] bones=65",
+     "- Kaelis_BladeLeft [MeshInstance3D] surfaces=3 skin=true",
+     "- Kaelis_BladeRight [MeshInstance3D] surfaces=3 skin=true",
+     "- Kaelis_Body [MeshInstance3D] surfaces=1 skin=true",
+     "ANIM attack len=1.067 tracks=56 loop=0",
+     "ANIM crescent_sever len=1.333 tracks=56 loop=0",
+     "ANIM death len=2.133 tracks=56 loop=0",
+     "ANIM hit_react len=0.667 tracks=56 loop=0",
+     "ANIM idle len=3.0 tracks=56 loop=1",
+     "ANIM ravel_execution len=1.6 tracks=56 loop=0",
+     "ANIM ready len=1.333 tracks=56 loop=1",
+     "ANIM stunned len=2.0 tracks=56 loop=1",
+     "HUMANOID_PROFILE bones=56 missing=[]"
+    ]
+   },
+   "sources": [
+    {
+     "name": "Microsoft TRELLIS (TRELLIS-image-large) image-to-3D, run locally on gregspc (RTX 4070, torch 2.5.1+cu124)",
+     "url": "https://huggingface.co/microsoft/TRELLIS-image-large",
+     "code": "https://github.com/microsoft/TRELLIS",
+     "license": "MIT (code and TRELLIS-image-large weights)",
+     "note": "Output used: TRELLIS sparse-structure -> SLAT -> mesh decoder (FlexiCubes) with per-vertex colour. TRELLIS own GLB texture baking (to_glb) was NOT used because it needs nvdiffrast; colour was baked in Blender from the TRELLIS vertex colours instead."
+    },
+    {
+     "name": "concept image",
+     "path": "concepts/kaelis_apose.jpg",
+     "note": "TRELLIS input (background cut with rembg isnet, then TRELLIS preprocess_image)"
+    }
+   ],
+   "previews": [
+    "kaelis_moon_ravel_turntable.png",
+    "kaelis_moon_ravel_clips_contact.png",
+    "kaelis_moon_ravel_legs_evidence.png"
+   ]
+  }
+ ],
+ "previews": [
+  "korrith_vael_dun_turntable.png",
+  "korrith_vael_dun_clips_contact.png",
+  "carapace_engine_mk2_turntable.png",
+  "carapace_engine_mk2_clips_contact.png",
+  "seraphine_vol_ivory_turntable.png",
+  "seraphine_vol_ivory_clips_contact.png",
+  "zeph_tri_lumen_turntable.png",
+  "zeph_tri_lumen_clips_contact.png",
+  "kaelis_moon_ravel_turntable.png",
+  "kaelis_moon_ravel_clips_contact.png",
+  "kaelis_moon_ravel_legs_evidence.png"
+ ],
+ "import_settings": [
+  "korrith_vael_dun.glb.import",
+  "carapace_engine_mk2.glb.import",
+  "seraphine_vol_ivory.glb.import",
+  "zeph_tri_lumen.glb.import",
+  "kaelis_moon_ravel.glb.import"
+ ],
+ "cc0_check": "Checked Quaternius Universal Animation Library (CC0, UE-style rig: pelvis/spine_01..). Not used: it has no shield bash / defensive brace / maul clips and would need retargeting onto a non-standard bulky A-pose mesh; all clips are hand-keyed by script. No CC0 meshes used.",
+ "pipeline": [
+  "PC (gregspc, RTX 4070): rembg isnet -> Hunyuan3D-2 turbo shape (octree 448, 8 steps, seeds 1234/777; 1234 chosen) -> raw GLB (~0.8-1.1M tris, untextured)",
+  "Box (Blender 4.2.23 LTS headless): normalize scale, remove floaters, decimate to budget, Smart-UV, Cycles CPU bake high->low: front-projected concept color/emissive + procedural gunmetal/hex backfill, tangent normal from high-poly + bump",
+  "Procedural props (shield, maul, dorsal ridge, Bastion FX, boss Core cage) with bevels/insets/emissive trims, baked to their own atlases",
+  "Script-built skeletons, nearest-bone weights, scripted keyframes (boss legs IK-baked), glTF export (KHR_materials_emissive_strength)",
+  "Validation: Khronos gltf-validator 2.x (npm), Blender re-import, Godot 4.7.2 headless import"
+ ],
+ "scripts": "/workspace/vs4-work/scripts (box) ; PC: C:\\Users\\liftd\\AI3D\\gen.py, setup.ps1, run_gen.ps1",
+ "hero_batch_2": {
+  "generator": {
+   "name": "Microsoft TRELLIS (TRELLIS-image-large) image-to-3D, run locally on gregspc (RTX 4070, torch 2.5.1+cu124)",
+   "url": "https://huggingface.co/microsoft/TRELLIS-image-large",
+   "code": "https://github.com/microsoft/TRELLIS",
+   "license": "MIT (code and TRELLIS-image-large weights)",
+   "note": "Output used: TRELLIS sparse-structure -> SLAT -> mesh decoder (FlexiCubes) with per-vertex colour. TRELLIS own GLB texture baking (to_glb) was NOT used because it needs nvdiffrast; colour was baked in Blender from the TRELLIS vertex colours instead."
+  },
+  "dependencies": [
+   {
+    "name": "DINOv2 ViT-L/14 reg (image encoder used by TRELLIS)",
+    "license": "Apache-2.0"
+   },
+   {
+    "name": "rembg isnet-general-use (background removal in gen_trellis.py before TRELLIS preprocessing)",
+    "license": "MIT (rembg); IS-Net weights Apache-2.0"
+   },
+   {
+    "name": "xformers 0.0.28.post3",
+    "license": "BSD-3-Clause"
+   },
+   {
+    "name": "spconv-cu124 2.3.8 / cumm-cu124",
+    "license": "Apache-2.0 / MIT"
+   },
+   {
+    "name": "utils3d (+moderngl, glcontext)",
+    "license": "MIT"
+   },
+   {
+    "name": "easydict",
+    "license": "LGPL-3.0 (unmodified library, dynamic use)"
+   },
+   {
+    "name": "pccm, ccimport, lark, termcolor",
+    "license": "MIT"
+   },
+   {
+    "name": "fire, ninja",
+    "license": "Apache-2.0"
+   },
+   {
+    "name": "pybind11, portalocker",
+    "license": "BSD"
+   },
+   {
+    "name": "plyfile",
+    "license": "GPL-3.0; installed as a TRELLIS import dependency but stubbed and never called; not shipped"
+   },
+   {
+    "name": "xatlas (python, in Blender) for UV unwrapping",
+    "license": "MIT"
+   },
+   {
+    "name": "Blender 4.2.23 LTS (tool only)",
+    "license": "GPL (outputs are not covered)"
+   }
+  ],
+  "avoided_non_commercial": [
+   "nvdiffrast (NVIDIA Source Code License: non-commercial): not installed; TRELLIS to_glb texture bake skipped",
+   "diff-gaussian-rasterization (Inria/MPII Gaussian-Splatting License: non-commercial): not installed; gaussian renders not used",
+   "kaolin and open3d: stubbed in gen_trellis.py (not needed for mesh extraction)",
+   "Hunyuan3D-2: not used for this batch (proof-only per user)"
+  ],
+  "pipeline": [
+   "PC (gregspc, RTX 4070): TRELLIS-image-large, concept -> mesh with vertex colour, seeds 1-5 per hero (~10 s each), best seed picked from vertex-colour turnarounds",
+   "Box (Blender 4.2.23 LTS headless): orient (+Z forward), scale to height, clean floaters, decimate, xatlas UV, 2K bake of basecolor/MR/normal/emissive from TRELLIS vertex colour via an HSV-classified material (neon -> emissive), procedural traces/hex bump",
+   "Script-built Korrith-matched skeleton, bone-heat weights + rule fixes + joint blends, FootIK-authored clips baked to FK, procedural FX/props rigid on their own bones",
+   "Validation: Khronos gltf-validator, Blender re-import, Godot 4.7.2 headless import with the shipped .glb.import"
+  ],
+  "scripts": "vs4-3d/scripts (stage1t.py, stage2_hero.py, hero_rig.py, hero_*.py, fxlib.py, trellis_io.py, make_import.py, manifest_heroes.py); PC: C:\\Users\\liftd\\AI3D\\gen_trellis.py, setup_trellis.ps1, run_trellis.ps1"
+ }
+}
