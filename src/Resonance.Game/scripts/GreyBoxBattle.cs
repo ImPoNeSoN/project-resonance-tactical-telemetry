@@ -61,12 +61,23 @@ public partial class GreyBoxBattle : Control
     private int _selectedAbility = -1;
     private int _hoveredAbility = -1;
     private bool _fitting;
+    private bool _view3d;
+    private SubViewportContainer _arenaHost = null!;
+    private SubViewport _arenaViewport = null!;
+    private ArenaView _arena = null!;
+    private HBoxContainer _bodyHost = null!;
+    private HBoxContainer _columns = null!;
+    private HBoxContainer _band = null!;
+    private Label _hint = null!;
+    private Button _viewToggle = null!;
 
     public override void _Ready()
     {
         _bridge = GetNode<SimBridge>("/root/SimBridge");
+        Theme = HudSkin.BattleTheme();
         ConfigureWindowStretch();
         FillViewport(this);
+        BuildArena();
 
         _background = new ColorRect { Color = new Color("12161c"), MouseFilter = MouseFilterEnum.Ignore };
         AddChild(_background);
@@ -102,7 +113,7 @@ public partial class GreyBoxBattle : Control
             SizeFlagsStretchRatio = 1,
             CustomMinimumSize = new Vector2(0, 52),
         };
-        _log.AddThemeStyleboxOverride("normal", Flat(new Color("0e1218"), 4));
+        _log.AddThemeStyleboxOverride("normal", HudSkin.Ability());
         _log.AddThemeFontSizeOverride("normal_font_size", 12);
         _log.AddThemeColorOverride("default_color", new Color("c5d0dc"));
         root.AddChild(_log);
@@ -155,6 +166,79 @@ public partial class GreyBoxBattle : Control
         _fitting = false;
     }
 
+    private void BuildArena()
+    {
+        _arenaHost = new SubViewportContainer
+        {
+            Stretch = true,
+            MouseFilter = MouseFilterEnum.Ignore,
+            Visible = false,
+        };
+        _arenaHost.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+        _arenaHost.SizeFlagsVertical = SizeFlags.ExpandFill;
+        _arenaHost.Visible = false;
+        _arenaViewport = new SubViewport
+        {
+            OwnWorld3D = true,
+            TransparentBg = false,
+            HandleInputLocally = false,
+            RenderTargetUpdateMode = SubViewport.UpdateMode.Disabled,
+            Size = new Vector2I(1280, 720),
+            Msaa3D = SubViewport.Msaa.Disabled,
+        };
+        _arenaHost.AddChild(_arenaViewport);
+        _arena = new ArenaView();
+        _arenaViewport.AddChild(_arena);
+    }
+
+    /// <summary>
+    /// Boss fights default to the 3D arena. Floor fights stay on the grey-box board.
+    /// The 2D timeline, party, parts, and ability panel stay on top of the view.
+    /// </summary>
+    private void SetArenaView(bool show)
+    {
+        _view3d = show;
+        _arenaHost.Visible = _view3d;
+        _arenaViewport.RenderTargetUpdateMode = _view3d
+            ? SubViewport.UpdateMode.Always
+            : SubViewport.UpdateMode.Disabled;
+        _arena.SetActive(_view3d);
+        _background.Color = new Color("12161c");
+        if (_hint != null)
+        {
+            _hint.Visible = !_view3d;
+        }
+
+        if (_view3d)
+        {
+            if (_columns.GetParent() != _band)
+            {
+                _columns.Reparent(_band, false);
+            }
+
+            _band.Visible = true;
+        }
+        else if (_columns.GetParent() != _bodyHost)
+        {
+            _columns.Reparent(_bodyHost, false);
+            _band.Visible = false;
+        }
+        else
+        {
+            _band.Visible = false;
+        }
+
+        _columns.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+        _columns.SizeFlagsVertical = SizeFlags.ExpandFill;
+        _log.SizeFlagsVertical = _view3d ? SizeFlags.ShrinkEnd : SizeFlags.ExpandFill;
+        _log.CustomMinimumSize = new Vector2(0, _view3d ? 40 : 52);
+        if (_viewToggle != null)
+        {
+            _viewToggle.Visible = _bridge.BossOnly || _view3d;
+            _viewToggle.Text = _view3d ? "Grey-box" : "3D arena";
+        }
+    }
+
     private static void FillViewport(Control control)
     {
         control.AnchorLeft = 0f;
@@ -169,6 +253,14 @@ public partial class GreyBoxBattle : Control
         control.GrowVertical = GrowDirection.Both;
         control.SizeFlagsHorizontal = SizeFlags.ExpandFill;
         control.SizeFlagsVertical = SizeFlags.ExpandFill;
+    }
+
+    public override void _Process(double delta)
+    {
+        if (ArenaVfx.HoldFrames && _overlay != null && _overlay.Visible)
+        {
+            _overlay.Visible = false;
+        }
     }
 
     public override void _Input(InputEvent @event)
@@ -211,31 +303,36 @@ public partial class GreyBoxBattle : Control
         _status.AddThemeFontSizeOverride("font_size", 13);
         _status.AddThemeColorOverride("font_color", new Color("d5dde8"));
         top.AddChild(_status);
+        _viewToggle = new Button { Text = "3D arena", Visible = false };
+        _viewToggle.Pressed += () =>
+        {
+            if (!_bridge.BossOnly)
+            {
+                return;
+            }
+
+            SetArenaView(!_view3d);
+            Refresh();
+        };
+        top.AddChild(_viewToggle);
         header.AddChild(top);
 
-        var hint = new Label
+        _hint = new Label
         {
-            Text = "Space pauses. Click a hero, click a part, then pick an ability.",
+            Text = "Space pauses. Boss fights open in the 3D arena. Click a hero, a part, then an ability.",
             ClipText = true,
             TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis,
         };
-        hint.AddThemeFontSizeOverride("font_size", 12);
-        hint.AddThemeColorOverride("font_color", new Color("8ea0b5"));
-        header.AddChild(hint);
+        _hint.AddThemeFontSizeOverride("font_size", 12);
+        _hint.AddThemeColorOverride("font_color", new Color("8ea0b5"));
+        header.AddChild(_hint);
         return header;
     }
 
     private Control BuildTimeline()
     {
         var panel = new PanelContainer { MouseFilter = MouseFilterEnum.Ignore };
-        panel.AddThemeStyleboxOverride("panel", new StyleBoxFlat
-        {
-            BgColor = new Color("181e28"),
-            ContentMarginLeft = 6,
-            ContentMarginRight = 6,
-            ContentMarginTop = 3,
-            ContentMarginBottom = 3,
-        });
+        panel.AddThemeStyleboxOverride("panel", HudSkin.Timeline());
 
         var box = new VBoxContainer { MouseFilter = MouseFilterEnum.Ignore };
         box.AddThemeConstantOverride("separation", 1);
@@ -260,19 +357,45 @@ public partial class GreyBoxBattle : Control
 
     private Control BuildBody()
     {
-        var row = new HBoxContainer
+        var wrap = new VBoxContainer
         {
             SizeFlagsHorizontal = SizeFlags.ExpandFill,
             SizeFlagsVertical = SizeFlags.ExpandFill,
             SizeFlagsStretchRatio = 5,
+            MouseFilter = MouseFilterEnum.Ignore,
         };
-        row.AddThemeConstantOverride("separation", 6);
+        wrap.AddThemeConstantOverride("separation", 4);
+
+        _bodyHost = new HBoxContainer
+        {
+            SizeFlagsHorizontal = SizeFlags.ExpandFill,
+            SizeFlagsVertical = SizeFlags.ExpandFill,
+            MouseFilter = MouseFilterEnum.Ignore,
+        };
+        _bodyHost.AddThemeConstantOverride("separation", 6);
+        _columns = new HBoxContainer
+        {
+            SizeFlagsHorizontal = SizeFlags.ExpandFill,
+            SizeFlagsVertical = SizeFlags.ExpandFill,
+        };
+        _columns.AddThemeConstantOverride("separation", 6);
+        _bodyHost.AddChild(_arenaHost);
+        _bodyHost.AddChild(_columns);
 
         BattleSimulator sim = _bridge.Simulation;
-        row.AddChild(BuildHeroColumn(sim));
-        row.AddChild(BuildPartColumn(sim));
-        row.AddChild(BuildInfoColumn());
-        return row;
+        _columns.AddChild(BuildHeroColumn(sim));
+        _columns.AddChild(BuildPartColumn(sim));
+        _columns.AddChild(BuildInfoColumn());
+        wrap.AddChild(_bodyHost);
+
+        _band = new HBoxContainer
+        {
+            Visible = false,
+            CustomMinimumSize = new Vector2(0, 168),
+            SizeFlagsHorizontal = SizeFlags.ExpandFill,
+        };
+        wrap.AddChild(_band);
+        return wrap;
     }
 
     private Control BuildHeroColumn(BattleSimulator sim)
@@ -362,14 +485,7 @@ public partial class GreyBoxBattle : Control
             SizeFlagsVertical = SizeFlags.ExpandFill,
             SizeFlagsStretchRatio = 2.6f,
         };
-        abilityPanel.AddThemeStyleboxOverride("panel", new StyleBoxFlat
-        {
-            BgColor = new Color("1b2230"),
-            ContentMarginLeft = 6,
-            ContentMarginRight = 6,
-            ContentMarginTop = 3,
-            ContentMarginBottom = 3,
-        });
+        abilityPanel.AddThemeStyleboxOverride("panel", HudSkin.Ability());
         var abilityScroll = VerticalScroll();
         abilityPanel.AddChild(abilityScroll);
         _abilityDetail = new Label
@@ -390,14 +506,7 @@ public partial class GreyBoxBattle : Control
     private Control BuildAction()
     {
         var panel = new PanelContainer();
-        panel.AddThemeStyleboxOverride("panel", new StyleBoxFlat
-        {
-            BgColor = new Color("181e28"),
-            ContentMarginLeft = 6,
-            ContentMarginRight = 6,
-            ContentMarginTop = 4,
-            ContentMarginBottom = 4,
-        });
+        panel.AddThemeStyleboxOverride("panel", HudSkin.Ability());
 
         var box = new VBoxContainer();
         box.AddThemeConstantOverride("separation", 3);
@@ -561,14 +670,7 @@ public partial class GreyBoxBattle : Control
         FillViewport(center);
 
         var panel = new PanelContainer { CustomMinimumSize = new Vector2(420, 0) };
-        panel.AddThemeStyleboxOverride("panel", new StyleBoxFlat
-        {
-            BgColor = new Color("222836"),
-            ContentMarginLeft = 24,
-            ContentMarginRight = 24,
-            ContentMarginTop = 20,
-            ContentMarginBottom = 20,
-        });
+        panel.AddThemeStyleboxOverride("panel", HudSkin.Ability());
         center.AddChild(panel);
 
         var box = new VBoxContainer();
@@ -691,6 +793,7 @@ public partial class GreyBoxBattle : Control
         _abilityActor = -1;
         _picker.Visible = false;
         _overlay.Visible = false;
+        SetArenaView(false);
         _bridge.LoadFloorFight();
     }
 
@@ -702,6 +805,7 @@ public partial class GreyBoxBattle : Control
         _abilityActor = -1;
         _picker.Visible = false;
         _overlay.Visible = false;
+        SetArenaView(true);
         _bridge.StartBoss(_bridge.PartyIds);
     }
 
@@ -851,6 +955,11 @@ public partial class GreyBoxBattle : Control
         EnsureAbilities(sim);
         UpdateAbilityDetail();
 
+        if (_view3d && !_bridge.BossOnly)
+        {
+            SetArenaView(false);
+        }
+
         bool ended = sim.Outcome != FightOutcome.Ongoing;
         string paused = sim.Paused ? "PAUSED" : "running";
         string frenzy = sim.Boss.FrenzyBp > 0 ? $"   Frenzy +{sim.Boss.FrenzyBp}bp" : "";
@@ -860,7 +969,13 @@ public partial class GreyBoxBattle : Control
             : $"{party}   Tick {sim.Tick}   {paused}{frenzy}   Seed {_bridge.Seed}";
         _auto.Text = _bridge.AutoRunning ? "Stop" : "Auto-run";
         _pause.Text = sim.Paused ? "Resume" : "Pause";
-        _banner.Text = $"Project Resonance  ·  Grey-Box Battle  ·  {sim.Boss.Name}";
+        string viewName = _view3d ? "3D Arena" : "Grey-Box Battle";
+        _banner.Text = $"Project Resonance  ·  {viewName}  ·  {sim.Boss.Name}";
+        if (_viewToggle != null)
+        {
+            _viewToggle.Visible = _bridge.BossOnly;
+            _viewToggle.Text = _view3d ? "Grey-box" : "3D arena";
+        }
         _bossTitle.Text = sim.Boss.Name;
         _resonance.Text = ResonanceReadout.Summarize(sim);
         _order.Text = OrderText(sim);
@@ -1372,23 +1487,14 @@ public partial class GreyBoxBattle : Control
 
     private sealed class HeroRow
     {
-        private readonly StyleBoxFlat _style;
         private readonly Label _name;
         private readonly ProgressBar _hp;
         private readonly ProgressBar _mp;
         private readonly Label _meta;
+        private readonly TextureRect _icon;
 
         public HeroRow(Color color)
         {
-            _style = new StyleBoxFlat
-            {
-                BgColor = new Color("1b2230"),
-                ContentMarginLeft = 6,
-                ContentMarginRight = 6,
-                ContentMarginTop = 3,
-                ContentMarginBottom = 3,
-                BorderColor = new Color("00000000"),
-            };
             Panel = new PanelContainer
             {
                 SizeFlagsHorizontal = SizeFlags.ExpandFill,
@@ -1396,7 +1502,7 @@ public partial class GreyBoxBattle : Control
                 MouseFilter = MouseFilterEnum.Stop,
                 MouseDefaultCursorShape = CursorShape.PointingHand,
             };
-            Panel.AddThemeStyleboxOverride("panel", _style);
+            Panel.AddThemeStyleboxOverride("panel", HudSkin.PartyCard());
             var row = new HBoxContainer { MouseFilter = MouseFilterEnum.Ignore };
             row.AddThemeConstantOverride("separation", 6);
             Panel.AddChild(row);
@@ -1407,6 +1513,16 @@ public partial class GreyBoxBattle : Control
                 SizeFlagsVertical = SizeFlags.ExpandFill,
                 MouseFilter = MouseFilterEnum.Ignore,
             });
+            _icon = new TextureRect
+            {
+                CustomMinimumSize = new Vector2(18, 18),
+                ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
+                StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
+                MouseFilter = MouseFilterEnum.Ignore,
+                Visible = false,
+                TextureFilter = TextureFilterEnum.Linear,
+            };
+            row.AddChild(_icon);
             var box = new VBoxContainer
             {
                 SizeFlagsHorizontal = SizeFlags.ExpandFill,
@@ -1441,15 +1557,12 @@ public partial class GreyBoxBattle : Control
 
         public void Set(HeroState hero, bool selected, int tick)
         {
-            _style.BorderColor = selected ? new Color("ffe08a") : new Color("00000000");
-            int width = selected ? 2 : 0;
-            _style.BorderWidthLeft = width;
-            _style.BorderWidthRight = width;
-            _style.BorderWidthTop = width;
-            _style.BorderWidthBottom = width;
-            _style.BgColor = selected ? new Color("243044") : new Color("1b2230");
+            Panel.Modulate = selected ? new Color("ffe08a") : Colors.White;
             string down = hero.IsAlive ? "" : "  DOWN";
             bool shielded = hero.Absorb > 0 && tick < hero.AbsorbExpires;
+            bool regen = hero.RegenPerPulse > 0 && tick < hero.RegenExpires;
+            _icon.Visible = shielded || regen;
+            _icon.Texture = shielded ? HudSkin.Status("shield") : HudSkin.Status("regen");
             _name.Text = shielded ? $"shield {hero.Absorb}  {hero.Name}{down}" : hero.Name + down;
             _hp.MaxValue = hero.MaxHp;
             _hp.Value = hero.Hp < 0 ? 0 : hero.Hp;
@@ -1477,8 +1590,9 @@ public partial class GreyBoxBattle : Control
 
     private sealed class PartRow
     {
-        private readonly StyleBoxFlat _style;
         private readonly Label _name;
+        private readonly TextureRect _icon;
+        private readonly TextureRect _chain;
         private readonly ProgressBar _hp;
         private readonly Label _resist;
         private readonly Label _pressure;
@@ -1487,15 +1601,6 @@ public partial class GreyBoxBattle : Control
 
         public PartRow(Color[] colors)
         {
-            _style = new StyleBoxFlat
-            {
-                BgColor = new Color("1b2230"),
-                ContentMarginLeft = 6,
-                ContentMarginRight = 6,
-                ContentMarginTop = 3,
-                ContentMarginBottom = 3,
-                BorderColor = new Color("00000000"),
-            };
             Panel = new PanelContainer
             {
                 SizeFlagsHorizontal = SizeFlags.ExpandFill,
@@ -1503,18 +1608,26 @@ public partial class GreyBoxBattle : Control
                 MouseFilter = MouseFilterEnum.Stop,
                 MouseDefaultCursorShape = CursorShape.PointingHand,
             };
-            Panel.AddThemeStyleboxOverride("panel", _style);
+            Panel.AddThemeStyleboxOverride("panel", HudSkin.BossPart());
             var box = new VBoxContainer { MouseFilter = MouseFilterEnum.Ignore };
             box.AddThemeConstantOverride("separation", 2);
             Panel.AddChild(box);
+            var title = new HBoxContainer { MouseFilter = MouseFilterEnum.Ignore };
+            title.AddThemeConstantOverride("separation", 4);
+            box.AddChild(title);
+            _icon = StatusIcon();
+            title.AddChild(_icon);
+            _chain = StatusIcon();
+            title.AddChild(_chain);
             _name = new Label
             {
                 MouseFilter = MouseFilterEnum.Ignore,
                 ClipText = true,
+                SizeFlagsHorizontal = SizeFlags.ExpandFill,
                 TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis,
             };
             _name.AddThemeFontSizeOverride("font_size", 13);
-            box.AddChild(_name);
+            title.AddChild(_name);
             _hp = new ProgressBar
             {
                 MinValue = 0,
@@ -1570,13 +1683,13 @@ public partial class GreyBoxBattle : Control
 
         public void Set(BossPartState part, IReadOnlyList<HeroState> heroes, bool selected, int bossDef, int tick)
         {
-            _style.BorderColor = selected ? new Color("ffe08a") : new Color("00000000");
-            int width = selected ? 2 : 0;
-            _style.BorderWidthLeft = width;
-            _style.BorderWidthRight = width;
-            _style.BorderWidthTop = width;
-            _style.BorderWidthBottom = width;
-            _style.BgColor = selected ? new Color("243044") : new Color("1b2230");
+            Panel.Modulate = selected ? new Color("ffe08a") : Colors.White;
+            bool stunned = part.Hp > 0 && tick < part.StunExpires;
+            _icon.Visible = stunned;
+            _icon.Texture = HudSkin.Status("stun");
+            Texture2D? chain = HudSkin.Chain(part.Property);
+            _chain.Visible = chain != null;
+            _chain.Texture = chain;
             string state = part.Hp <= 0 ? "destroyed" : part.Active ? "up" : "down";
             if (part.Hp > 0 && tick < part.StunExpires)
             {
@@ -1618,6 +1731,19 @@ public partial class GreyBoxBattle : Control
                 _threatLabel[i].Visible = true;
                 _threatLabel[i].Text = $"{heroes[i].Name.Split(' ')[0]} {total}";
             }
+        }
+
+        private static TextureRect StatusIcon()
+        {
+            return new TextureRect
+            {
+                CustomMinimumSize = new Vector2(18, 18),
+                ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
+                StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
+                MouseFilter = MouseFilterEnum.Ignore,
+                Visible = false,
+                TextureFilter = TextureFilterEnum.Linear,
+            };
         }
 
         private static Label Note(Color color)
