@@ -44,6 +44,9 @@ public partial class ArenaView : Node3D
     private bool _didBash;
     private bool _didBastion;
     private bool _didPart;
+    private bool _didKaelis;
+    private bool _didSeraphine;
+    private bool _didZeph;
     private bool _openingSent;
     private double _hold;
     private bool _frozen;
@@ -65,7 +68,7 @@ public partial class ArenaView : Node3D
         _bridge.LogLine += OnLog;
         _bridge.StateChanged += OnState;
         _capture = OS.GetEnvironment("RESONANCE_ARENA_CAPTURE");
-        if (_capture == "sequence")
+        if (_capture is "sequence" or "signatures")
         {
             try
             {
@@ -295,7 +298,7 @@ public partial class ArenaView : Node3D
     private void OnLog(string line)
     {
         _recent.Add(line);
-        if (_recent.Count > 16)
+        if (_recent.Count > 48)
         {
             _recent.RemoveAt(0);
         }
@@ -440,9 +443,13 @@ public partial class ArenaView : Node3D
                 {
                     // The clip ends held in the brace.
                 }
-                else
+                else if (hero.Ap.IsReady && !hero.Casting)
                 {
                     Loop(actor, "ready");
+                }
+                else
+                {
+                    Loop(actor, "idle");
                 }
             }
 
@@ -522,53 +529,109 @@ public partial class ArenaView : Node3D
         AddChild(root);
         root.LookAt(new Vector3(BossSpot.X, 1.2f, BossSpot.Z), Vector3.Up, true);
 
-        bool korrith = hero.Name.StartsWith("Korrith", StringComparison.Ordinal);
         var actor = new Actor { Name = hero.Name, Root = root, Home = spot };
-        if (korrith)
+        float plate = 2.55f;
+        bool modeled = TryHeroModel(hero.Name, out string modelPath, out float modelPlate);
+        if (modeled)
         {
-            Node3D? model = LoadModel("res://assets/models/proof/korrith_vael_dun.glb");
+            Node3D? model = LoadModel(modelPath);
             if (model == null)
             {
-                GD.PrintErr("ARENA_IMPORT missing korrith_vael_dun.glb");
+                GD.PrintErr($"ARENA_IMPORT missing {modelPath}");
             }
             else
             {
                 root.AddChild(model);
                 actor.RealModel = true;
+                plate = modelPlate;
                 actor.Player = FindPlayer(model);
                 actor.Skeleton = model.FindChild("Skeleton3D", true, false) as Skeleton3D;
-                LogClips("korrith", actor.Player);
+                LogClips(hero.Name.Split(' ')[0].ToLowerInvariant(), actor.Player);
                 if (actor.Skeleton != null)
                 {
                     actor.BastionBone = actor.Skeleton.FindBone("FX_Bastion");
                     actor.HandBone = actor.Skeleton.FindBone("RightHand_Prop");
-                    AttachTrail(actor);
+                    AttachTrail(actor, hero.Name);
+                    if (hero.Name.StartsWith("Kaelis", StringComparison.Ordinal))
+                    {
+                        int tails = 0;
+                        for (int bone = 1; bone <= 7; bone++)
+                        {
+                            if (actor.Skeleton.FindBone("Tail" + bone.ToString(CultureInfo.InvariantCulture)) >= 0)
+                            {
+                                tails++;
+                            }
+                        }
+
+                        GD.Print($"ARENA_TAIL Kaelis {tails.ToString(CultureInfo.InvariantCulture)}");
+                    }
                 }
 
-                actor.Dome = ArenaVfx.Dome();
-                root.AddChild(actor.Dome);
+                if (hero.Name.StartsWith("Korrith", StringComparison.Ordinal))
+                {
+                    actor.Dome = ArenaVfx.Dome();
+                    root.AddChild(actor.Dome);
+                }
             }
         }
 
-            if (!actor.RealModel)
-            {
-                Color color = RoleColor(hero.Name, index);
-                var body = Placeholder(color);
-                actor.Body = body;
-                actor.BodyRestY = 0f;
-                root.AddChild(body);
-            }
+        if (!actor.RealModel)
+        {
+            Color color = RoleColor(hero.Name, index);
+            var body = Placeholder(color);
+            actor.Body = body;
+            actor.BodyRestY = 0f;
+            root.AddChild(body);
+            plate = 2.55f;
+        }
 
-            string plate = korrith && actor.RealModel ? hero.Name.Split(' ')[0] : hero.Name + "\nPLACEHOLDER";
-            AddNameplate(root, plate, korrith && actor.RealModel ? 2.35f : 2.55f);
-        actor.ShieldIcon = Icon(root, HudSkin.Status("shield"), new Vector3(-0.28f, 2.55f, 0f));
-        actor.RegenIcon = Icon(root, HudSkin.Status("regen"), new Vector3(0.28f, 2.55f, 0f));
-        actor.StunIcon = Icon(root, HudSkin.Status("stun"), new Vector3(0f, 2.85f, 0f));
-        Loop(actor, "ready");
+        string label = actor.RealModel ? hero.Name.Split(' ')[0] : hero.Name + "\nPLACEHOLDER";
+        AddNameplate(root, label, plate);
+        float icons = plate + 0.22f;
+        actor.ShieldIcon = Icon(root, HudSkin.Status("shield"), new Vector3(-0.28f, icons, 0f));
+        actor.RegenIcon = Icon(root, HudSkin.Status("regen"), new Vector3(0.28f, icons, 0f));
+        actor.StunIcon = Icon(root, HudSkin.Status("stun"), new Vector3(0f, icons + 0.28f, 0f));
+        actor.StunIcon.Visible = false;
+        Loop(actor, hero.Ap.IsReady ? "ready" : "idle");
         return actor;
     }
 
-    private void AttachTrail(Actor actor)
+    private static bool TryHeroModel(string name, out string path, out float plate)
+    {
+        if (name.StartsWith("Korrith", StringComparison.Ordinal))
+        {
+            path = "res://assets/models/proof/korrith_vael_dun.glb";
+            plate = 2.35f;
+            return true;
+        }
+
+        if (name.StartsWith("Seraphine", StringComparison.Ordinal))
+        {
+            path = "res://assets/models/heroes/seraphine_vol_ivory.glb";
+            plate = 2.05f;
+            return true;
+        }
+
+        if (name.StartsWith("Zeph", StringComparison.Ordinal))
+        {
+            path = "res://assets/models/heroes/zeph_tri_lumen.glb";
+            plate = 1.28f;
+            return true;
+        }
+
+        if (name.StartsWith("Kaelis", StringComparison.Ordinal))
+        {
+            path = "res://assets/models/heroes/kaelis_moon_ravel.glb";
+            plate = 2.15f;
+            return true;
+        }
+
+        path = "";
+        plate = 2.55f;
+        return false;
+    }
+
+    private void AttachTrail(Actor actor, string heroName)
     {
         if (actor.Skeleton == null || actor.HandBone < 0)
         {
@@ -577,7 +640,10 @@ public partial class ArenaView : Node3D
 
         var hand = new BoneAttachment3D { BoneName = "RightHand_Prop" };
         actor.Skeleton.AddChild(hand);
-        var sparks = ArenaVfx.Sparks(new Color(0.95f, 0.78f, 0.45f), 32, 2.4f, oneShot: false);
+        Color spark = heroName.StartsWith("Korrith", StringComparison.Ordinal)
+            ? new Color(0.95f, 0.78f, 0.45f)
+            : new Color(0f, 0.898f, 1f);
+        var sparks = ArenaVfx.Sparks(spark, 32, 2.4f, oneShot: false);
         if (sparks is Node3D sparkNode)
         {
             sparkNode.Position = new Vector3(0f, 0f, 0.35f);
@@ -597,7 +663,7 @@ public partial class ArenaView : Node3D
             ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded,
             Transparency = BaseMaterial3D.TransparencyEnum.Alpha,
             BlendMode = BaseMaterial3D.BlendModeEnum.Add,
-            AlbedoColor = new Color(1f, 0.72f, 0.35f, 0.85f),
+            AlbedoColor = new Color(spark.R, spark.G, spark.B, 0.85f),
         };
         streak.MaterialOverride = mat;
         hand.AddChild(streak);
@@ -783,6 +849,41 @@ public partial class ArenaView : Node3D
             return;
         }
 
+        if (text.Contains("Phase Sanctuary.", StringComparison.Ordinal))
+        {
+            string heroName = MatchHero(text);
+            PresentSignature(heroName, "Phase Sanctuary", PartyCenter() + new Vector3(0f, 0.35f, 0f));
+            return;
+        }
+
+        if (text.Contains(" Heal ", StringComparison.Ordinal))
+        {
+            string heroName = MatchHero(text);
+            string ability = heroName.Length == 0 ? "" : AbilityOf(text, heroName);
+            if (SignatureBurst.TryMatch(ability, out _))
+            {
+                PresentSignature(heroName, ability, HeroPoint(AfterArrow(text)) + new Vector3(0f, 0.4f, 0f));
+                return;
+            }
+        }
+
+        string stunned = MatchHero(text);
+        if (stunned.Length > 0 && text.StartsWith(stunned, StringComparison.Ordinal) && text.Contains("stunned", StringComparison.Ordinal))
+        {
+            Actor? hero = FindActor(stunned);
+            if (hero != null)
+            {
+                hero.Busy = 2.0;
+                Play(hero, "stunned", true);
+                if (hero.StunIcon != null)
+                {
+                    hero.StunIcon.Visible = true;
+                }
+            }
+
+            return;
+        }
+
         if (text.Contains(" → ", StringComparison.Ordinal) && text.Contains("Dmg ", StringComparison.Ordinal))
         {
             ResolveHit(text);
@@ -797,31 +898,118 @@ public partial class ArenaView : Node3D
             return;
         }
 
-        if (ability.Contains("Shield Bash", StringComparison.Ordinal))
-        {
-            hero.Busy = 1.2;
-            Play(hero, "shield_bash", false);
-            return;
-        }
-
         if (ability.Contains("Keratin Bastion", StringComparison.Ordinal))
         {
             hero.Bastion = true;
             hero.BastionAge = 0;
-            hero.Busy = 1.6;
-            Play(hero, "keratin_bastion", false);
-            return;
         }
 
-        if (ability is "Attack" or "Seismic Maul" || hero.RealModel)
+        if (!hero.RealModel
+            && ability != "Attack"
+            && ability != "Seismic Maul"
+            && !ability.Contains("Shield Bash", StringComparison.Ordinal)
+            && !ability.Contains("Keratin Bastion", StringComparison.Ordinal))
         {
-            hero.Busy = 1.33;
-            hero.TrailFor = 0.55;
-            Play(hero, "attack", false);
+            hero.Flinch = -0.2;
             return;
         }
 
-        hero.Flinch = -0.2;
+        PlayMapped(hero, ability);
+        if (!SignatureBurst.TryMatch(ability, out SignatureKind kind) || !SignatureBurst.IsChant(kind))
+        {
+            return;
+        }
+
+        Vector3 at = kind switch
+        {
+            SignatureKind.PhaseSanctuary => PartyCenter() + new Vector3(0f, 0.35f, 0f),
+            SignatureKind.PyreLattice => hero.Root.GlobalPosition + new Vector3(0f, 1.6f, 0f),
+            SignatureKind.HexLance => PartPoint("Core"),
+            _ => hero.Root.GlobalPosition + new Vector3(0f, 1.2f, 0f),
+        };
+        SignatureBurst.Spawn(this, kind, at, hero.Root.GlobalPosition + new Vector3(0f, 1.1f, 0f), true);
+    }
+
+    private void PresentSignature(string heroName, string ability, Vector3 at)
+    {
+        if (!SignatureBurst.TryMatch(ability, out SignatureKind kind))
+        {
+            return;
+        }
+
+        Actor? hero = FindActor(heroName);
+        if (hero != null)
+        {
+            PlayMapped(hero, ability);
+        }
+
+        Vector3 from = hero == null ? at : hero.Root.GlobalPosition + new Vector3(0f, 1.1f, 0f);
+        SignatureBurst.Spawn(this, kind, at, from, hero != null);
+    }
+
+    private void PlayMapped(Actor hero, string ability)
+    {
+        string clip = "attack";
+        if (ability.Contains("Shield Bash", StringComparison.Ordinal))
+        {
+            clip = "shield_bash";
+        }
+        else if (ability.Contains("Keratin Bastion", StringComparison.Ordinal))
+        {
+            clip = "keratin_bastion";
+        }
+        else if (SignatureBurst.TryMatch(ability, out SignatureKind kind))
+        {
+            clip = kind switch
+            {
+                SignatureKind.CureCascade => "cure_cascade",
+                SignatureKind.PhaseSanctuary => "phase_sanctuary",
+                SignatureKind.HexLance => "hex_lance",
+                SignatureKind.PyreLattice => "pyre_lattice",
+                SignatureKind.CrescentSever => "crescent_sever",
+                _ => "ravel_execution",
+            };
+        }
+
+        if (hero.Resolve(clip).Length == 0)
+        {
+            clip = "attack";
+        }
+
+        double busy = 1.2;
+        string resolved = hero.Resolve(clip);
+        if (hero.Player != null && resolved.Length > 0)
+        {
+            Animation? anim = hero.Player.GetAnimation(resolved);
+            if (anim != null && anim.Length > 0.2)
+            {
+                busy = anim.Length;
+            }
+        }
+
+        hero.Busy = busy;
+        if (clip == "attack")
+        {
+            hero.TrailFor = 0.5;
+        }
+
+        Play(hero, clip, clip == "stunned");
+    }
+
+    private Vector3 PartyCenter()
+    {
+        if (_actors.Count == 0)
+        {
+            return Vector3.Zero;
+        }
+
+        Vector3 sum = Vector3.Zero;
+        for (int i = 0; i < _actors.Count; i++)
+        {
+            sum += _actors[i].Root.GlobalPosition;
+        }
+
+        return sum / _actors.Count;
     }
 
     private void ResolveHit(string text)
@@ -833,6 +1021,24 @@ public partial class ArenaView : Node3D
         bool miss = text.Contains(" miss", StringComparison.Ordinal);
         Vector3 at = PartPoint(partName);
         SpawnFloat(at + new Vector3(0f, 0.6f, 0f), miss ? "Miss" : damage.ToString(CultureInfo.InvariantCulture), new Color("f4fbff"));
+
+        if (SignatureBurst.TryMatch(ability, out SignatureKind signature))
+        {
+            Actor? caster = FindActor(heroName);
+            if (caster != null)
+            {
+                PlayMapped(caster, ability);
+            }
+
+            Vector3 from = caster == null ? at : caster.Root.GlobalPosition + new Vector3(0f, 1.1f, 0f);
+            SignatureBurst.Spawn(this, signature, at + new Vector3(0f, 0.8f, 0f), from, caster != null);
+            if (damage >= 1500)
+            {
+                Nudge(0.8f);
+            }
+
+            return;
+        }
 
         if (ability.Contains("Shield Bash", StringComparison.Ordinal))
         {
@@ -848,15 +1054,16 @@ public partial class ArenaView : Node3D
             return;
         }
 
-        if (ability is "Attack" or "Seismic Maul")
+        if (ability is "Attack" or "Seismic Maul" || FindActor(heroName) is { RealModel: true })
         {
             Actor? hero = FindActor(heroName);
             if (hero != null)
             {
-                hero.Busy = 1.33;
-                hero.TrailFor = 0.5;
-                Play(hero, "attack", false);
-                SpawnArc(hero, at);
+                PlayMapped(hero, ability is "Attack" or "Seismic Maul" ? ability : "Attack");
+                if (ability is "Attack" or "Seismic Maul")
+                {
+                    SpawnArc(hero, at);
+                }
             }
 
             ImpactBurst.Spawn(this, at, ImpactKind.Attack);
@@ -979,7 +1186,7 @@ public partial class ArenaView : Node3D
 
     private void PollCapture(double delta)
     {
-        if (_capture != "sequence" || _bridge == null || _shotsLeft <= 0)
+        if (_capture is not ("sequence" or "signatures") || _bridge == null || _shotsLeft <= 0)
         {
             return;
         }
@@ -1030,6 +1237,16 @@ public partial class ArenaView : Node3D
             }
 
             sim = _bridge.Simulation;
+            if (_capture == "signatures")
+            {
+                if (TrySignatureShot())
+                {
+                    return;
+                }
+
+                continue;
+            }
+
             if (!_didBash && Saw("Shield Bash →"))
             {
                 FinishShot(sim, "bash");
@@ -1054,6 +1271,60 @@ public partial class ArenaView : Node3D
         }
 
         _quiet = false;
+    }
+
+    private bool TrySignatureShot()
+    {
+        if (!_didKaelis && Saw("Crescent Sever →"))
+        {
+            FinishSignature("kaelis", "Kaelis Moon-Ravel", "crescent_sever", 0.5, SignatureKind.CrescentSever, PartPoint("Core"));
+            _didKaelis = true;
+            return true;
+        }
+
+        if (!_didSeraphine && Saw("starts Cure Cascade"))
+        {
+            Actor? hero = FindActor("Seraphine Vol-Ivory");
+            Vector3 at = hero == null ? Vector3.Zero : hero.Root.GlobalPosition + new Vector3(0f, 1.15f, 0f);
+            FinishSignature("seraphine", "Seraphine Vol-Ivory", "cure_cascade", 0.93, SignatureKind.CureCascade, at);
+            _didSeraphine = true;
+            return true;
+        }
+
+        if (!_didZeph && Saw("starts Pyre Lattice"))
+        {
+            Actor? hero = FindActor("Zeph Tri-Lumen");
+            Vector3 at = hero == null ? Vector3.Zero : hero.Root.GlobalPosition + new Vector3(0f, 1.6f, 0f);
+            FinishSignature("zeph", "Zeph Tri-Lumen", "pyre_lattice", 1.1, SignatureKind.PyreLattice, at);
+            _didZeph = true;
+            _shotsLeft = 0;
+            return true;
+        }
+
+        return false;
+    }
+
+    private void FinishSignature(string shot, string heroName, string clip, double at, SignatureKind kind, Vector3 fxAt)
+    {
+        _quiet = false;
+        _frozen = true;
+        ArenaVfx.HoldFrames = true;
+        if (_bridge != null && !_bridge.Paused)
+        {
+            _bridge.TogglePause();
+        }
+
+        Actor? hero = FindActor(heroName);
+        if (hero != null)
+        {
+            Freeze(hero, clip, at);
+        }
+
+        Vector3 from = hero == null ? fxAt : hero.Root.GlobalPosition + new Vector3(0f, 1.1f, 0f);
+        SignatureBurst.Spawn(this, kind, fxAt, from, hero != null);
+        WriteShot(shot);
+        _hold = 14;
+        _recent.Clear();
     }
 
     private void FinishShot(BattleSimulator sim, string shot)
@@ -1674,6 +1945,15 @@ public partial class ArenaView : Node3D
         }
 
         GD.Print($"ARENA_CLIPS {who} {string.Join(",", names)}");
+        foreach (string clip in new[] { "idle", "ready", "stunned" })
+        {
+            string resolved = Resolve(player, clip);
+            Animation? anim = resolved.Length == 0 ? null : player.GetAnimation(resolved);
+            if (anim != null)
+            {
+                GD.Print($"ARENA_LOOP {who} {clip} {(int)anim.LoopMode}");
+            }
+        }
     }
 
     private static Node3D? LoadModel(string resPath)
