@@ -243,10 +243,6 @@ public partial class ArenaView : Node3D
         AddChild(floor);
         AddChild(Strip(new Vector3(0f, 0.02f, -0.4f), new Vector3(12f, 0.03f, 0.07f), "00e5ff"));
         AddChild(Strip(new Vector3(0.3f, 0.02f, 5.2f), new Vector3(9f, 0.03f, 0.07f), "e13cff"));
-        AddChild(ColumnMesh(new Vector3(-14.2f, 2.2f, -7.2f)));
-        AddChild(ColumnMesh(new Vector3(11f, 2.2f, -7.2f)));
-        AddChild(ColumnMesh(new Vector3(-9f, 2.2f, 11f)));
-        AddChild(ColumnMesh(new Vector3(9f, 2.2f, 11f)));
         AddChild(Wall(new Vector3(0f, 2.6f, 13.2f), new Vector3(22f, 5.2f, 0.35f)));
 
         Sync();
@@ -277,22 +273,6 @@ public partial class ArenaView : Node3D
             Position = at,
             MaterialOverride = mat,
             CastShadow = GeometryInstance3D.ShadowCastingSetting.Off,
-        };
-    }
-
-    private static MeshInstance3D ColumnMesh(Vector3 at)
-    {
-        var mat = new StandardMaterial3D
-        {
-            AlbedoColor = new Color("1a2030"),
-            Metallic = 0.85f,
-            Roughness = 0.32f,
-        };
-        return new MeshInstance3D
-        {
-            Mesh = new BoxMesh { Size = new Vector3(0.45f, 4.4f, 0.45f) },
-            Position = at,
-            MaterialOverride = mat,
         };
     }
 
