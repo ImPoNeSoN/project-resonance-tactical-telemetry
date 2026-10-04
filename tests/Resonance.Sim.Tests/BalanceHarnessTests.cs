@@ -166,9 +166,9 @@ public class BalanceHarnessTests
     }
 
     [Fact]
-    public void Every_four_hero_combo_reports_floor_clears()
+    public void Every_four_hero_combo_stays_inside_the_clear_band()
     {
-        const int n = 12;
+        const int n = 24;
         const ulong first = 20261004UL;
         int[][] combos = HeroRoster.Combinations();
         Assert.Equal(15, combos.Length);
@@ -184,8 +184,8 @@ public class BalanceHarnessTests
                 }
             }
 
-            string flag = clears == 0 || clears == n ? " FLAG" : "";
-            Console.WriteLine($"combo {HeroRoster.Label(ids)} clears {clears}/{n}{flag}");
+            Console.WriteLine($"combo {HeroRoster.Label(ids)} clears {clears}/{n}");
+            Assert.InRange(clears, 6, 18);
         }
     }
 

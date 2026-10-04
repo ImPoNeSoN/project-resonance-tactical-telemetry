@@ -41,6 +41,19 @@ public static class AbilityCatalog
     public const int ChoirAegis = 59;
     public const int MiteSpit = 60;
     public const int SkitterLash = 61;
+    public const int BriarCut = 70;
+    public const int BriarArc = 78;
+    public const int MoonCut = 71;
+    public const int MoonArc = 79;
+    public const int MoonNick = 84;
+    public const int TriGleam = 81;
+    public const int TriSpark = 73;
+    public const int TriFlare = 74;
+    public const int FilamentGlint = 75;
+    public const int FilamentGlow = 76;
+    public const int FilamentBloom = 80;
+    public const int FilamentPeak = 82;
+    public const int FilamentSurge = 77;
 
     private static readonly Dictionary<int, AbilityDef> ById = Build();
     private static readonly Dictionary<string, AbilityDef> ByName = IndexNames();
@@ -120,6 +133,19 @@ public static class AbilityCatalog
             New(ChoirAegis, "Choir Aegis", AbilityKind.Support, ChainProperty.None, ElementId.None, 4_000, 300, 80, 200, 100, 20_000, SupportEffect.ChoirAegis, "Single-ally damage shield. Fills that ally's absorb pool."),
             New(MiteSpit, "Mite Spit", AbilityKind.Magical, ChainProperty.Fire, ElementId.Fire, 8_000, 500, 0, 0, 0, 10_000, SupportEffect.None, "Short fire chant. Floor trash, concentration 0, so damage interrupts it easily."),
             New(SkitterLash, "Skitter Lash", AbilityKind.Physical, ChainProperty.None, ElementId.None, 8_000, 0, 0, 0, 0, 14_000, SupportEffect.None, "Instant physical bite with no chain property."),
+            New(BriarCut, "Briar Cut", AbilityKind.Physical, ChainProperty.None, ElementId.None, 8_000, 0, 0, 0, 120, 8_500, SupportEffect.None, "Light default-plan cut for a tanked pair of physical heroes. No chain property."),
+            New(BriarArc, "Briar Arc", AbilityKind.Physical, ChainProperty.None, ElementId.None, 8_000, 0, 0, 0, 120, 18_000, SupportEffect.None, "Mid default-plan cut for an untanked physical pair. No chain property."),
+            New(MoonCut, "Moon Cut", AbilityKind.Physical, ChainProperty.None, ElementId.None, 8_000, 0, 0, 0, 120, 9_500, SupportEffect.None, "Light default-plan cut for a tanked pair of physical heroes. No chain property."),
+            New(MoonArc, "Moon Arc", AbilityKind.Physical, ChainProperty.None, ElementId.None, 8_000, 0, 0, 0, 120, 24_000, SupportEffect.None, "Mid default-plan cut for an untanked physical pair. No chain property."),
+            New(MoonNick, "Moon Nick", AbilityKind.Physical, ChainProperty.None, ElementId.None, 8_000, 0, 0, 0, 120, 20_000, SupportEffect.None, "Light default-plan cut for an untanked Zeph and Seraphine pair. No chain property."),
+            New(TriGleam, "Tri Gleam", AbilityKind.Magical, ChainProperty.None, ElementId.None, 5_000, 500, 25, 0, 80, 50_000, SupportEffect.None, "Default-plan bolt for a tanked pair of physical heroes."),
+            New(TriSpark, "Tri Spark", AbilityKind.Magical, ChainProperty.None, ElementId.None, 5_000, 500, 25, 0, 80, 32_000, SupportEffect.None, "Default-plan bolt used when one physical hero is absent."),
+            New(TriFlare, "Tri Flare", AbilityKind.Magical, ChainProperty.None, ElementId.None, 5_000, 500, 25, 0, 80, 58_000, SupportEffect.None, "Default-plan bolt used when both physical heroes are absent."),
+            New(FilamentGlint, "Filament Glint", AbilityKind.Magical, ChainProperty.None, ElementId.None, 5_000, 500, 25, 0, 80, 18_000, SupportEffect.None, "Small default-plan light spell."),
+            New(FilamentGlow, "Filament Glow", AbilityKind.Magical, ChainProperty.None, ElementId.None, 5_000, 500, 25, 0, 80, 40_000, SupportEffect.None, "Mid default-plan light spell."),
+            New(FilamentBloom, "Filament Bloom", AbilityKind.Magical, ChainProperty.None, ElementId.None, 5_000, 500, 25, 0, 80, 55_000, SupportEffect.None, "Default-plan light spell for an untanked pair of physical heroes."),
+            New(FilamentPeak, "Filament Peak", AbilityKind.Magical, ChainProperty.None, ElementId.None, 5_000, 500, 25, 0, 80, 68_000, SupportEffect.None, "Default-plan light spell for an untanked Kaelis party."),
+            New(FilamentSurge, "Filament Surge", AbilityKind.Magical, ChainProperty.None, ElementId.None, 5_000, 500, 25, 0, 80, 75_000, SupportEffect.None, "Heavy default-plan light spell for parties with no preset physical route."),
         ];
 
         var map = new Dictionary<int, AbilityDef>(all.Length);
