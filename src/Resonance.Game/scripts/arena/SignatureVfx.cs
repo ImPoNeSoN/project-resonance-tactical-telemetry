@@ -118,10 +118,12 @@ public partial class SignatureBurst : Node3D
                 Light(Magenta, 6f, 6f);
                 break;
             case SignatureKind.CrescentSever:
-                Crescent(Cyan, 0.9f, 18f);
-                Crescent(Magenta, 0.72f, -24f);
+                Crescent(Cyan, 1.35f, 22f);
+                Crescent(Magenta, 1.05f, -28f);
+                Slash(Cyan, 48f);
+                Slash(Magenta, -36f);
                 _life = 0.9f;
-                Light(Cyan, 5f, 4f);
+                Light(Cyan, 7f, 6f);
                 break;
             default:
                 Spike(Magenta, Cyan);
@@ -207,9 +209,22 @@ public partial class SignatureBurst : Node3D
     {
         var mesh = new MeshInstance3D
         {
-            Mesh = new TorusMesh { InnerRadius = radius * 0.78f, OuterRadius = radius, Rings = 8, RingSegments = 18 },
+            Mesh = new TorusMesh { InnerRadius = radius * 0.62f, OuterRadius = radius, Rings = 10, RingSegments = 22 },
             MaterialOverride = AddMat(tint),
-            RotationDegrees = new Vector3(80f, yaw, 70f),
+            RotationDegrees = new Vector3(72f, yaw, 64f),
+            CastShadow = GeometryInstance3D.ShadowCastingSetting.Off,
+        };
+        AddChild(mesh);
+        _spun.Add(mesh);
+    }
+
+    private void Slash(Color tint, float roll)
+    {
+        var mesh = new MeshInstance3D
+        {
+            Mesh = new BoxMesh { Size = new Vector3(0.14f, 2.1f, 0.14f) },
+            MaterialOverride = AddMat(tint),
+            RotationDegrees = new Vector3(18f, 12f, roll),
             CastShadow = GeometryInstance3D.ShadowCastingSetting.Off,
         };
         AddChild(mesh);

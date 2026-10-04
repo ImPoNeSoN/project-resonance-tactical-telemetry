@@ -1277,7 +1277,7 @@ public partial class ArenaView : Node3D
     {
         if (!_didKaelis && Saw("Crescent Sever →"))
         {
-            FinishSignature("kaelis", "Kaelis Moon-Ravel", "crescent_sever", 0.5, SignatureKind.CrescentSever, PartPoint("Core"));
+            FinishSignature("kaelis", "Kaelis Moon-Ravel", "crescent_sever", 0.5, SignatureKind.CrescentSever, PartPoint("Core") + new Vector3(0f, 1.15f, 0f));
             _didKaelis = true;
             return true;
         }
