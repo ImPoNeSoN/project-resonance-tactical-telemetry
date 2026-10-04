@@ -459,6 +459,12 @@ public static class GambitCompiler
             return true;
         }
 
+        if (IsKeyword(selector, "Highest Threat"))
+        {
+            ally = AllyPick.HighestThreat;
+            return true;
+        }
+
         ally = AllyPick.Named;
         text = selector;
         return selector.Length > 0;
@@ -590,6 +596,7 @@ public static class GambitCompiler
         if (IsKeyword(name, "CastResolvesIn"))
         {
             condition.Predicate = GambitPredicate.CastResolvesIn;
+            condition.Arg0 = -1;
             return true;
         }
 
@@ -629,6 +636,18 @@ public static class GambitCompiler
             condition.Predicate = GambitPredicate.HasDebuff;
             condition.Text = argument;
             return argument.Length > 0;
+        }
+
+        if (IsKeyword(name, "Stunned"))
+        {
+            condition.Predicate = GambitPredicate.Stunned;
+            return true;
+        }
+
+        if (IsKeyword(name, "StunImmune"))
+        {
+            condition.Predicate = GambitPredicate.StunImmune;
+            return true;
         }
 
         if (IsKeyword(name, "Disabled"))

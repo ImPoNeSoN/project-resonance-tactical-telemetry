@@ -285,7 +285,7 @@ public static class GambitMachine
             or GambitPredicate.Disabled or GambitPredicate.TargetingMe or GambitPredicate.Primed
             or GambitPredicate.Ko or GambitPredicate.Always or GambitPredicate.Resonance
             or GambitPredicate.Window or GambitPredicate.MpForAbility or GambitPredicate.GlobalBurst
-            or GambitPredicate.Aquifer)
+            or GambitPredicate.Aquifer or GambitPredicate.Stunned or GambitPredicate.StunImmune)
         {
             return value != 0;
         }
@@ -366,6 +366,16 @@ public static class GambitMachine
                 }
 
                 return (view.GlobalBurstMask & (int)ElementMaps.Mask((ElementId)condition.Arg0)) != 0 ? 1 : 0;
+            case GambitPredicate.Stunned:
+            {
+                BossPartState part = PartOf(condition, view, actor);
+                return view.Tick < part.StunExpires ? 1 : 0;
+            }
+            case GambitPredicate.StunImmune:
+            {
+                BossPartState part = PartOf(condition, view, actor);
+                return view.Tick >= part.StunExpires && view.Tick < part.StunImmuneUntil ? 1 : 0;
+            }
             default:
                 return 0;
         }
@@ -522,6 +532,11 @@ public static class GambitMachine
                 return hero.RecoveryCut > 0 && view.Tick < hero.RecoveryCutExpires;
             }
 
+            if (name.Equals("Choir Aegis", StringComparison.OrdinalIgnoreCase))
+            {
+                return hero.Absorb > 0 && view.Tick < hero.AbsorbExpires;
+            }
+
             return false;
         }
 
@@ -640,6 +655,22 @@ public static class GambitMachine
                     break;
                 case AllyPick.Targeted:
                     return ArgMax(view.Boss.Parts[actor.CurrentTargetPart < view.Boss.Parts.Length ? actor.CurrentTargetPart : 0], view.Heroes);
+                case AllyPick.HighestThreat:
+                {
+                    if (!hero.IsAlive)
+                    {
+                        break;
+                    }
+
+                    int score = ThreatTotal(view, i);
+                    if (best < 0 || score > bestScore || (score == bestScore && i < best))
+                    {
+                        best = i;
+                        bestScore = score;
+                    }
+
+                    break;
+                }
                 case AllyPick.LowestMp:
                 {
                     int score = hero.MaxMp <= 0 ? 0 : hero.Mp * 100 / hero.MaxMp;
@@ -666,6 +697,21 @@ public static class GambitMachine
         }
 
         return best;
+    }
+
+    private static int ThreatTotal(in GambitView view, int hero)
+    {
+        int total = 0;
+        for (int p = 0; p < view.Boss.Parts.Length; p++)
+        {
+            EnmitySlot[] table = view.Boss.Parts[p].Enmity;
+            if ((uint)hero < (uint)table.Length)
+            {
+                total += table[hero].Total;
+            }
+        }
+
+        return total;
     }
 
     private static int ArgMax(BossPartState part, HeroState[] heroes)

@@ -20,6 +20,7 @@ public enum AllyPick
     Casting,
     Targeted,
     Named,
+    HighestThreat,
 }
 
 public enum GambitPredicate
@@ -53,6 +54,8 @@ public enum GambitPredicate
     AetherDensity,
     Tick,
     GlobalBurst,
+    Stunned,
+    StunImmune,
 }
 
 public enum GambitCompare
