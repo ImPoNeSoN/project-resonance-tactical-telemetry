@@ -165,6 +165,30 @@ public class BalanceHarnessTests
         }
     }
 
+    [Fact]
+    public void Every_four_hero_combo_reports_floor_clears()
+    {
+        const int n = 12;
+        const ulong first = 20261004UL;
+        int[][] combos = HeroRoster.Combinations();
+        Assert.Equal(15, combos.Length);
+        foreach (int[] ids in combos)
+        {
+            int clears = 0;
+            for (int i = 0; i < n; i++)
+            {
+                FloorRun run = FloorRun.SimulateCustom(ids, first + (ulong)i);
+                if (run.Cleared)
+                {
+                    clears++;
+                }
+            }
+
+            string flag = clears == 0 || clears == n ? " FLAG" : "";
+            Console.WriteLine($"combo {HeroRoster.Label(ids)} clears {clears}/{n}{flag}");
+        }
+    }
+
     private static int Sum(int[] values)
     {
         int total = 0;

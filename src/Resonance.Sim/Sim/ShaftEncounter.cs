@@ -10,10 +10,12 @@ namespace Resonance.Sim.Sim;
 /// </summary>
 public static class ShaftEncounter
 {
-    public static BattleSimulator CinderMite(int preset, ulong seed)
+    public static BattleSimulator CinderMite(int preset, ulong seed) => CinderMite(CarapaceEncounter.CreateParty(preset), seed);
+
+    public static BattleSimulator CinderMite(HeroState[] heroes, ulong seed)
     {
         return Build(
-            preset,
+            heroes,
             seed,
             "Cinder Mite",
             atk: 140,
@@ -36,10 +38,12 @@ public static class ShaftEncounter
             parts: [BattleSimulator.Core, BattleSimulator.Core]);
     }
 
-    public static BattleSimulator SlagSkitter(int preset, ulong seed)
+    public static BattleSimulator SlagSkitter(int preset, ulong seed) => SlagSkitter(CarapaceEncounter.CreateParty(preset), seed);
+
+    public static BattleSimulator SlagSkitter(HeroState[] heroes, ulong seed)
     {
         return Build(
-            preset,
+            heroes,
             seed,
             "Slag Skitter",
             atk: 180,
@@ -62,10 +66,12 @@ public static class ShaftEncounter
             parts: [BattleSimulator.Core]);
     }
 
-    public static BattleSimulator KilnWarden(int preset, ulong seed)
+    public static BattleSimulator KilnWarden(int preset, ulong seed) => KilnWarden(CarapaceEncounter.CreateParty(preset), seed);
+
+    public static BattleSimulator KilnWarden(HeroState[] heroes, ulong seed)
     {
         return Build(
-            preset,
+            heroes,
             seed,
             "Kiln Warden",
             atk: 240,
@@ -89,7 +95,7 @@ public static class ShaftEncounter
     }
 
     private static BattleSimulator Build(
-        int preset,
+        HeroState[] heroes,
         ulong seed,
         string name,
         int atk,
@@ -111,7 +117,6 @@ public static class ShaftEncounter
         int[] abilities,
         int[] parts)
     {
-        HeroState[] heroes = CarapaceEncounter.CreateParty(preset);
         var body = new List<BossPartState>
         {
             Part("Core", coreHp, heroes.Length, corePressure),

@@ -56,15 +56,23 @@ public sealed class FloorRun
         new(4, FloorRoomKind.Boss, "Carapace Engine Mk. II", "Floor boss. The grey-box Carapace fight."),
     ];
 
-    private FloorRun(int preset, ulong seed, HeroVitals[] party)
+    private readonly int[] _ids;
+    private readonly bool _tuned;
+
+    private FloorRun(int preset, int[] ids, bool tuned, ulong seed, HeroVitals[] party)
     {
         Preset = preset;
+        _ids = ids;
+        _tuned = tuned;
         Seed = seed;
         Party = party;
         WipeRoom = -1;
+        PartyLabel = preset >= 0 ? PartyPreset.Name(preset) : HeroRoster.Label(ids);
     }
 
     public int Preset { get; }
+
+    public string PartyLabel { get; }
 
     public ulong Seed { get; }
 
@@ -88,13 +96,51 @@ public sealed class FloorRun
 
     public static FloorRun Start(int preset, ulong seed)
     {
-        HeroState[] heroes = CarapaceEncounter.CreateParty(preset);
-        return new FloorRun(preset, seed, Snapshot(heroes));
+        int[] ids = HeroRoster.PresetIds(preset);
+        HeroState[] heroes = HeroRoster.PresetParty(preset);
+        return new FloorRun(preset, ids, tuned: true, seed, Snapshot(heroes));
+    }
+
+    public static FloorRun StartCustom(IReadOnlyList<int> ids, ulong seed)
+    {
+        int match = HeroRoster.MatchPreset(ids);
+        if (match >= 0)
+        {
+            return Start(match, seed);
+        }
+
+        int[] copy = new int[ids.Count];
+        for (int i = 0; i < ids.Count; i++)
+        {
+            copy[i] = ids[i];
+        }
+
+        HeroState[] heroes = HeroRoster.CustomParty(copy);
+        return new FloorRun(-1, copy, tuned: false, seed, Snapshot(heroes));
     }
 
     public static FloorRun Simulate(int preset, ulong seed)
     {
         FloorRun run = Start(preset, seed);
+        while (!run.Finished)
+        {
+            if (run.Current.Kind == FloorRoomKind.Rest)
+            {
+                run.Rest();
+                continue;
+            }
+
+            BattleSimulator sim = run.BeginFight();
+            sim.RunToEnd();
+            run.Commit(sim);
+        }
+
+        return run;
+    }
+
+    public static FloorRun SimulateCustom(IReadOnlyList<int> ids, ulong seed)
+    {
+        FloorRun run = StartCustom(ids, seed);
         while (!run.Finished)
         {
             if (run.Current.Kind == FloorRoomKind.Rest)
@@ -118,12 +164,13 @@ public sealed class FloorRun
             throw new InvalidOperationException("This room is not a fight.");
         }
 
+        HeroState[] heroes = _tuned ? HeroRoster.PresetParty(Preset) : HeroRoster.CustomParty(_ids);
         BattleSimulator sim = RoomIndex switch
         {
-            0 => ShaftEncounter.CinderMite(Preset, FightSeed),
-            1 => ShaftEncounter.SlagSkitter(Preset, FightSeed),
-            2 => ShaftEncounter.KilnWarden(Preset, FightSeed),
-            _ => CarapaceEncounter.Create(Preset, FightSeed),
+            0 => ShaftEncounter.CinderMite(heroes, FightSeed),
+            1 => ShaftEncounter.SlagSkitter(heroes, FightSeed),
+            2 => ShaftEncounter.KilnWarden(heroes, FightSeed),
+            _ => CarapaceEncounter.Create(heroes, FightSeed),
         };
         Apply(sim.Heroes, Party);
         return sim;
@@ -215,7 +262,7 @@ public sealed class FloorRun
                 maxMp += Party[i].MaxMp;
             }
 
-            return $"{PartyPreset.Name(Preset)} · seed {Seed}\n{where}\nCombat ticks {Ticks}\nStanding {alive}/{Party.Length}\nHP {hp}/{maxHp} · MP {mp}/{maxMp}";
+            return $"{PartyLabel} · seed {Seed}\n{where}\nCombat ticks {Ticks}\nStanding {alive}/{Party.Length}\nHP {hp}/{maxHp} · MP {mp}/{maxMp}";
         }
     }
 
