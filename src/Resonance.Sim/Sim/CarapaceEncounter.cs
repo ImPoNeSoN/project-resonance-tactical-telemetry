@@ -43,12 +43,7 @@ public static class CarapaceEncounter
 
     public static BattleSimulator Create(int preset, IRng rng)
     {
-        HeroState[] heroes = preset switch
-        {
-            PartyPreset.ShatterChoir => ShatterChoir(),
-            PartyPreset.Guardbreak => Guardbreak(),
-            _ => IceLattice(),
-        };
+        HeroState[] heroes = CreateParty(preset);
 
         var boss = new BossState
         {
@@ -95,6 +90,13 @@ public static class CarapaceEncounter
 
         return new BattleSimulator(heroes, boss, plans, new Queue<BattleAction>(), rng, script, scoreOutcome: true);
     }
+
+    public static HeroState[] CreateParty(int preset) => preset switch
+    {
+        PartyPreset.ShatterChoir => ShatterChoir(),
+        PartyPreset.Guardbreak => Guardbreak(),
+        _ => IceLattice(),
+    };
 
     private static HeroState[] IceLattice()
     {

@@ -38,6 +38,7 @@ public partial class GreyBoxBattle : Control
     private readonly List<TimelineLane> _lanes = new();
     private readonly List<HeroRow> _heroes = new();
     private readonly List<PartRow> _parts = new();
+    private VBoxContainer _partBox = null!;
     private HBoxContainer _abilities = null!;
     private HBoxContainer _allies = null!;
     private RichTextLabel _log = null!;
@@ -49,6 +50,9 @@ public partial class GreyBoxBattle : Control
     private Label _overlayDetail = null!;
     private Button _auto = null!;
     private Button _pause = null!;
+    private Button _replay = null!;
+    private Button _change = null!;
+    private Button _continue = null!;
     private int _actor;
     private int _part;
     private int _ally = 2;
@@ -310,8 +314,8 @@ public partial class GreyBoxBattle : Control
 
         var partScroll = VerticalScroll();
         column.AddChild(partScroll);
-        var partBox = Stack();
-        partScroll.AddChild(partBox);
+        _partBox = Stack();
+        partScroll.AddChild(_partBox);
 
         for (int i = 0; i < sim.Boss.Parts.Length; i++)
         {
@@ -319,7 +323,7 @@ public partial class GreyBoxBattle : Control
             var row = new PartRow(PortraitColors);
             row.Panel.GuiInput += @event => ClickPart(@event, index);
             _parts.Add(row);
-            partBox.AddChild(row.Panel);
+            _partBox.AddChild(row.Panel);
         }
 
         return column;
@@ -485,6 +489,10 @@ public partial class GreyBoxBattle : Control
         _auto.Pressed += () => _bridge.ToggleAuto();
         controls.AddChild(_auto);
 
+        var finish = new Button { Text = "To end" };
+        finish.Pressed += () => _bridge.RunToEnd();
+        controls.AddChild(finish);
+
         var restart = new Button { Text = "Restart" };
         restart.Pressed += Restart;
         controls.AddChild(restart);
@@ -571,12 +579,15 @@ public partial class GreyBoxBattle : Control
         box.AddChild(_overlayTitle);
         _overlayDetail = new Label { HorizontalAlignment = HorizontalAlignment.Center, AutowrapMode = TextServer.AutowrapMode.WordSmart };
         box.AddChild(_overlayDetail);
-        var again = new Button { Text = "Replay this party" };
-        again.Pressed += Replay;
-        box.AddChild(again);
-        var change = new Button { Text = "Change party" };
-        change.Pressed += ShowPicker;
-        box.AddChild(change);
+        _replay = new Button { Text = "Replay this party" };
+        _replay.Pressed += Replay;
+        box.AddChild(_replay);
+        _change = new Button { Text = "Change party" };
+        _change.Pressed += ShowPicker;
+        box.AddChild(_change);
+        _continue = new Button { Text = "Continue", Visible = false };
+        _continue.Pressed += ContinueFloor;
+        box.AddChild(_continue);
     }
 
     private void BuildPicker()
@@ -659,6 +670,34 @@ public partial class GreyBoxBattle : Control
             };
             box.AddChild(summary);
         }
+
+        var back = new Button { Text = "Back to floor" };
+        back.Pressed += ReturnToFloor;
+        box.AddChild(back);
+    }
+
+    [Signal]
+    public delegate void ReturnedToFloorEventHandler();
+
+    public void OpenFloorFight()
+    {
+        _actor = 0;
+        _part = 0;
+        _ally = 2;
+        _abilityActor = -1;
+        _picker.Visible = false;
+        _overlay.Visible = false;
+        _bridge.LoadFloorFight();
+    }
+
+    public void ShowBossPicker()
+    {
+        _actor = 0;
+        _part = 0;
+        _ally = 2;
+        _abilityActor = -1;
+        _bridge.StartBossOnly();
+        ShowPicker();
     }
 
     private void ShowPicker()
@@ -691,7 +730,43 @@ public partial class GreyBoxBattle : Control
         _bridge.StartEncounter(_bridge.Preset);
     }
 
-    private void Restart() => ShowPicker();
+    private void Restart()
+    {
+        if (_bridge.InFloorFight && _bridge.Simulation.Outcome == FightOutcome.Ongoing)
+        {
+            _actor = 0;
+            _part = 0;
+            _ally = 2;
+            _abilityActor = -1;
+            _bridge.LoadFloorFight();
+            return;
+        }
+
+        ShowPicker();
+    }
+
+    private void ContinueFloor()
+    {
+        if (_bridge.AutoRunning)
+        {
+            _bridge.ToggleAuto();
+        }
+
+        _bridge.CommitFloorFight();
+        EmitSignal(SignalName.ReturnedToFloor);
+    }
+
+    private void ReturnToFloor()
+    {
+        if (_bridge.AutoRunning)
+        {
+            _bridge.ToggleAuto();
+        }
+
+        _picker.Visible = false;
+        _overlay.Visible = false;
+        EmitSignal(SignalName.ReturnedToFloor);
+    }
 
     private void ClickHero(InputEvent @event, int slot)
     {
@@ -743,6 +818,7 @@ public partial class GreyBoxBattle : Control
     {
         BattleSimulator sim = _bridge.Simulation;
         EnsureLanes(sim);
+        EnsureParts(sim);
         EnsureAbilities(sim);
         UpdateAbilityDetail();
 
@@ -800,6 +876,10 @@ public partial class GreyBoxBattle : Control
             }
         }
 
+        bool floorFight = _bridge.InFloorFight;
+        _replay.Visible = !floorFight;
+        _change.Visible = !floorFight;
+        _continue.Visible = floorFight;
         _overlay.Visible = ended && !_picker.Visible;
         if (ended)
         {
@@ -808,6 +888,34 @@ public partial class GreyBoxBattle : Control
             _overlayDetail.Text = sim.Outcome == FightOutcome.Victory
                 ? $"The Core is destroyed. Tick {sim.Tick}."
                 : $"The party failed. Tick {sim.Tick}. Core HP {coreHp}.";
+        }
+    }
+
+    private void EnsureParts(BattleSimulator sim)
+    {
+        if (_parts.Count == sim.Boss.Parts.Length)
+        {
+            return;
+        }
+
+        foreach (PartRow row in _parts)
+        {
+            row.Panel.QueueFree();
+        }
+
+        _parts.Clear();
+        for (int i = 0; i < sim.Boss.Parts.Length; i++)
+        {
+            int index = i;
+            var row = new PartRow(PortraitColors);
+            row.Panel.GuiInput += @event => ClickPart(@event, index);
+            _parts.Add(row);
+            _partBox.AddChild(row.Panel);
+        }
+
+        if (_part >= sim.Boss.Parts.Length)
+        {
+            _part = 0;
         }
     }
 
