@@ -1169,7 +1169,9 @@ public partial class GreyBoxBattle : Control
         return ApGauge.NextActionChargeBp(boss.Ap.Centi, gain, boss.Casting, boss.CastStartTick, boss.CastResolveTick, tick);
     }
 
-    private readonly record struct ChargeWidgets(ProgressBar Bar, Label Turn);
+    private readonly record struct ChargeWidgets(Control Row, ProgressBar Bar, Label Turn);
+
+    private static readonly Color SelectedTint = new("ffe08a");
 
     private static ChargeWidgets BuildChargeRow(VBoxContainer box, bool boss)
     {
@@ -1208,7 +1210,17 @@ public partial class GreyBoxBattle : Control
         row.AddChild(turn);
         box.AddChild(row);
         PaintCharge(bar, turn, 0, boss);
-        return new ChargeWidgets(bar, turn);
+        return new ChargeWidgets(row, bar, turn);
+    }
+
+    /// <summary>
+    /// Selection tints the whole card gold. The charge row cancels that tint so cyan and magenta stay readable.
+    /// </summary>
+    private static void UntintCharge(Control row, bool selected)
+    {
+        row.Modulate = selected
+            ? new Color(1f / SelectedTint.R, 1f / SelectedTint.G, 1f / SelectedTint.B)
+            : Colors.White;
     }
 
     private static void PaintCharge(ProgressBar bar, Label turn, int chargeBp, bool boss)
@@ -1265,6 +1277,7 @@ public partial class GreyBoxBattle : Control
         private readonly Label _name;
         private readonly ProgressBar _hp;
         private readonly ProgressBar _mp;
+        private readonly Control _chargeRow;
         private readonly ProgressBar _charge;
         private readonly Label _turn;
         private readonly Label _meta;
@@ -1320,6 +1333,7 @@ public partial class GreyBoxBattle : Control
             _mp = Bar(new Color("2980b9"), 7);
             box.AddChild(_mp);
             ChargeWidgets charge = BuildChargeRow(box, boss: false);
+            _chargeRow = charge.Row;
             _charge = charge.Bar;
             _turn = charge.Turn;
             _meta = new Label
@@ -1346,6 +1360,7 @@ public partial class GreyBoxBattle : Control
             bool turn = hero.IsAlive && chargeBp >= SimConst.Bp;
             _name.AddThemeColorOverride("font_color", turn ? new Color("d7fbff") : new Color("f4f7fb"));
             _name.Text = shielded ? $"shield {hero.Absorb}  {hero.Name}{down}" : hero.Name + down;
+            UntintCharge(_chargeRow, selected);
             PaintCharge(_charge, _turn, chargeBp, boss: false);
             _hp.MaxValue = hero.MaxHp;
             _hp.Value = hero.Hp < 0 ? 0 : hero.Hp;
@@ -1377,6 +1392,7 @@ public partial class GreyBoxBattle : Control
         private readonly TextureRect _icon;
         private readonly TextureRect _chain;
         private readonly ProgressBar _hp;
+        private readonly Control _chargeRow;
         private readonly ProgressBar _charge;
         private readonly Label _turn;
         private readonly Label _resist;
@@ -1424,6 +1440,7 @@ public partial class GreyBoxBattle : Control
             _hp.AddThemeStyleboxOverride("fill", Flat(new Color("a04040"), 0));
             box.AddChild(_hp);
             ChargeWidgets charge = BuildChargeRow(box, boss: true);
+            _chargeRow = charge.Row;
             _charge = charge.Bar;
             _turn = charge.Turn;
             _resist = Note(new Color("d5e2c4"));
@@ -1474,6 +1491,7 @@ public partial class GreyBoxBattle : Control
             Panel.Modulate = selected ? new Color("ffe08a") : Colors.White;
             bool turn = chargeBp >= SimConst.Bp;
             _name.AddThemeColorOverride("font_color", turn ? new Color("ffd6fb") : new Color("f4f7fb"));
+            UntintCharge(_chargeRow, selected);
             PaintCharge(_charge, _turn, chargeBp, boss: true);
             bool stunned = part.Hp > 0 && tick < part.StunExpires;
             _icon.Visible = stunned;
