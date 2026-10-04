@@ -8,8 +8,10 @@ namespace Resonance.Game;
 
 /// <summary>
 /// Grey-box Carapace Engine fight. Plain Control nodes and flat colors only.
-/// Full-rect columns: party, boss parts, a scrolling resonance readout,
-/// and a pinned ability panel, then the action bar. Each card shows a CTB charge bar.
+/// In the 3D arena the resonance readout and ability detail are a full-height
+/// column beside the view. The four party cards stack on the view's other side,
+/// and the boss parts sit under the view. Nothing in those panels scrolls.
+/// Each card keeps its CTB charge bar.
 /// </summary>
 public partial class GreyBoxBattle : Control
 {
@@ -32,8 +34,10 @@ public partial class GreyBoxBattle : Control
     private Label _actorLabel = null!;
     private readonly List<HeroRow> _heroes = new();
     private readonly List<PartRow> _parts = new();
-    private VBoxContainer _partBox = null!;
-    private HBoxContainer _abilities = null!;
+    private HBoxContainer _partBox = null!;
+    private GridContainer _heroBox = null!;
+    private HBoxContainer _viewRow = null!;
+    private Container _abilities = null!;
     private HBoxContainer _allies = null!;
     private RichTextLabel _log = null!;
     private ColorRect _background = null!;
@@ -58,9 +62,10 @@ public partial class GreyBoxBattle : Control
     private SubViewportContainer _arenaHost = null!;
     private SubViewport _arenaViewport = null!;
     private ArenaView _arena = null!;
-    private HBoxContainer _bodyHost = null!;
-    private HBoxContainer _columns = null!;
-    private HBoxContainer _band = null!;
+    private VBoxContainer _left = null!;
+    private VBoxContainer _stage = null!;
+    private VBoxContainer _band = null!;
+    private VBoxContainer _info = null!;
     private Label _hint = null!;
     private Button _viewToggle = null!;
 
@@ -84,31 +89,39 @@ public partial class GreyBoxBattle : Control
         AddChild(_margin);
         FillViewport(_margin);
 
-        var root = new VBoxContainer
+        var root = new HBoxContainer
         {
             SizeFlagsHorizontal = SizeFlags.ExpandFill,
             SizeFlagsVertical = SizeFlags.ExpandFill,
         };
-        root.AddThemeConstantOverride("separation", 4);
+        root.AddThemeConstantOverride("separation", 6);
         _margin.AddChild(root);
 
-        root.AddChild(BuildHeader());
-        root.AddChild(BuildBody());
-        root.AddChild(BuildAction());
+        _left = new VBoxContainer
+        {
+            SizeFlagsHorizontal = SizeFlags.ExpandFill,
+            SizeFlagsVertical = SizeFlags.ExpandFill,
+        };
+        _left.AddThemeConstantOverride("separation", 4);
+        root.AddChild(_left);
+        _left.AddChild(BuildHeader());
+        _left.AddChild(BuildStage());
+        _left.AddChild(BuildAction());
 
         _log = new RichTextLabel
         {
+            Name = "CombatLog",
             BbcodeEnabled = true,
             ScrollFollowing = true,
             FitContent = false,
             SizeFlagsVertical = SizeFlags.ExpandFill,
-            SizeFlagsStretchRatio = 1,
             CustomMinimumSize = new Vector2(0, 52),
         };
         _log.AddThemeStyleboxOverride("normal", HudSkin.Ability());
         _log.AddThemeFontSizeOverride("normal_font_size", 12);
         _log.AddThemeColorOverride("default_color", new Color("c5d0dc"));
-        root.AddChild(_log);
+        _left.AddChild(_log);
+        root.AddChild(BuildInfoColumn());
 
         BuildOverlay();
         BuildPicker();
@@ -185,7 +198,8 @@ public partial class GreyBoxBattle : Control
 
     /// <summary>
     /// Boss fights default to the 3D arena. Floor fights stay on the grey-box board.
-    /// Party, parts, and the ability panel sit in the band under the view.
+    /// The resonance column stays full height. In the arena the party stacks beside
+    /// the view; on the grey-box board it returns to a row above the boss parts.
     /// </summary>
     private void SetArenaView(bool show)
     {
@@ -201,29 +215,35 @@ public partial class GreyBoxBattle : Control
             _hint.Visible = !_view3d;
         }
 
+        _band.Visible = true;
+        _band.SizeFlagsVertical = _view3d ? SizeFlags.ShrinkEnd : SizeFlags.ExpandFill;
+        _stage.SizeFlagsVertical = SizeFlags.ExpandFill;
         if (_view3d)
         {
-            if (_columns.GetParent() != _band)
+            if (_heroBox.GetParent() != _viewRow)
             {
-                _columns.Reparent(_band, false);
+                _heroBox.Reparent(_viewRow, false);
+                _viewRow.MoveChild(_heroBox, 0);
             }
 
-            _band.Visible = true;
-        }
-        else if (_columns.GetParent() != _bodyHost)
-        {
-            _columns.Reparent(_bodyHost, false);
-            _band.Visible = false;
+            _heroBox.Columns = 1;
+            _heroBox.CustomMinimumSize = new Vector2(312, 0);
+            _heroBox.SizeFlagsHorizontal = SizeFlags.ShrinkEnd;
         }
         else
         {
-            _band.Visible = false;
-        }
+            if (_heroBox.GetParent() != _band)
+            {
+                _heroBox.Reparent(_band, false);
+                _band.MoveChild(_heroBox, 0);
+            }
 
-        _columns.SizeFlagsHorizontal = SizeFlags.ExpandFill;
-        _columns.SizeFlagsVertical = SizeFlags.ExpandFill;
+            _heroBox.Columns = 4;
+            _heroBox.CustomMinimumSize = new Vector2(0, 0);
+            _heroBox.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+        }
         _log.SizeFlagsVertical = _view3d ? SizeFlags.ShrinkEnd : SizeFlags.ExpandFill;
-        _log.CustomMinimumSize = new Vector2(0, _view3d ? 40 : 52);
+        _log.CustomMinimumSize = new Vector2(0, _view3d ? 28 : 52);
         if (_viewToggle != null)
         {
             _viewToggle.Visible = _bridge.BossOnly || _view3d;
@@ -321,91 +341,89 @@ public partial class GreyBoxBattle : Control
         return header;
     }
 
-    private Control BuildBody()
+    /// <summary>
+    /// The 3D view keeps the spare height. In the arena, the four party cards stack
+    /// beside the view. Boss parts stay in the band under that row.
+    /// </summary>
+    private Control BuildStage()
     {
-        var wrap = new VBoxContainer
+        _stage = new VBoxContainer
         {
-            SizeFlagsHorizontal = SizeFlags.ExpandFill,
-            SizeFlagsVertical = SizeFlags.ExpandFill,
-            SizeFlagsStretchRatio = 5,
-            MouseFilter = MouseFilterEnum.Ignore,
-        };
-        wrap.AddThemeConstantOverride("separation", 4);
-
-        _bodyHost = new HBoxContainer
-        {
+            Name = "Stage",
             SizeFlagsHorizontal = SizeFlags.ExpandFill,
             SizeFlagsVertical = SizeFlags.ExpandFill,
             MouseFilter = MouseFilterEnum.Ignore,
         };
-        _bodyHost.AddThemeConstantOverride("separation", 6);
-        _columns = new HBoxContainer
+        _stage.AddThemeConstantOverride("separation", 4);
+
+        _viewRow = new HBoxContainer
         {
+            Name = "ViewRow",
             SizeFlagsHorizontal = SizeFlags.ExpandFill,
             SizeFlagsVertical = SizeFlags.ExpandFill,
         };
-        _columns.AddThemeConstantOverride("separation", 6);
-        _bodyHost.AddChild(_arenaHost);
-        _bodyHost.AddChild(_columns);
+        _viewRow.AddThemeConstantOverride("separation", 6);
+        _arenaHost.Name = "Arena";
+        _viewRow.AddChild(_arenaHost);
+        _stage.AddChild(_viewRow);
 
+        _band = new VBoxContainer
+        {
+            Name = "Band",
+            SizeFlagsHorizontal = SizeFlags.ExpandFill,
+            SizeFlagsVertical = SizeFlags.ShrinkEnd,
+        };
+        _band.AddThemeConstantOverride("separation", 4);
         BattleSimulator sim = _bridge.Simulation;
-        _columns.AddChild(BuildHeroColumn(sim));
-        _columns.AddChild(BuildPartColumn(sim));
-        _columns.AddChild(BuildInfoColumn());
-        wrap.AddChild(_bodyHost);
-
-        _band = new HBoxContainer
-        {
-            Visible = false,
-            CustomMinimumSize = new Vector2(0, 168),
-            SizeFlagsHorizontal = SizeFlags.ExpandFill,
-        };
-        wrap.AddChild(_band);
-        return wrap;
+        _band.AddChild(BuildHeroColumn(sim));
+        _band.AddChild(BuildPartColumn(sim));
+        _stage.AddChild(_band);
+        return _stage;
     }
 
     private Control BuildHeroColumn(BattleSimulator sim)
     {
-        var column = new VBoxContainer
+        _heroBox = new GridContainer
         {
-            CustomMinimumSize = new Vector2(300, 0),
-            SizeFlagsVertical = SizeFlags.ExpandFill,
+            Name = "Party",
+            Columns = 1,
+            CustomMinimumSize = new Vector2(312, 0),
+            SizeFlagsHorizontal = SizeFlags.ShrinkEnd,
+            SizeFlagsVertical = SizeFlags.ShrinkBegin,
         };
-        column.AddThemeConstantOverride("separation", 2);
-        column.AddChild(ColumnTitle("Party"));
-
-        var heroScroll = VerticalScroll();
-        column.AddChild(heroScroll);
-        var heroBox = Stack();
-        heroScroll.AddChild(heroBox);
+        _heroBox.AddThemeConstantOverride("h_separation", 4);
+        _heroBox.AddThemeConstantOverride("v_separation", 4);
 
         for (int i = 0; i < sim.Heroes.Count; i++)
         {
             int slot = i;
-            var row = new HeroRow(PortraitColors[i % 4]);
+            var row = new HeroRow(PortraitColors[i % PortraitColors.Length]);
             row.Panel.GuiInput += @event => ClickHero(@event, slot);
             _heroes.Add(row);
-            heroBox.AddChild(row.Panel);
+            _heroBox.AddChild(row.Panel);
         }
 
-        return column;
+        return _heroBox;
     }
 
     private Control BuildPartColumn(BattleSimulator sim)
     {
         var column = new VBoxContainer
         {
+            Name = "Boss",
             SizeFlagsHorizontal = SizeFlags.ExpandFill,
-            SizeFlagsVertical = SizeFlags.ExpandFill,
         };
-        column.AddThemeConstantOverride("separation", 2);
+        column.AddThemeConstantOverride("separation", 4);
         _bossCard = new BossCard();
         column.AddChild(_bossCard.Panel);
 
-        var partScroll = VerticalScroll();
-        column.AddChild(partScroll);
-        _partBox = Stack();
-        partScroll.AddChild(_partBox);
+        _partBox = new HBoxContainer
+        {
+            Name = "Parts",
+            SizeFlagsHorizontal = SizeFlags.ExpandFill,
+        };
+        _partBox.AddThemeConstantOverride("separation", 4);
+        column.AddChild(_partBox);
 
         for (int i = 0; i < sim.Boss.Parts.Length; i++)
         {
@@ -421,67 +439,62 @@ public partial class GreyBoxBattle : Control
 
     private Control BuildInfoColumn()
     {
-        var column = new VBoxContainer
+        _info = new VBoxContainer
         {
-            CustomMinimumSize = new Vector2(268, 0),
+            Name = "ResonanceColumn",
+            CustomMinimumSize = new Vector2(340, 0),
+            SizeFlagsHorizontal = SizeFlags.ShrinkEnd,
             SizeFlagsVertical = SizeFlags.ExpandFill,
         };
-        column.AddThemeConstantOverride("separation", 2);
-        column.AddChild(ColumnTitle("Resonance"));
-
-        var resonanceScroll = VerticalScroll();
-        resonanceScroll.SizeFlagsStretchRatio = 0.65f;
-        column.AddChild(resonanceScroll);
-        var resonanceBox = Stack();
-        resonanceScroll.AddChild(resonanceBox);
+        _info.AddThemeConstantOverride("separation", 2);
+        _info.AddChild(ColumnTitle("Resonance"));
 
         _resonance = new Label
         {
+            Name = "ResonanceReadout",
             AutowrapMode = TextServer.AutowrapMode.WordSmart,
             SizeFlagsHorizontal = SizeFlags.ExpandFill,
         };
         _resonance.AddThemeFontSizeOverride("font_size", 12);
         _resonance.AddThemeColorOverride("font_color", new Color("d5dde8"));
-        resonanceBox.AddChild(_resonance);
+        _info.AddChild(_resonance);
 
-        column.AddChild(ColumnTitle("Ability"));
+        _info.AddChild(ColumnTitle("Ability"));
         var abilityPanel = new PanelContainer
         {
+            Name = "AbilityPanel",
             SizeFlagsHorizontal = SizeFlags.ExpandFill,
             SizeFlagsVertical = SizeFlags.ExpandFill,
-            SizeFlagsStretchRatio = 2.6f,
         };
-        abilityPanel.AddThemeStyleboxOverride("panel", HudSkin.Ability());
-        var abilityScroll = VerticalScroll();
-        abilityPanel.AddChild(abilityScroll);
+        abilityPanel.AddThemeStyleboxOverride("panel", Pad(HudSkin.Ability(), 8, 6));
         _abilityDetail = new Label
         {
+            Name = "AbilityDetail",
             AutowrapMode = TextServer.AutowrapMode.WordSmart,
             SizeFlagsHorizontal = SizeFlags.ExpandFill,
             SizeFlagsVertical = SizeFlags.ShrinkBegin,
             Text = "Select an ability.",
         };
-        _abilityDetail.AddThemeFontSizeOverride("font_size", 11);
-        _abilityDetail.AddThemeConstantOverride("line_spacing", 0);
+        _abilityDetail.AddThemeFontSizeOverride("font_size", 12);
+        _abilityDetail.AddThemeConstantOverride("line_spacing", 1);
         _abilityDetail.AddThemeColorOverride("font_color", new Color("d5dde8"));
-        abilityScroll.AddChild(_abilityDetail);
-        column.AddChild(abilityPanel);
-        return column;
+        abilityPanel.AddChild(_abilityDetail);
+        _info.AddChild(abilityPanel);
+        return _info;
     }
 
     private Control BuildAction()
     {
-        var panel = new PanelContainer();
-        panel.AddThemeStyleboxOverride("panel", HudSkin.Ability());
+        var panel = new PanelContainer { Name = "ActionBar" };
+        panel.AddThemeStyleboxOverride("panel", Pad(HudSkin.Ability(), 8, 4));
 
         var box = new VBoxContainer();
-        box.AddThemeConstantOverride("separation", 3);
+        box.AddThemeConstantOverride("separation", 2);
         panel.AddChild(box);
 
         _order = new Label
         {
             AutowrapMode = TextServer.AutowrapMode.WordSmart,
-            MaxLinesVisible = 2,
             SizeFlagsHorizontal = SizeFlags.ExpandFill,
         };
         _order.AddThemeFontSizeOverride("font_size", 12);
@@ -492,27 +505,20 @@ public partial class GreyBoxBattle : Control
         abilityRow.AddThemeConstantOverride("separation", 6);
         _actorLabel = new Label
         {
-            CustomMinimumSize = new Vector2(148, 0),
             SizeFlagsHorizontal = SizeFlags.ShrinkBegin,
-            ClipText = true,
-            TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis,
             VerticalAlignment = VerticalAlignment.Center,
         };
         _actorLabel.AddThemeFontSizeOverride("font_size", 13);
         _actorLabel.AddThemeColorOverride("font_color", new Color("ffe08a"));
         abilityRow.AddChild(_actorLabel);
 
-        var abilityScroll = new ScrollContainer
+        _abilities = new HFlowContainer
         {
-            HorizontalScrollMode = ScrollContainer.ScrollMode.Auto,
-            VerticalScrollMode = ScrollContainer.ScrollMode.Disabled,
             SizeFlagsHorizontal = SizeFlags.ExpandFill,
         };
-        abilityScroll.AddThemeStyleboxOverride("panel", new StyleBoxEmpty());
-        _abilities = new HBoxContainer();
-        _abilities.AddThemeConstantOverride("separation", 4);
-        abilityScroll.AddChild(_abilities);
-        abilityRow.AddChild(abilityScroll);
+        _abilities.AddThemeConstantOverride("h_separation", 4);
+        _abilities.AddThemeConstantOverride("v_separation", 2);
+        abilityRow.AddChild(_abilities);
         box.AddChild(abilityRow);
 
         var controls = new HBoxContainer();
@@ -589,23 +595,21 @@ public partial class GreyBoxBattle : Control
         return scroll;
     }
 
-    private static VBoxContainer Stack()
-    {
-        var box = new VBoxContainer
-        {
-            SizeFlagsHorizontal = SizeFlags.ExpandFill,
-            SizeFlagsVertical = SizeFlags.ExpandFill,
-        };
-        box.AddThemeConstantOverride("separation", 4);
-        return box;
-    }
-
     private static Label ColumnTitle(string text)
     {
         var label = new Label { Text = text };
-        label.AddThemeFontSizeOverride("font_size", 11);
+        label.AddThemeFontSizeOverride("font_size", 12);
         label.AddThemeColorOverride("font_color", new Color("8ea0b5"));
         return label;
+    }
+
+    private static StyleBox Pad(StyleBox style, int x, int y)
+    {
+        style.ContentMarginLeft = x;
+        style.ContentMarginRight = x;
+        style.ContentMarginTop = y;
+        style.ContentMarginBottom = y;
+        return style;
     }
 
     private static StyleBoxFlat Flat(Color color, int margin)
@@ -1173,7 +1177,7 @@ public partial class GreyBoxBattle : Control
 
     private static readonly Color SelectedTint = new("ffe08a");
 
-    private static ChargeWidgets BuildChargeRow(VBoxContainer box, bool boss)
+    private static ChargeWidgets BuildChargeRow(Container box, bool boss)
     {
         var row = new HBoxContainer { MouseFilter = MouseFilterEnum.Ignore };
         row.AddThemeConstantOverride("separation", 6);
@@ -1184,7 +1188,7 @@ public partial class GreyBoxBattle : Control
             VerticalAlignment = VerticalAlignment.Center,
             CustomMinimumSize = new Vector2(28, 0),
         };
-        caption.AddThemeFontSizeOverride("font_size", 10);
+        caption.AddThemeFontSizeOverride("font_size", 11);
         caption.AddThemeColorOverride("font_color", boss ? new Color("e7b4ee") : new Color("9ee7f2"));
         row.AddChild(caption);
 
@@ -1206,7 +1210,7 @@ public partial class GreyBoxBattle : Control
             MouseFilter = MouseFilterEnum.Ignore,
             VerticalAlignment = VerticalAlignment.Center,
         };
-        turn.AddThemeFontSizeOverride("font_size", 10);
+        turn.AddThemeFontSizeOverride("font_size", 11);
         row.AddChild(turn);
         box.AddChild(row);
         PaintCharge(bar, turn, 0, boss);
@@ -1288,18 +1292,18 @@ public partial class GreyBoxBattle : Control
             Panel = new PanelContainer
             {
                 SizeFlagsHorizontal = SizeFlags.ExpandFill,
-                SizeFlagsVertical = SizeFlags.ExpandFill,
+                SizeFlagsVertical = SizeFlags.ShrinkBegin,
                 MouseFilter = MouseFilterEnum.Stop,
                 MouseDefaultCursorShape = CursorShape.PointingHand,
             };
-            Panel.AddThemeStyleboxOverride("panel", HudSkin.PartyCard());
+            Panel.AddThemeStyleboxOverride("panel", Pad(HudSkin.PartyCard(), 8, 4));
             var row = new HBoxContainer { MouseFilter = MouseFilterEnum.Ignore };
             row.AddThemeConstantOverride("separation", 6);
             Panel.AddChild(row);
             row.AddChild(new ColorRect
             {
                 Color = color,
-                CustomMinimumSize = new Vector2(8, 24),
+                CustomMinimumSize = new Vector2(6, 18),
                 SizeFlagsVertical = SizeFlags.ExpandFill,
                 MouseFilter = MouseFilterEnum.Ignore,
             });
@@ -1323,8 +1327,7 @@ public partial class GreyBoxBattle : Control
             _name = new Label
             {
                 MouseFilter = MouseFilterEnum.Ignore,
-                ClipText = true,
-                TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis,
+                AutowrapMode = TextServer.AutowrapMode.WordSmart,
             };
             _name.AddThemeFontSizeOverride("font_size", 14);
             box.AddChild(_name);
@@ -1339,8 +1342,7 @@ public partial class GreyBoxBattle : Control
             _meta = new Label
             {
                 MouseFilter = MouseFilterEnum.Ignore,
-                ClipText = true,
-                TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis,
+                AutowrapMode = TextServer.AutowrapMode.WordSmart,
             };
             _meta.AddThemeFontSizeOverride("font_size", 12);
             _meta.AddThemeColorOverride("font_color", new Color("c5d0dc"));
@@ -1359,7 +1361,7 @@ public partial class GreyBoxBattle : Control
             _icon.Texture = shielded ? HudSkin.Status("shield") : HudSkin.Status("regen");
             bool turn = hero.IsAlive && chargeBp >= SimConst.Bp;
             _name.AddThemeColorOverride("font_color", turn ? new Color("d7fbff") : new Color("f4f7fb"));
-            _name.Text = shielded ? $"shield {hero.Absorb}  {hero.Name}{down}" : hero.Name + down;
+            _name.Text = hero.Name + down;
             UntintCharge(_chargeRow, selected);
             PaintCharge(_charge, _turn, chargeBp, boss: false);
             _hp.MaxValue = hero.MaxHp;
@@ -1367,7 +1369,13 @@ public partial class GreyBoxBattle : Control
             _mp.MaxValue = hero.MaxMp <= 0 ? 1 : hero.MaxMp;
             _mp.Value = hero.Mp;
             string cast = hero.Casting ? $"  cast → {hero.CastResolveTick}" : "";
-            _meta.Text = $"HP {hero.Hp}/{hero.MaxHp}  MP {hero.Mp}/{hero.MaxMp}  AP {ApGauge.Format(hero.Ap.Centi)}{cast}";
+            string status = shielded ? $"  Shield {hero.Absorb}" : "";
+            if (regen)
+            {
+                status += "  Regen";
+            }
+
+            _meta.Text = $"HP {hero.Hp}/{hero.MaxHp}  MP {hero.Mp}/{hero.MaxMp}  AP {ApGauge.Format(hero.Ap.Centi)}{cast}{status}";
         }
 
         private static ProgressBar Bar(Color fill, int height)
@@ -1405,13 +1413,13 @@ public partial class GreyBoxBattle : Control
             Panel = new PanelContainer
             {
                 SizeFlagsHorizontal = SizeFlags.ExpandFill,
-                SizeFlagsVertical = SizeFlags.ExpandFill,
+                SizeFlagsVertical = SizeFlags.ShrinkBegin,
                 MouseFilter = MouseFilterEnum.Stop,
                 MouseDefaultCursorShape = CursorShape.PointingHand,
             };
-            Panel.AddThemeStyleboxOverride("panel", HudSkin.BossPart());
+            Panel.AddThemeStyleboxOverride("panel", Pad(HudSkin.BossPart(), 8, 4));
             var box = new VBoxContainer { MouseFilter = MouseFilterEnum.Ignore };
-            box.AddThemeConstantOverride("separation", 2);
+            box.AddThemeConstantOverride("separation", 1);
             Panel.AddChild(box);
             var title = new HBoxContainer { MouseFilter = MouseFilterEnum.Ignore };
             title.AddThemeConstantOverride("separation", 4);
@@ -1423,9 +1431,8 @@ public partial class GreyBoxBattle : Control
             _name = new Label
             {
                 MouseFilter = MouseFilterEnum.Ignore,
-                ClipText = true,
+                AutowrapMode = TextServer.AutowrapMode.WordSmart,
                 SizeFlagsHorizontal = SizeFlags.ExpandFill,
-                TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis,
             };
             _name.AddThemeFontSizeOverride("font_size", 13);
             title.AddChild(_name);
@@ -1448,8 +1455,14 @@ public partial class GreyBoxBattle : Control
             _pressure = Note(new Color("b7c4d4"));
             box.AddChild(_pressure);
 
-            var threats = new HBoxContainer { MouseFilter = MouseFilterEnum.Ignore };
-            threats.AddThemeConstantOverride("separation", 6);
+            var threats = new GridContainer
+            {
+                Columns = 2,
+                MouseFilter = MouseFilterEnum.Ignore,
+                SizeFlagsHorizontal = SizeFlags.ExpandFill,
+            };
+            threats.AddThemeConstantOverride("h_separation", 8);
+            threats.AddThemeConstantOverride("v_separation", 2);
             box.AddChild(threats);
             _threat = new ProgressBar[4];
             _threatLabel = new Label[4];
@@ -1465,10 +1478,9 @@ public partial class GreyBoxBattle : Control
                 _threatLabel[i] = new Label
                 {
                     MouseFilter = MouseFilterEnum.Ignore,
-                    ClipText = true,
-                    TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis,
+                    AutowrapMode = TextServer.AutowrapMode.WordSmart,
                 };
-                _threatLabel[i].AddThemeFontSizeOverride("font_size", 11);
+                _threatLabel[i].AddThemeFontSizeOverride("font_size", 12);
                 column.AddChild(_threatLabel[i]);
                 _threat[i] = new ProgressBar
                 {
@@ -1560,8 +1572,8 @@ public partial class GreyBoxBattle : Control
             var label = new Label
             {
                 AutowrapMode = TextServer.AutowrapMode.WordSmart,
-                MaxLinesVisible = 2,
                 MouseFilter = MouseFilterEnum.Ignore,
+                SizeFlagsHorizontal = SizeFlags.ExpandFill,
             };
             label.AddThemeFontSizeOverride("font_size", 12);
             label.AddThemeColorOverride("font_color", color);
@@ -1597,23 +1609,26 @@ public partial class GreyBoxBattle : Control
             };
             Panel = new PanelContainer
             {
+                Name = "BossCard",
                 SizeFlagsHorizontal = SizeFlags.ExpandFill,
                 MouseFilter = MouseFilterEnum.Ignore,
             };
             Panel.AddThemeStyleboxOverride("panel", _panelStyle);
-            var box = new VBoxContainer { MouseFilter = MouseFilterEnum.Ignore };
-            box.AddThemeConstantOverride("separation", 2);
+            var box = new HBoxContainer { MouseFilter = MouseFilterEnum.Ignore };
+            box.AddThemeConstantOverride("separation", 8);
             Panel.AddChild(box);
             _name = new Label
             {
                 MouseFilter = MouseFilterEnum.Ignore,
-                ClipText = true,
-                TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis,
+                SizeFlagsHorizontal = SizeFlags.ExpandFill,
+                VerticalAlignment = VerticalAlignment.Center,
             };
-            _name.AddThemeFontSizeOverride("font_size", 13);
+            _name.AddThemeFontSizeOverride("font_size", 14);
             _name.AddThemeColorOverride("font_color", new Color("e7d5ee"));
             box.AddChild(_name);
             ChargeWidgets charge = BuildChargeRow(box, boss: true);
+            charge.Row.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+            charge.Row.CustomMinimumSize = new Vector2(220, 0);
             _charge = charge.Bar;
             _turn = charge.Turn;
         }
