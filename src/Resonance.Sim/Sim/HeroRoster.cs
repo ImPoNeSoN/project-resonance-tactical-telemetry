@@ -228,10 +228,13 @@ public static class HeroRoster
         {
             case PartyPreset.ShatterChoir:
                 Find(heroes, Korrith).Deck = Deck(KorrithShatter, bulwark: true);
+                Find(heroes, Saeli).Deck = Deck(SaeliShatter);
+                Find(heroes, Aurel).Deck = Deck(AurelShatter);
                 Find(heroes, Seraphine).Deck = Deck(SeraphineFor("Aurel Nine-Vesper"));
                 break;
             case PartyPreset.Guardbreak:
                 Find(heroes, Korrith).Deck = Deck(KorrithGuardbreak, bulwark: true);
+                Find(heroes, Kaelis).Deck = Deck(KaelisGuardbreak);
                 Find(heroes, Zeph).Deck = Deck(ZephGuardbreak);
                 Find(heroes, Seraphine).Deck = Deck(SeraphineFor("Zeph Tri-Lumen"));
                 break;
@@ -274,10 +277,10 @@ public static class HeroRoster
 
     private static GambitProgram DefaultDeck(int id) => id switch
     {
-        Saeli => Deck(SaeliShatter),
-        Kaelis => Deck(KaelisGuardbreak),
+        Saeli => Deck(SaeliDefault),
+        Kaelis => Deck(KaelisDefault),
         Zeph => Deck(ZephDefault),
-        Aurel => Deck(AurelShatter),
+        Aurel => Deck(AurelDefault),
         Seraphine => Deck(SeraphineDefault),
         _ => Deck(KorrithIce, bulwark: true),
     };
@@ -365,6 +368,34 @@ public static class HeroRoster
         4 IF Field [Always] -> USE [Rend Pulse] ON Core
         """;
 
+    // ReadyIn above 100000 is the absent-ally sentinel. A hero in the party, alive or dead, is ready far sooner.
+    private const string SaeliDefault = """
+        1 IF Ally(Kaelis Moon-Ravel) [ReadyIn < 100000] AND Ally(Aurel Nine-Vesper) [ReadyIn < 100000] AND Ally(Zeph Tri-Lumen) [ReadyIn > 100000] -> USE [Briar Arc] ON Core
+        2 IF Ally(Kaelis Moon-Ravel) [ReadyIn < 100000] AND Ally(Korrith Vael-Dun) [ReadyIn < 100000] -> USE [Briar Cut] ON Core
+        3 IF Boss.Core [Window: Fragmentation] AND Boss [HP% < 60] -> USE [Attack] ON Core
+        4 IF Boss.Core [Window: Slashing] AND Boss [HP% < 64] AND Self [MP >= Cost: Wind Talon Arc] -> USE [Wind Talon Arc] ON Core
+        5 IF Boss.Core [Window: Blunt] -> USE [Rend Pulse] ON Core
+        6 IF Field [Always] -> USE [Rend Pulse] ON Core
+        """;
+
+    private const string KaelisDefault = """
+        1 IF Ally(Saeli Thorn-Vesper) [ReadyIn < 100000] AND Ally(Korrith Vael-Dun) [ReadyIn < 100000] -> USE [Moon Cut] ON Core
+        2 IF Ally(Saeli Thorn-Vesper) [ReadyIn < 100000] AND Ally(Seraphine Vol-Ivory) [ReadyIn < 100000] AND Ally(Aurel Nine-Vesper) [ReadyIn < 100000] -> USE [Moon Arc] ON Core
+        3 IF Ally(Saeli Thorn-Vesper) [ReadyIn < 100000] AND Ally(Seraphine Vol-Ivory) [ReadyIn < 100000] AND Ally(Zeph Tri-Lumen) [ReadyIn < 100000] -> USE [Moon Nick] ON Core
+        4 IF Boss.Core [Window: Blunt] AND Boss [HP% < 44] AND Boss [HP% >= 36] -> USE [Attack] ON Core
+        5 IF Boss.Core [Window: Blunt] AND Boss [HP% >= 44] AND Self [MP >= Cost: Umbral Pierce] -> USE [Umbral Pierce] ON Core
+        6 IF Field [Always] -> USE [Crescent Sever] ON Core
+        """;
+
+    private const string AurelDefault = """
+        1 IF Ally(Korrith Vael-Dun) [ReadyIn > 100000] AND Ally(Zeph Tri-Lumen) [ReadyIn < 100000] AND Ally(Saeli Thorn-Vesper) [ReadyIn > 100000] -> CAST [Filament Peak] ON Core
+        2 IF Ally(Korrith Vael-Dun) [ReadyIn > 100000] AND Ally(Zeph Tri-Lumen) [ReadyIn < 100000] AND Ally(Kaelis Moon-Ravel) [ReadyIn > 100000] -> CAST [Filament Surge] ON Core
+        3 IF Ally(Korrith Vael-Dun) [ReadyIn > 100000] AND Ally(Zeph Tri-Lumen) [ReadyIn < 100000] -> CAST [Filament Bloom] ON Core
+        4 IF Ally(Zeph Tri-Lumen) [ReadyIn < 100000] AND Ally(Seraphine Vol-Ivory) [ReadyIn < 100000] AND Ally(Korrith Vael-Dun) [ReadyIn < 100000] -> CAST [Filament Surge] ON Core
+        5 IF Ally(Zeph Tri-Lumen) [ReadyIn < 100000] -> CAST [Filament Glow] ON Core
+        6 IF Ally(Kaelis Moon-Ravel) [ReadyIn < 100000] AND Ally(Seraphine Vol-Ivory) [ReadyIn < 100000] AND Ally(Saeli Thorn-Vesper) [ReadyIn > 100000] -> CAST [Filament Glint] ON Core
+        """;
+
     private const string SaeliIce = """
         1 IF Boss [HP% < 28] -> USE [Rend Pulse] ON Core
         2 IF Field [Always] -> USE [Needle Flicker] ON Core
@@ -391,12 +422,11 @@ public static class HeroRoster
         """;
 
     private const string ZephDefault = """
-        1 IF Boss.Core [Window: Piercing] AND Self [MP >= Cost: Hex Lance] -> CAST [Hex Lance] ON Core
-        2 IF Target [Resonance: Lightning] AND Self [MP >= Cost: Hex Lance] -> CAST [Hex Lance] ON Core
-        3 IF Target [Resonance: Ice] AND Self [MP >= Cost: Blizzard II] -> CAST [Blizzard II] ON Core
-        4 IF Boss.Core [Window: Liquefaction] AND Self [MP% >= 40] AND Self [MP >= Cost: Pyre Lattice] -> CAST [Pyre Lattice] ON Core
-        5 IF Self [MP% >= 85] AND Self [MP >= Cost: Blizzard II] -> CAST [Blizzard II] ON Core
-        6 IF Field [Always] -> USE [Attack] ON Core
+        1 IF Ally(Saeli Thorn-Vesper) [ReadyIn > 100000] AND Ally(Kaelis Moon-Ravel) [ReadyIn > 100000] -> CAST [Tri Flare] ON Core
+        2 IF Ally(Saeli Thorn-Vesper) [ReadyIn > 100000] -> CAST [Tri Spark] ON Core
+        3 IF Ally(Kaelis Moon-Ravel) [ReadyIn > 100000] -> CAST [Tri Spark] ON Core
+        4 IF Ally(Korrith Vael-Dun) [ReadyIn < 100000] AND Ally(Saeli Thorn-Vesper) [ReadyIn < 100000] AND Ally(Kaelis Moon-Ravel) [ReadyIn < 100000] -> CAST [Tri Gleam] ON Core
+        5 IF Field [Always] -> USE [Attack] ON Core
         """;
 
     private const string AurelShatter = """
@@ -441,7 +471,7 @@ public static class HeroRoster
         saeli.CadenceRefundAp = SimConst.SaeliCadenceRefundAp;
         saeli.Idle = new GearMods { IdleEva = 20 };
         saeli.Weapon = new GearMods { WsStr = 110, WsDex = 70, WsDoubleAttackBp = 1_300, WsDamageBp = 3_900 };
-        saeli.Kit = [AbilityCatalog.RendPulse, AbilityCatalog.NeedleFlicker, AbilityCatalog.WindTalonArc, AbilityCatalog.Attack];
+        saeli.Kit = [AbilityCatalog.RendPulse, AbilityCatalog.NeedleFlicker, AbilityCatalog.WindTalonArc, AbilityCatalog.BriarCut, AbilityCatalog.BriarArc, AbilityCatalog.Attack];
         return saeli;
     }
 
@@ -450,7 +480,7 @@ public static class HeroRoster
         HeroState kaelis = Body(slot, "Kaelis Moon-Ravel", RaceId.SylvariMor, 3_680, 360, 485, 207, 180, 200, 319, 247, 16);
         kaelis.Idle = new GearMods { IdleEva = 20 };
         kaelis.Weapon = new GearMods { WsStr = 140, WsDex = 40, WsDoubleAttackBp = 1_000, WsDamageBp = 4_000 };
-        kaelis.Kit = [AbilityCatalog.CrescentSever, AbilityCatalog.UmbralPierce, AbilityCatalog.RavelExecution, AbilityCatalog.Attack];
+        kaelis.Kit = [AbilityCatalog.CrescentSever, AbilityCatalog.UmbralPierce, AbilityCatalog.RavelExecution, AbilityCatalog.MoonCut, AbilityCatalog.MoonArc, AbilityCatalog.MoonNick, AbilityCatalog.Attack];
         return kaelis;
     }
 
@@ -461,7 +491,7 @@ public static class HeroRoster
         zeph.Idle = new GearMods { IdleDef = 40 };
         zeph.FastCast = new GearMods { FastCastBp = 3_000 };
         zeph.MidCast = new GearMods { MidInt = 60, MidMbdBp = 4_000, MidCritDamageBp = 2_000 };
-        zeph.Kit = [AbilityCatalog.BlizzardII, AbilityCatalog.PyreLattice, AbilityCatalog.HexLance, AbilityCatalog.Attack];
+        zeph.Kit = [AbilityCatalog.BlizzardII, AbilityCatalog.PyreLattice, AbilityCatalog.HexLance, AbilityCatalog.TriGleam, AbilityCatalog.TriSpark, AbilityCatalog.TriFlare, AbilityCatalog.Attack];
         return zeph;
     }
 
@@ -471,7 +501,7 @@ public static class HeroRoster
         aurel.Idle = new GearMods { IdleDef = 20 };
         aurel.FastCast = new GearMods { FastCastBp = 3_000 };
         aurel.MidCast = new GearMods { MidInt = 45, MidMbdBp = 3_500, MidCritDamageBp = 1_800 };
-        aurel.Kit = [AbilityCatalog.PhotonSermon, AbilityCatalog.SolarFilament, AbilityCatalog.GaleQuanta, AbilityCatalog.Attack];
+        aurel.Kit = [AbilityCatalog.PhotonSermon, AbilityCatalog.SolarFilament, AbilityCatalog.GaleQuanta, AbilityCatalog.FilamentGlint, AbilityCatalog.FilamentGlow, AbilityCatalog.FilamentBloom, AbilityCatalog.FilamentPeak, AbilityCatalog.FilamentSurge, AbilityCatalog.Attack];
         return aurel;
     }
 
