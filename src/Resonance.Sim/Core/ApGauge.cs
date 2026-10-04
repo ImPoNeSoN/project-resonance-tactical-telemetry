@@ -93,6 +93,61 @@ public struct ApGauge
         return (int)((need + centiPerTick - 1) / centiPerTick);
     }
 
+    /// <summary>
+    /// Progress toward the next action, in basis points. 10_000 means that action is due now.
+    /// Ticks left at or beyond the span (an empty gauge, or AP debt) read as empty.
+    /// </summary>
+    public static int ChargeBp(int ticksUntilAction, int ticksInSpan)
+    {
+        if (ticksUntilAction <= 0)
+        {
+            return SimConst.Bp;
+        }
+
+        if (ticksInSpan <= 0 || ticksUntilAction >= ticksInSpan)
+        {
+            return 0;
+        }
+
+        long filled = (long)(ticksInSpan - ticksUntilAction) * SimConst.Bp;
+        return (int)(filled / ticksInSpan);
+    }
+
+    /// <summary>
+    /// Charge for the next thing this unit will do. While the gauge is filling, the span is
+    /// the tick count from empty to ready at the current gain. While a chant is in progress,
+    /// the span is that chant and the next action is its resolve tick.
+    /// </summary>
+    public static int NextActionChargeBp(
+        int centi,
+        int centiPerTick,
+        bool casting,
+        int castStartTick,
+        int castResolveTick,
+        int tick)
+    {
+        if (casting)
+        {
+            int span = castResolveTick - castStartTick;
+            if (span < 1)
+            {
+                span = 1;
+            }
+
+            int left = castResolveTick - tick;
+            if (left < 0)
+            {
+                left = 0;
+            }
+
+            return ChargeBp(left, span);
+        }
+
+        int full = TicksUntilReady(0, centiPerTick);
+        int until = TicksUntilReady(centi, centiPerTick);
+        return ChargeBp(until, full);
+    }
+
     public static string Format(int centi)
     {
         int sign = centi < 0 ? -1 : 1;

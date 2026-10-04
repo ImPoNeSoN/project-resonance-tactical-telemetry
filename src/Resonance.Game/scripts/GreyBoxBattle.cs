@@ -1,4 +1,5 @@
 using Godot;
+using Resonance.Sim.Combat;
 using Resonance.Sim.Core;
 using Resonance.Sim.Data;
 using Resonance.Sim.Sim;
@@ -7,17 +8,11 @@ namespace Resonance.Game;
 
 /// <summary>
 /// Grey-box Carapace Engine fight. Plain Control nodes and flat colors only.
-/// Full-rect columns: a lane timeline, party, boss parts, a scrolling resonance readout,
-/// and a pinned ability panel, then the action bar.
+/// Full-rect columns: party, boss parts, a scrolling resonance readout,
+/// and a pinned ability panel, then the action bar. Each card shows a CTB charge bar.
 /// </summary>
 public partial class GreyBoxBattle : Control
 {
-    private const int Swatch = 12;
-    private const int Pip = 10;
-    private const int NameCol = 168;
-    private const int ApCol = 72;
-    private const int Gap = 4;
-
     private static readonly Color[] PortraitColors =
     [
         new("c4a574"),
@@ -30,13 +25,11 @@ public partial class GreyBoxBattle : Control
     private SimBridge _bridge = null!;
     private Label _status = null!;
     private Label _banner = null!;
-    private Label _bossTitle = null!;
+    private BossCard _bossCard = null!;
     private Label _resonance = null!;
     private Label _abilityDetail = null!;
     private Label _order = null!;
     private Label _actorLabel = null!;
-    private VBoxContainer _laneBox = null!;
-    private readonly List<TimelineLane> _lanes = new();
     private readonly List<HeroRow> _heroes = new();
     private readonly List<PartRow> _parts = new();
     private VBoxContainer _partBox = null!;
@@ -100,7 +93,6 @@ public partial class GreyBoxBattle : Control
         _margin.AddChild(root);
 
         root.AddChild(BuildHeader());
-        root.AddChild(BuildTimeline());
         root.AddChild(BuildBody());
         root.AddChild(BuildAction());
 
@@ -193,7 +185,7 @@ public partial class GreyBoxBattle : Control
 
     /// <summary>
     /// Boss fights default to the 3D arena. Floor fights stay on the grey-box board.
-    /// The 2D timeline, party, parts, and ability panel stay on top of the view.
+    /// Party, parts, and the ability panel sit in the band under the view.
     /// </summary>
     private void SetArenaView(bool show)
     {
@@ -329,32 +321,6 @@ public partial class GreyBoxBattle : Control
         return header;
     }
 
-    private Control BuildTimeline()
-    {
-        var panel = new PanelContainer { MouseFilter = MouseFilterEnum.Ignore };
-        panel.AddThemeStyleboxOverride("panel", HudSkin.Timeline());
-
-        var box = new VBoxContainer { MouseFilter = MouseFilterEnum.Ignore };
-        box.AddThemeConstantOverride("separation", 1);
-        panel.AddChild(box);
-
-        var scale = new HBoxContainer { MouseFilter = MouseFilterEnum.Ignore };
-        scale.AddThemeConstantOverride("separation", Gap);
-        int gutter = Swatch + Pip + NameCol + ApCol + (Gap * 3);
-        scale.AddChild(new Control
-        {
-            CustomMinimumSize = new Vector2(gutter, 1),
-            MouseFilter = MouseFilterEnum.Ignore,
-        });
-        scale.AddChild(new ApRuler());
-        box.AddChild(scale);
-
-        _laneBox = new VBoxContainer { MouseFilter = MouseFilterEnum.Ignore };
-        _laneBox.AddThemeConstantOverride("separation", 1);
-        box.AddChild(_laneBox);
-        return panel;
-    }
-
     private Control BuildBody()
     {
         var wrap = new VBoxContainer
@@ -433,8 +399,8 @@ public partial class GreyBoxBattle : Control
             SizeFlagsVertical = SizeFlags.ExpandFill,
         };
         column.AddThemeConstantOverride("separation", 2);
-        _bossTitle = ColumnTitle(sim.Boss.Name);
-        column.AddChild(_bossTitle);
+        _bossCard = new BossCard();
+        column.AddChild(_bossCard.Panel);
 
         var partScroll = VerticalScroll();
         column.AddChild(partScroll);
@@ -950,7 +916,6 @@ public partial class GreyBoxBattle : Control
     private void Refresh()
     {
         BattleSimulator sim = _bridge.Simulation;
-        EnsureLanes(sim);
         EnsureParts(sim);
         EnsureAbilities(sim);
         UpdateAbilityDetail();
@@ -976,7 +941,6 @@ public partial class GreyBoxBattle : Control
             _viewToggle.Visible = _bridge.BossOnly;
             _viewToggle.Text = _view3d ? "Grey-box" : "3D arena";
         }
-        _bossTitle.Text = sim.Boss.Name;
         _resonance.Text = ResonanceReadout.Summarize(sim);
         _order.Text = OrderText(sim);
         if ((uint)_actor < (uint)sim.Heroes.Count)
@@ -984,28 +948,19 @@ public partial class GreyBoxBattle : Control
             _actorLabel.Text = sim.Heroes[_actor].Name;
         }
 
-        for (int i = 0; i < sim.Heroes.Count && i < _lanes.Count; i++)
+        for (int i = 0; i < sim.Heroes.Count && i < _heroes.Count; i++)
         {
             HeroState hero = sim.Heroes[i];
-            string cast = hero.Casting ? AbilityCatalog.Get(hero.CastAbilityId).Name : "";
-            _lanes[i].Set(hero.Name, ApGauge.Format(hero.Ap.Centi), hero.Ap.Centi, hero.Casting, hero.CastStartTick, hero.CastResolveTick, sim.Tick, cast);
-            if (i < _heroes.Count)
-            {
-                _heroes[i].Set(hero, i == _actor, sim.Tick);
-            }
+            _heroes[i].Set(hero, i == _actor, sim.Tick, HeroChargeBp(hero, sim.Tick));
         }
 
         BossState boss = sim.Boss;
-        string bossCast = boss.Casting ? AbilityCatalog.Get(boss.CastAbilityId).Name : "";
-        int bossLane = sim.Heroes.Count;
-        if (bossLane < _lanes.Count)
-        {
-            _lanes[bossLane].Set(boss.Name, ApGauge.Format(boss.Ap.Centi), boss.Ap.Centi, boss.Casting, boss.CastStartTick, boss.CastResolveTick, sim.Tick, bossCast);
-        }
+        int bossCharge = BossChargeBp(boss, sim.Tick);
+        _bossCard.Set(boss.Name, bossCharge);
 
         for (int i = 0; i < boss.Parts.Length && i < _parts.Count; i++)
         {
-            _parts[i].Set(boss.Parts[i], sim.Heroes, i == _part, boss.Def, sim.Tick);
+            _parts[i].Set(boss.Parts[i], sim.Heroes, i == _part, boss.Def, sim.Tick, bossCharge);
         }
 
         for (int i = 0; i < _allies.GetChildCount(); i++)
@@ -1061,28 +1016,6 @@ public partial class GreyBoxBattle : Control
         if (_part >= sim.Boss.Parts.Length)
         {
             _part = 0;
-        }
-    }
-
-    private void EnsureLanes(BattleSimulator sim)
-    {
-        int needed = sim.Heroes.Count + 1;
-        if (_lanes.Count == needed)
-        {
-            return;
-        }
-
-        foreach (TimelineLane lane in _lanes)
-        {
-            lane.Root.QueueFree();
-        }
-
-        _lanes.Clear();
-        for (int i = 0; i < needed; i++)
-        {
-            var lane = new TimelineLane(PortraitColors[i % PortraitColors.Length]);
-            _lanes.Add(lane);
-            _laneBox.AddChild(lane.Root);
         }
     }
 
@@ -1219,270 +1152,112 @@ public partial class GreyBoxBattle : Control
         return space > 0 ? name[..space] : name;
     }
 
-    private static float ApRatio(int centi)
+    private static int HeroChargeBp(HeroState hero, int tick)
     {
-        int shown = centi / SimConst.CentiPerAp;
-        if (shown < 0)
+        if (!hero.IsAlive)
         {
-            shown = 0;
+            return 0;
         }
 
-        if (shown > 10_000)
-        {
-            shown = 10_000;
-        }
-
-        return shown / 10_000f;
+        int gain = Formulas.AgiCentiPerTick(hero.Agi, 0, 0);
+        return ApGauge.NextActionChargeBp(hero.Ap.Centi, gain, hero.Casting, hero.CastStartTick, hero.CastResolveTick, tick);
     }
 
-    private sealed partial class ApRuler : Control
+    private static int BossChargeBp(BossState boss, int tick)
     {
-        public ApRuler()
-        {
-            CustomMinimumSize = new Vector2(0, 14);
-            MouseFilter = MouseFilterEnum.Ignore;
-            SizeFlagsHorizontal = SizeFlags.ExpandFill;
-            for (int i = 0; i <= 4; i++)
-            {
-                var label = new Label
-                {
-                    Text = (i * 2_500).ToString(),
-                    MouseFilter = MouseFilterEnum.Ignore,
-                    VerticalAlignment = VerticalAlignment.Bottom,
-                };
-                label.AddThemeFontSizeOverride("font_size", 11);
-                label.AddThemeColorOverride("font_color", new Color("8ea0b5"));
-                float anchor = i / 4f;
-                if (i == 0)
-                {
-                    label.AnchorLeft = 0;
-                    label.AnchorRight = 0;
-                    label.OffsetLeft = 0;
-                    label.OffsetRight = 48;
-                    label.HorizontalAlignment = HorizontalAlignment.Left;
-                }
-                else if (i == 4)
-                {
-                    label.AnchorLeft = 1;
-                    label.AnchorRight = 1;
-                    label.OffsetLeft = -56;
-                    label.OffsetRight = 0;
-                    label.HorizontalAlignment = HorizontalAlignment.Right;
-                }
-                else
-                {
-                    label.AnchorLeft = anchor;
-                    label.AnchorRight = anchor;
-                    label.OffsetLeft = -28;
-                    label.OffsetRight = 28;
-                    label.HorizontalAlignment = HorizontalAlignment.Center;
-                }
-
-                label.AnchorTop = 0;
-                label.AnchorBottom = 1;
-                AddChild(label);
-            }
-        }
+        int gain = Formulas.AgiCentiPerTick(boss.Agi, 0, boss.SlowNow(tick));
+        return ApGauge.NextActionChargeBp(boss.Ap.Centi, gain, boss.Casting, boss.CastStartTick, boss.CastResolveTick, tick);
     }
 
-    private sealed class TimelineLane
+    private readonly record struct ChargeWidgets(ProgressBar Bar, Label Turn);
+
+    private static ChargeWidgets BuildChargeRow(VBoxContainer box, bool boss)
     {
-        private readonly Label _name;
-        private readonly Label _detail;
-        private readonly ColorRect _pip;
-        private readonly ColorRect _marker;
-        private readonly ColorRect _castFill;
-        private readonly Label _castName;
-        private int _centi;
-        private bool _casting;
-        private int _elapsed;
-        private int _span;
-
-        public TimelineLane(Color color)
+        var row = new HBoxContainer { MouseFilter = MouseFilterEnum.Ignore };
+        row.AddThemeConstantOverride("separation", 6);
+        var caption = new Label
         {
-            Root = new HBoxContainer { MouseFilter = MouseFilterEnum.Ignore };
-            Root.AddThemeConstantOverride("separation", Gap);
+            Text = "CTB",
+            MouseFilter = MouseFilterEnum.Ignore,
+            VerticalAlignment = VerticalAlignment.Center,
+            CustomMinimumSize = new Vector2(28, 0),
+        };
+        caption.AddThemeFontSizeOverride("font_size", 10);
+        caption.AddThemeColorOverride("font_color", boss ? new Color("e7b4ee") : new Color("9ee7f2"));
+        row.AddChild(caption);
 
-            Root.AddChild(new ColorRect
-            {
-                Color = color,
-                CustomMinimumSize = new Vector2(Swatch, Swatch),
-                MouseFilter = MouseFilterEnum.Ignore,
-            });
+        var bar = new ProgressBar
+        {
+            MinValue = 0,
+            MaxValue = SimConst.Bp,
+            ShowPercentage = false,
+            CustomMinimumSize = new Vector2(0, 9),
+            MouseFilter = MouseFilterEnum.Ignore,
+            SizeFlagsHorizontal = SizeFlags.ExpandFill,
+        };
+        row.AddChild(bar);
 
-            var pipSlot = new Control
-            {
-                CustomMinimumSize = new Vector2(Pip, Pip),
-                MouseFilter = MouseFilterEnum.Ignore,
-            };
-            _pip = new ColorRect
-            {
-                Color = new Color("e74c3c"),
-                Visible = false,
-                MouseFilter = MouseFilterEnum.Ignore,
-            };
-            _pip.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
-            pipSlot.AddChild(_pip);
-            Root.AddChild(pipSlot);
+        var turn = new Label
+        {
+            Text = "TURN",
+            Visible = false,
+            MouseFilter = MouseFilterEnum.Ignore,
+            VerticalAlignment = VerticalAlignment.Center,
+        };
+        turn.AddThemeFontSizeOverride("font_size", 10);
+        row.AddChild(turn);
+        box.AddChild(row);
+        PaintCharge(bar, turn, 0, boss);
+        return new ChargeWidgets(bar, turn);
+    }
 
-            _name = new Label
-            {
-                CustomMinimumSize = new Vector2(NameCol, 0),
-                SizeFlagsHorizontal = SizeFlags.ShrinkBegin,
-                ClipText = true,
-                TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis,
-                VerticalAlignment = VerticalAlignment.Center,
-            };
-            _name.AddThemeFontSizeOverride("font_size", 12);
-            Root.AddChild(_name);
-
-            _detail = new Label
-            {
-                CustomMinimumSize = new Vector2(ApCol, 0),
-                SizeFlagsHorizontal = SizeFlags.ShrinkBegin,
-                HorizontalAlignment = HorizontalAlignment.Right,
-                VerticalAlignment = VerticalAlignment.Center,
-                ClipText = true,
-                TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis,
-            };
-            _detail.AddThemeFontSizeOverride("font_size", 12);
-            _detail.AddThemeColorOverride("font_color", new Color("d5dde8"));
-            Root.AddChild(_detail);
-
-            Track = new Control
-            {
-                SizeFlagsHorizontal = SizeFlags.ExpandFill,
-                CustomMinimumSize = new Vector2(0, 14),
-                ClipContents = true,
-                MouseFilter = MouseFilterEnum.Ignore,
-            };
-            var backdrop = new ColorRect
-            {
-                Color = new Color("10151c"),
-                MouseFilter = MouseFilterEnum.Ignore,
-            };
-            backdrop.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
-            Track.AddChild(backdrop);
-
-            for (int i = 0; i <= 4; i++)
-            {
-                float anchor = i / 4f;
-                var tick = new ColorRect
-                {
-                    Color = new Color("2c3848"),
-                    MouseFilter = MouseFilterEnum.Ignore,
-                    AnchorLeft = anchor,
-                    AnchorRight = anchor,
-                    AnchorTop = 0,
-                    AnchorBottom = 1,
-                    OffsetLeft = 0,
-                    OffsetRight = 1,
-                };
-                Track.AddChild(tick);
-            }
-
-            _castFill = new ColorRect
-            {
-                Color = new Color(color.R, color.G, color.B, 0.38f),
-                Visible = false,
-                MouseFilter = MouseFilterEnum.Ignore,
-                AnchorLeft = 0,
-                AnchorRight = 0,
-                AnchorTop = 0,
-                AnchorBottom = 1,
-                OffsetTop = 1,
-                OffsetBottom = -1,
-            };
-            Track.AddChild(_castFill);
-
-            _castName = new Label
-            {
-                Visible = false,
-                MouseFilter = MouseFilterEnum.Ignore,
-                VerticalAlignment = VerticalAlignment.Center,
-                ClipText = true,
-                TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis,
-                AnchorLeft = 0,
-                AnchorRight = 1,
-                AnchorTop = 0,
-                AnchorBottom = 1,
-                OffsetLeft = 6,
-                OffsetRight = -6,
-            };
-            _castName.AddThemeFontSizeOverride("font_size", 11);
-            _castName.AddThemeColorOverride("font_color", new Color("f4f7fb"));
-            Track.AddChild(_castName);
-
-            _marker = new ColorRect
-            {
-                Color = color,
-                MouseFilter = MouseFilterEnum.Ignore,
-                AnchorLeft = 0,
-                AnchorRight = 0,
-                AnchorTop = 0,
-                AnchorBottom = 1,
-                OffsetTop = 1,
-                OffsetBottom = -1,
-            };
-            Track.AddChild(_marker);
-            Root.AddChild(Track);
-            Track.Resized += Place;
+    private static void PaintCharge(ProgressBar bar, Label turn, int chargeBp, bool boss)
+    {
+        if (chargeBp < 0)
+        {
+            chargeBp = 0;
         }
 
-        public HBoxContainer Root { get; }
-
-        public Control Track { get; }
-
-        public void Set(string name, string ap, int centi, bool casting, int start, int resolve, int tick, string castName)
+        if (chargeBp > SimConst.Bp)
         {
-            _name.Text = name;
-            _detail.Text = ap;
-            _centi = centi;
-            _casting = casting;
-            _pip.Visible = casting;
-            _castName.Visible = casting;
-            _castName.Text = castName;
-            _span = resolve - start;
-            if (_span < 1)
-            {
-                _span = 1;
-            }
-
-            _elapsed = tick - start;
-            if (_elapsed < 0)
-            {
-                _elapsed = 0;
-            }
-
-            if (_elapsed > _span)
-            {
-                _elapsed = _span;
-            }
-
-            Place();
+            chargeBp = SimConst.Bp;
         }
 
-        private void Place()
+        bool ready = chargeBp >= SimConst.Bp;
+        Color fill = boss
+            ? (ready ? new Color("ffd6fb") : new Color("e13cff"))
+            : (ready ? new Color("d7fbff") : new Color("00e5ff"));
+        Color edge = boss
+            ? (ready ? new Color("ff7af0") : new Color("5c2a62"))
+            : (ready ? new Color("7af6ff") : new Color("1a5566"));
+        bar.MaxValue = SimConst.Bp;
+        bar.Value = chargeBp;
+        bar.AddThemeStyleboxOverride("background", ChargeTrack(new Color("070b10"), edge));
+        bar.AddThemeStyleboxOverride("fill", ChargeFill(fill));
+        turn.Visible = ready;
+        turn.AddThemeColorOverride("font_color", fill);
+    }
+
+    private static StyleBoxFlat ChargeTrack(Color bg, Color edge)
+    {
+        return new StyleBoxFlat
         {
-            float width = Track.Size.X;
-            if (width < 4)
-            {
-                return;
-            }
+            BgColor = bg,
+            BorderColor = edge,
+            BorderWidthLeft = 1,
+            BorderWidthTop = 1,
+            BorderWidthRight = 1,
+            BorderWidthBottom = 1,
+            ContentMarginLeft = 1,
+            ContentMarginTop = 1,
+            ContentMarginRight = 1,
+            ContentMarginBottom = 1,
+        };
+    }
 
-            float ratio = ApRatio(_centi);
-            float x = ratio * (width - 3f);
-            _marker.OffsetLeft = x;
-            _marker.OffsetRight = x + 3f;
-            _castFill.Visible = _casting;
-            if (!_casting)
-            {
-                return;
-            }
-
-            float progress = _span <= 0 ? 0f : _elapsed / (float)_span;
-            _castFill.OffsetRight = Mathf.Max(2f, width * progress);
-        }
+    private static StyleBoxFlat ChargeFill(Color fill)
+    {
+        return new StyleBoxFlat { BgColor = fill };
     }
 
     private sealed class HeroRow
@@ -1490,6 +1265,8 @@ public partial class GreyBoxBattle : Control
         private readonly Label _name;
         private readonly ProgressBar _hp;
         private readonly ProgressBar _mp;
+        private readonly ProgressBar _charge;
+        private readonly Label _turn;
         private readonly Label _meta;
         private readonly TextureRect _icon;
 
@@ -1542,6 +1319,9 @@ public partial class GreyBoxBattle : Control
             box.AddChild(_hp);
             _mp = Bar(new Color("2980b9"), 7);
             box.AddChild(_mp);
+            ChargeWidgets charge = BuildChargeRow(box, boss: false);
+            _charge = charge.Bar;
+            _turn = charge.Turn;
             _meta = new Label
             {
                 MouseFilter = MouseFilterEnum.Ignore,
@@ -1555,7 +1335,7 @@ public partial class GreyBoxBattle : Control
 
         public PanelContainer Panel { get; }
 
-        public void Set(HeroState hero, bool selected, int tick)
+        public void Set(HeroState hero, bool selected, int tick, int chargeBp)
         {
             Panel.Modulate = selected ? new Color("ffe08a") : Colors.White;
             string down = hero.IsAlive ? "" : "  DOWN";
@@ -1563,7 +1343,10 @@ public partial class GreyBoxBattle : Control
             bool regen = hero.RegenPerPulse > 0 && tick < hero.RegenExpires;
             _icon.Visible = shielded || regen;
             _icon.Texture = shielded ? HudSkin.Status("shield") : HudSkin.Status("regen");
+            bool turn = hero.IsAlive && chargeBp >= SimConst.Bp;
+            _name.AddThemeColorOverride("font_color", turn ? new Color("d7fbff") : new Color("f4f7fb"));
             _name.Text = shielded ? $"shield {hero.Absorb}  {hero.Name}{down}" : hero.Name + down;
+            PaintCharge(_charge, _turn, chargeBp, boss: false);
             _hp.MaxValue = hero.MaxHp;
             _hp.Value = hero.Hp < 0 ? 0 : hero.Hp;
             _mp.MaxValue = hero.MaxMp <= 0 ? 1 : hero.MaxMp;
@@ -1594,6 +1377,8 @@ public partial class GreyBoxBattle : Control
         private readonly TextureRect _icon;
         private readonly TextureRect _chain;
         private readonly ProgressBar _hp;
+        private readonly ProgressBar _charge;
+        private readonly Label _turn;
         private readonly Label _resist;
         private readonly Label _pressure;
         private readonly ProgressBar[] _threat;
@@ -1638,6 +1423,9 @@ public partial class GreyBoxBattle : Control
             _hp.AddThemeStyleboxOverride("background", Flat(new Color("0c1016"), 0));
             _hp.AddThemeStyleboxOverride("fill", Flat(new Color("a04040"), 0));
             box.AddChild(_hp);
+            ChargeWidgets charge = BuildChargeRow(box, boss: true);
+            _charge = charge.Bar;
+            _turn = charge.Turn;
             _resist = Note(new Color("d5e2c4"));
             box.AddChild(_resist);
             _pressure = Note(new Color("b7c4d4"));
@@ -1681,9 +1469,12 @@ public partial class GreyBoxBattle : Control
 
         public PanelContainer Panel { get; }
 
-        public void Set(BossPartState part, IReadOnlyList<HeroState> heroes, bool selected, int bossDef, int tick)
+        public void Set(BossPartState part, IReadOnlyList<HeroState> heroes, bool selected, int bossDef, int tick, int chargeBp)
         {
             Panel.Modulate = selected ? new Color("ffe08a") : Colors.White;
+            bool turn = chargeBp >= SimConst.Bp;
+            _name.AddThemeColorOverride("font_color", turn ? new Color("ffd6fb") : new Color("f4f7fb"));
+            PaintCharge(_charge, _turn, chargeBp, boss: true);
             bool stunned = part.Hp > 0 && tick < part.StunExpires;
             _icon.Visible = stunned;
             _icon.Texture = HudSkin.Status("stun");
@@ -1757,6 +1548,69 @@ public partial class GreyBoxBattle : Control
             label.AddThemeFontSizeOverride("font_size", 12);
             label.AddThemeColorOverride("font_color", color);
             return label;
+        }
+    }
+
+    private sealed class BossCard
+    {
+        private readonly Label _name;
+        private readonly ProgressBar _charge;
+        private readonly Label _turn;
+        private readonly StyleBoxFlat _panelStyle;
+
+        public BossCard()
+        {
+            _panelStyle = new StyleBoxFlat
+            {
+                BgColor = new Color("141018"),
+                BorderColor = new Color("3a2a44"),
+                BorderWidthLeft = 1,
+                BorderWidthTop = 1,
+                BorderWidthRight = 1,
+                BorderWidthBottom = 1,
+                ContentMarginLeft = 8,
+                ContentMarginTop = 4,
+                ContentMarginRight = 8,
+                ContentMarginBottom = 5,
+                CornerRadiusTopLeft = 2,
+                CornerRadiusTopRight = 2,
+                CornerRadiusBottomRight = 2,
+                CornerRadiusBottomLeft = 2,
+            };
+            Panel = new PanelContainer
+            {
+                SizeFlagsHorizontal = SizeFlags.ExpandFill,
+                MouseFilter = MouseFilterEnum.Ignore,
+            };
+            Panel.AddThemeStyleboxOverride("panel", _panelStyle);
+            var box = new VBoxContainer { MouseFilter = MouseFilterEnum.Ignore };
+            box.AddThemeConstantOverride("separation", 2);
+            Panel.AddChild(box);
+            _name = new Label
+            {
+                MouseFilter = MouseFilterEnum.Ignore,
+                ClipText = true,
+                TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis,
+            };
+            _name.AddThemeFontSizeOverride("font_size", 13);
+            _name.AddThemeColorOverride("font_color", new Color("e7d5ee"));
+            box.AddChild(_name);
+            ChargeWidgets charge = BuildChargeRow(box, boss: true);
+            _charge = charge.Bar;
+            _turn = charge.Turn;
+        }
+
+        public PanelContainer Panel { get; }
+
+        public void Set(string name, int chargeBp)
+        {
+            bool turn = chargeBp >= SimConst.Bp;
+            _name.Text = name;
+            _name.AddThemeColorOverride("font_color", turn ? new Color("ffd6fb") : new Color("e7d5ee"));
+            _panelStyle.BgColor = turn ? new Color("241428") : new Color("141018");
+            _panelStyle.BorderColor = turn ? new Color("ff7af0") : new Color("3a2a44");
+            Panel.AddThemeStyleboxOverride("panel", _panelStyle);
+            PaintCharge(_charge, _turn, chargeBp, boss: true);
         }
     }
 }
