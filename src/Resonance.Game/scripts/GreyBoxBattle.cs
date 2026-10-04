@@ -1328,14 +1328,14 @@ public partial class GreyBoxBattle : Control
             };
             _name.AddThemeFontSizeOverride("font_size", 14);
             box.AddChild(_name);
-            _hp = Bar(new Color("c0392b"), 7);
-            box.AddChild(_hp);
-            _mp = Bar(new Color("2980b9"), 7);
-            box.AddChild(_mp);
             ChargeWidgets charge = BuildChargeRow(box, boss: false);
             _chargeRow = charge.Row;
             _charge = charge.Bar;
             _turn = charge.Turn;
+            _hp = Bar(new Color("c0392b"), 7);
+            box.AddChild(_hp);
+            _mp = Bar(new Color("2980b9"), 7);
+            box.AddChild(_mp);
             _meta = new Label
             {
                 MouseFilter = MouseFilterEnum.Ignore,
@@ -1429,6 +1429,10 @@ public partial class GreyBoxBattle : Control
             };
             _name.AddThemeFontSizeOverride("font_size", 13);
             title.AddChild(_name);
+            ChargeWidgets charge = BuildChargeRow(box, boss: true);
+            _chargeRow = charge.Row;
+            _charge = charge.Bar;
+            _turn = charge.Turn;
             _hp = new ProgressBar
             {
                 MinValue = 0,
@@ -1439,10 +1443,6 @@ public partial class GreyBoxBattle : Control
             _hp.AddThemeStyleboxOverride("background", Flat(new Color("0c1016"), 0));
             _hp.AddThemeStyleboxOverride("fill", Flat(new Color("a04040"), 0));
             box.AddChild(_hp);
-            ChargeWidgets charge = BuildChargeRow(box, boss: true);
-            _chargeRow = charge.Row;
-            _charge = charge.Bar;
-            _turn = charge.Turn;
             _resist = Note(new Color("d5e2c4"));
             box.AddChild(_resist);
             _pressure = Note(new Color("b7c4d4"));
