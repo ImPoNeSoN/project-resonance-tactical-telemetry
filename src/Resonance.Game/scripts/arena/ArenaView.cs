@@ -23,11 +23,11 @@ public partial class ArenaView : Node3D
     ];
 
     private static readonly Vector3 BossSpot = new(0.35f, 0f, 6.9f);
-    // Looks at the midpoint between the party center and the boss. The offset is
-    // the previous camera, swung 10° counter-clockwise from above around that
-    // midpoint. Yaw is clockwise from world +Z.
+    // Looks at the midpoint between the party center and the boss. Another 20°
+    // counter-clockwise from the 141.4° bearing, so yaw is about 121.4°
+    // clockwise from world +Z.
     private static readonly Vector3 CameraLook = new(0.01f, 1.70f, -2.92f);
-    private static readonly Vector3 CameraBack = new(0.6045f, 0.2455f, -0.7578f);
+    private static readonly Vector3 CameraBack = new(0.8272f, 0.2455f, -0.5054f);
     private const float CameraDistance = 20.47f;
     private const float FrameMargin = 0.60f;
 
