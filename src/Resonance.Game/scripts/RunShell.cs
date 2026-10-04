@@ -18,6 +18,10 @@ public partial class RunShell : Control
         window.ContentScaleAspect = Window.ContentScaleAspectEnum.Expand;
         window.ContentScaleSize = new Vector2I(1280, 720);
         window.ContentScaleFactor = 1f;
+        if (GreyBoxBattle.LayoutLockRequested(out int lockWidth, out int lockHeight))
+        {
+            window.Size = new Vector2I(lockWidth, lockHeight);
+        }
 
         AnchorFull(this);
         _party = new PartySelect();
@@ -38,6 +42,11 @@ public partial class RunShell : Control
         _floor.PartyRequested += ShowParty;
         _battle.ReturnedToFloor += ShowFloor;
         _battle.ReturnedToParty += ShowParty;
+        if (GreyBoxBattle.LayoutLockRequested(out _, out _))
+        {
+            ShowBossFromParty();
+            _battle.BeginLayoutLock();
+        }
     }
 
     private void ShowFloorFromParty()
