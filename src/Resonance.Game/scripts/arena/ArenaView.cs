@@ -11,17 +11,23 @@ namespace Resonance.Game;
 /// </summary>
 public partial class ArenaView : Node3D
 {
+    // Staggered diagonal, Korrith in front nearest the Carapace. Each step
+    // runs across the camera's right and back in depth (~3.8 m) so bodies
+    // sit in separate columns and a Keratin Bastion dome (radius 1.15 m)
+    // does not swallow the neighbor.
     private static readonly Vector3[] Formation =
     [
-        new(-0.15f, 0f, -2.35f),
-        new(-1.9f, 0f, -4.2f),
-        new(1.6f, 0f, -4.05f),
-        new(0.1f, 0f, -5.55f),
+        new(-3.4f, 0f, -0.7f),
+        new(-6.5f, 0f, -2.35f),
+        new(-9.6f, 0f, -4.0f),
+        new(-12.6f, 0f, -5.65f),
     ];
 
     private static readonly Vector3 BossSpot = new(0.35f, 0f, 6.9f);
-    private static readonly Vector3 CameraHome = new(5.4f, 3.35f, -6.6f);
-    private static readonly Vector3 CameraLook = new(0.2f, 1.55f, 1.1f);
+    private static readonly Vector3 CameraLook = new(-2.2f, 0.85f, 0.2f);
+    private static readonly Vector3 CameraBack = new(0.48f, 0.24f, -0.84f);
+    private const float CameraDistance = 22.5f;
+    private const float FrameMargin = 0.60f;
 
     private SimBridge? _bridge;
     private Camera3D? _camera;
@@ -102,10 +108,7 @@ public partial class ArenaView : Node3D
         _frames++;
         float step = (float)delta;
         _kick = _kick.Lerp(Vector3.Zero, 1f - Mathf.Exp(-5.5f * step));
-        if (_camera != null)
-        {
-            _camera.Position = CameraHome + _kick;
-        }
+        FrameCamera();
 
         foreach (Actor actor in _actors)
         {
@@ -207,14 +210,9 @@ public partial class ArenaView : Node3D
         };
         AddChild(new WorldEnvironment { Environment = env });
 
-        _camera = new Camera3D
-        {
-            Position = CameraHome,
-            Fov = 36f,
-            Current = true,
-        };
+        _camera = new Camera3D { Current = true };
         AddChild(_camera);
-        _camera.LookAt(CameraLook, Vector3.Up);
+        FrameCamera();
 
         AddChild(new DirectionalLight3D
         {
@@ -243,8 +241,8 @@ public partial class ArenaView : Node3D
         AddChild(floor);
         AddChild(Strip(new Vector3(0f, 0.02f, -0.4f), new Vector3(12f, 0.03f, 0.07f), "00e5ff"));
         AddChild(Strip(new Vector3(0.3f, 0.02f, 5.2f), new Vector3(9f, 0.03f, 0.07f), "e13cff"));
-        AddChild(ColumnMesh(new Vector3(-9f, 2.2f, -6f)));
-        AddChild(ColumnMesh(new Vector3(9f, 2.2f, -6f)));
+        AddChild(ColumnMesh(new Vector3(-14.2f, 2.2f, -7.2f)));
+        AddChild(ColumnMesh(new Vector3(11f, 2.2f, -7.2f)));
         AddChild(ColumnMesh(new Vector3(-9f, 2.2f, 11f)));
         AddChild(ColumnMesh(new Vector3(9f, 2.2f, 11f)));
         AddChild(Wall(new Vector3(0f, 2.6f, 13.2f), new Vector3(22f, 5.2f, 0.35f)));
@@ -1253,7 +1251,148 @@ public partial class ArenaView : Node3D
         }
     }
 
-    private void Nudge(float scale) => _kick += new Vector3(0.1f, 0.05f, -0.14f) * scale;
+    private void Nudge(float scale)
+    {
+        // A few centimetres. Large kicks shove a body past the frame margin.
+        _kick += new Vector3(0.028f, 0.01f, -0.032f) * scale;
+        const float cap = 0.07f;
+        if (_kick.LengthSquared() > cap * cap)
+        {
+            _kick = _kick.Normalized() * cap;
+        }
+    }
+
+    /// <summary>
+    /// Pulls the camera back along a fixed 3/4 view and widens the vertical FOV
+    /// until Korrith (2.12 m, shield and maul), the other three heroes, and the
+    /// 4.4 m Carapace all sit inside the viewport with margin. Taller aspects
+    /// lose horizontal coverage, so the lens opens (and the camera steps back
+    /// if that would go fisheye) instead of cropping a side.
+    /// </summary>
+    private void FrameCamera()
+    {
+        if (_camera == null)
+        {
+            return;
+        }
+
+        Vector2 view = GetViewport().GetVisibleRect().Size;
+        float aspect = view.Y > 2f ? view.X / view.Y : 1.78f;
+        Vector3 back = CameraBack.Normalized();
+        float distance = CameraDistance;
+        float fov = 42f;
+        Vector3 eye = CameraLook + back * distance;
+        for (int attempt = 0; attempt < 5; attempt++)
+        {
+            eye = CameraLook + back * distance;
+            fov = FitFov(eye, aspect);
+            if (fov <= 58f)
+            {
+                break;
+            }
+
+            distance *= 1.1f;
+        }
+
+        _camera.Fov = fov;
+        _camera.Position = eye + _kick;
+        _camera.LookAt(CameraLook, Vector3.Up);
+        if (!_fpsPrinted && _frames == 30)
+        {
+            GD.Print($"ARENA_FRAME aspect {aspect.ToString("0.00", CultureInfo.InvariantCulture)} fov {fov.ToString("0.0", CultureInfo.InvariantCulture)} distance {distance.ToString("0.0", CultureInfo.InvariantCulture)} view {view.X.ToString("0", CultureInfo.InvariantCulture)}x{view.Y.ToString("0", CultureInfo.InvariantCulture)}");
+        }
+    }
+
+    private float FitFov(Vector3 eye, float aspect)
+    {
+        float lo = 16f;
+        float hi = 70f;
+        for (int i = 0; i < 18; i++)
+        {
+            float mid = (lo + hi) * 0.5f;
+            if (FramingFits(eye, aspect, mid))
+            {
+                hi = mid;
+            }
+            else
+            {
+                lo = mid;
+            }
+        }
+
+        return hi;
+    }
+
+    private static bool FramingFits(Vector3 eye, float aspect, float fovDegrees)
+    {
+        Vector3 back = (eye - CameraLook).Normalized();
+        Vector3 right = Vector3.Up.Cross(back);
+        if (right.LengthSquared() < 0.0001f)
+        {
+            return false;
+        }
+
+        right = right.Normalized();
+        Vector3 up = back.Cross(right);
+        float tanV = Mathf.Tan(Mathf.DegToRad(fovDegrees) * 0.5f);
+        float tanH = tanV * aspect;
+        if (tanV < 0.001f || tanH < 0.001f)
+        {
+            return false;
+        }
+
+        foreach (Vector3 point in FramingPoints())
+        {
+            Vector3 delta = point - eye;
+            float lx = delta.Dot(right);
+            float ly = delta.Dot(up);
+            float lz = delta.Dot(back);
+            if (lz > -0.2f)
+            {
+                return false;
+            }
+
+            float ndcX = (lx / -lz) / tanH;
+            float ndcY = (ly / -lz) / tanV;
+            if (Mathf.Abs(ndcX) > FrameMargin || Mathf.Abs(ndcY) > FrameMargin)
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private static IEnumerable<Vector3> FramingPoints()
+    {
+        foreach (Vector3 spot in Formation)
+        {
+            // Korrith's mesh is 2.33 m tall and about 2.3 m wide with the shield and maul.
+            yield return spot + new Vector3(0f, -0.2f, 0f);
+            yield return spot + new Vector3(0f, 2.55f, 0f);
+            yield return spot + new Vector3(-1.35f, 1.5f, 0f);
+            yield return spot + new Vector3(1.35f, 1.7f, 0f);
+        }
+
+        // The proof mesh faces the party: local +Z is world -Z, local +X is world -X.
+        // Bounds are wider than the 4.4 m body height (the mesh reaches 5.14 m).
+        // The posed legs reach closer to the camera than the bind-pose box, so the
+        // near ground points keep that lip above the bottom of the view.
+        foreach (float lx in new[] { -3.48f, 3.08f })
+        {
+            foreach (float ly in new[] { 0f, 5.2f })
+            {
+                foreach (float lz in new[] { -2.11f, 4.91f })
+                {
+                    yield return BossSpot + new Vector3(-lx, ly, -lz);
+                }
+            }
+        }
+
+        yield return BossSpot + new Vector3(0f, 0f, -6.4f);
+        yield return BossSpot + new Vector3(-2.4f, 0.4f, -6.4f);
+        yield return BossSpot + new Vector3(2.2f, 0.4f, -6.4f);
+    }
 
     private Vector3 PartPoint(string partName)
     {
