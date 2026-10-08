@@ -16,6 +16,7 @@ godot.log
 # export_presets.cfg can hold keystore paths, passwords and platform credentials.
 # Commit export_presets.template.cfg (sanitized) instead and copy it locally.
 export_presets.cfg
+!src/Resonance.Game/export_presets.cfg
 export_credentials.cfg
 *.keystore
 *.jks

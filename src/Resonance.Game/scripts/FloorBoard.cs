@@ -23,6 +23,9 @@ public partial class FloorBoard : Control
     [Signal]
     public delegate void PartyRequestedEventHandler();
 
+    [Signal]
+    public delegate void TitleRequestedEventHandler();
+
     public override void _Ready()
     {
         _bridge = GetNode<SimBridge>("/root/SimBridge");
@@ -161,9 +164,10 @@ public partial class FloorBoard : Control
 
     private void BuildResult(FloorRun run)
     {
-        _body.AddChild(Heading(run.ResultTitle, 28, Ink));
+        _body.AddChild(Heading(run.Cleared ? "Victory" : "Defeat", 28, Ink));
         _body.AddChild(Heading("Cinder Throat · Floor 1", 16, Dim));
         _body.AddChild(Wrap(run.ResultBody, 16, Ink));
+        _body.AddChild(Wrap($"Build {BuildStamp.Version}. A run log was written to the log folder.", 14, Dim));
 
         var list = new VBoxContainer();
         list.AddThemeConstantOverride("separation", 4);
@@ -175,9 +179,15 @@ public partial class FloorBoard : Control
             list.AddChild(Wrap($"{hero.Name}  {state}  HP {hero.Hp}/{hero.MaxHp}  MP {hero.Mp}/{hero.MaxMp}", 14, Ink));
         }
 
-        var again = new Button { Text = "New floor" };
-        again.Pressed += LeaveToParty;
-        _body.AddChild(again);
+        var actions = new HBoxContainer();
+        actions.AddThemeConstantOverride("separation", 8);
+        _body.AddChild(actions);
+        var logs = new Button { Text = "Open log folder" };
+        logs.Pressed += () => RunLog.OpenFolder();
+        actions.AddChild(logs);
+        var title = new Button { Text = "Back to title" };
+        title.Pressed += () => EmitSignal(SignalName.TitleRequested);
+        actions.AddChild(title);
     }
 
     private static string Mark(FloorRun? run, int index)

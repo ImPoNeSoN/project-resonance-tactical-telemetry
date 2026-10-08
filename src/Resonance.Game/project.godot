@@ -6,12 +6,14 @@ config_version=5
 [application]
 
 config/name="Project Resonance"
-config/description="Tactical Telemetry grey-box battle"
+config/version="0.1.0"
+config/description="Tactical Telemetry playtest"
 run/main_scene="res://scenes/run/RunShell.tscn"
 config/features=PackedStringArray("4.7", "C#")
 
 [autoload]
 
+PlaytestHost="*res://scripts/PlaytestHost.cs"
 SimBridge="*res://autoloads/SimBridge.cs"
 
 [display]
@@ -30,6 +32,7 @@ enabled=PackedStringArray("res://addons/game_view_stretch/plugin.cfg")
 [dotnet]
 
 project/assembly_name="Resonance.Game"
+project/solution_directory="res://../../"
 
 [rendering]
 

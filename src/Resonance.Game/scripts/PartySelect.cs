@@ -22,13 +22,16 @@ public partial class PartySelect : Control
     private SimBridge _bridge = null!;
     private Label _status = null!;
     private Button _enterFloor = null!;
-    private Button _bossOnly = null!;
+    private Button? _bossOnly;
 
     [Signal]
     public delegate void FloorChosenEventHandler();
 
     [Signal]
     public delegate void BossChosenEventHandler();
+
+    [Signal]
+    public delegate void TitleRequestedEventHandler();
 
     public override void _Ready()
     {
@@ -96,10 +99,18 @@ public partial class PartySelect : Control
         _enterFloor.AddThemeFontSizeOverride("font_size", 16);
         _enterFloor.Pressed += ChooseFloor;
         actions.AddChild(_enterFloor);
-        _bossOnly = new Button { Text = "Boss only" };
-        _bossOnly.AddThemeFontSizeOverride("font_size", 16);
-        _bossOnly.Pressed += ChooseBoss;
-        actions.AddChild(_bossOnly);
+        if (BuildStamp.DevSession)
+        {
+            _bossOnly = new Button { Text = "Boss only" };
+            _bossOnly.AddThemeFontSizeOverride("font_size", 16);
+            _bossOnly.Pressed += ChooseBoss;
+            actions.AddChild(_bossOnly);
+        }
+
+        var title = new Button { Text = "Title" };
+        title.AddThemeFontSizeOverride("font_size", 16);
+        title.Pressed += () => EmitSignal(SignalName.TitleRequested);
+        actions.AddChild(title);
 
         Refresh();
     }
@@ -204,7 +215,10 @@ public partial class PartySelect : Control
         PartyCheck check = HeroRoster.Check(ids);
         _status.Text = check.Status;
         _enterFloor.Disabled = !check.CanStart;
-        _bossOnly.Disabled = !check.CanStart;
+        if (_bossOnly != null)
+        {
+            _bossOnly.Disabled = !check.CanStart;
+        }
         for (int id = 0; id < HeroRoster.Count; id++)
         {
             bool on = _selected[id];

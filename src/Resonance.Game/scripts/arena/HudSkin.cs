@@ -94,8 +94,8 @@ public static class HudSkin
     }
 
     /// <summary>
-    /// The kit filenames use @2x. Godot treats @ as a subresource mark in res:// paths,
-    /// so these load through the filesystem instead of ResourceLoader.
+    /// Kit filenames keep the @2x suffix. Godot 4 loads that path as a normal resource,
+    /// including from an exported pck. A raw PNG read is the fallback when the import is missing.
     /// </summary>
     private static Texture2D? Png(string relative)
     {
@@ -104,12 +104,21 @@ public static class HudSkin
             return cached;
         }
 
-        string abs = ProjectSettings.GlobalizePath("res://") + relative;
-        Image? image = Image.LoadFromFile(abs);
-        Texture2D? texture = image == null ? null : ImageTexture.CreateFromImage(image);
+        string res = "res://" + relative;
+        Texture2D? texture = ResourceLoader.Load<Texture2D>(res);
+        if (texture == null && Godot.FileAccess.FileExists(res))
+        {
+            using Godot.FileAccess file = Godot.FileAccess.Open(res, Godot.FileAccess.ModeFlags.Read);
+            var image = new Image();
+            if (file != null && image.LoadPngFromBuffer(file.GetBuffer((long)file.GetLength())) == Error.Ok)
+            {
+                texture = ImageTexture.CreateFromImage(image);
+            }
+        }
+
         if (texture == null)
         {
-            GD.PrintErr($"ARENA_IMPORT missing {relative} ({abs})");
+            GD.PrintErr($"ARENA_IMPORT missing {relative}");
         }
 
         Cache[relative] = texture;

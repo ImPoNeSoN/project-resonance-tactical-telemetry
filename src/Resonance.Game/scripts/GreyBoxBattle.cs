@@ -79,6 +79,10 @@ public partial class GreyBoxBattle : Control
     private int _layoutLockSamples;
     private readonly List<(string Name, int X, int Y, int W, int H)> _layoutLockBase = new();
     private readonly System.Text.StringBuilder _layoutLockErrors = new();
+    private readonly HashSet<string> _tightAbilities = new();
+    private bool _abilityNamesChecked;
+    private Label _stamp = null!;
+    private const int AbilityFont = 10;
 
     public override void _Ready()
     {
@@ -137,6 +141,7 @@ public partial class GreyBoxBattle : Control
 
         BuildOverlay();
         BuildPicker();
+        BuildStampLabel();
 
         _bridge.LogLine += line => _log.AppendText($"[color=#9fd0ff]{line}[/color]\n");
         _bridge.LogCleared += () => _log.Clear();
@@ -232,6 +237,12 @@ public partial class GreyBoxBattle : Control
             _hint.Visible = !_view3d;
         }
 
+        if (_viewToggle != null)
+        {
+            _viewToggle.Visible = true;
+            _viewToggle.Text = _view3d ? "Grey-box" : "3D arena";
+        }
+
         _band.Visible = true;
         _band.SizeFlagsVertical = _view3d ? SizeFlags.ShrinkEnd : SizeFlags.ExpandFill;
         _stage.SizeFlagsVertical = SizeFlags.ExpandFill;
@@ -272,11 +283,6 @@ public partial class GreyBoxBattle : Control
         }
 
         _log.AddThemeStyleboxOverride("normal", logStyle);
-        if (_viewToggle != null)
-        {
-            _viewToggle.Visible = _bridge.BossOnly || _view3d;
-            _viewToggle.Text = _view3d ? "Grey-box" : "3D arena";
-        }
     }
 
     private static void FillViewport(Control control)
@@ -312,6 +318,11 @@ public partial class GreyBoxBattle : Control
     {
         width = 1280;
         height = 720;
+        if (!BuildStamp.DevSession)
+        {
+            return false;
+        }
+
         string raw = OS.GetEnvironment("HUD_LOCK");
         if (raw.Length == 0)
         {
@@ -424,6 +435,8 @@ public partial class GreyBoxBattle : Control
             Add(name, control);
         }
 
+        CheckAbilityNames();
+
         for (int i = 0; i < _heroes.Count; i++)
         {
             Add($"hero{i}", _heroes[i].Panel);
@@ -461,7 +474,7 @@ public partial class GreyBoxBattle : Control
 
     private void SaveLayoutShot(string tag)
     {
-        if (OS.GetEnvironment("HUD_LOCK_SHOT") != "1" || DisplayServer.GetName() == "headless")
+        if (!BuildStamp.DevSession || OS.GetEnvironment("HUD_LOCK_SHOT") != "1" || DisplayServer.GetName() == "headless")
         {
             return;
         }
@@ -539,15 +552,11 @@ public partial class GreyBoxBattle : Control
         _status.AddThemeFontSizeOverride("font_size", 13);
         _status.AddThemeColorOverride("font_color", new Color("d5dde8"));
         top.AddChild(ClipHost(_status, 0, 0, HostFit.Expand, HostFit.Fill));
-        _viewToggle = new Button { Text = "3D arena", Visible = false };
+        _viewToggle = new Button { Text = "Grey-box" };
         _viewToggle.Pressed += () =>
         {
-            if (!_bridge.BossOnly)
-            {
-                return;
-            }
-
-            SetArenaView(!_view3d);
+            PlaytestSettings.SetView3d(!_view3d);
+            SetArenaView(PlaytestSettings.View3d);
             Refresh();
         };
         top.AddChild(_viewToggle);
@@ -742,9 +751,9 @@ public partial class GreyBoxBattle : Control
             ClipText = true,
             TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis,
         };
-        _actorLabel.AddThemeFontSizeOverride("font_size", 13);
+        _actorLabel.AddThemeFontSizeOverride("font_size", 12);
         _actorLabel.AddThemeColorOverride("font_color", new Color("ffe08a"));
-        abilityRow.AddChild(ClipHost(_actorLabel, 196, 0, HostFit.Shrink, HostFit.Fill));
+        abilityRow.AddChild(ClipHost(_actorLabel, 140, 0, HostFit.Shrink, HostFit.Fill));
 
         _abilities = new HBoxContainer
         {
@@ -752,7 +761,7 @@ public partial class GreyBoxBattle : Control
             CustomMinimumSize = new Vector2(0, 38),
             SizeFlagsHorizontal = SizeFlags.ExpandFill,
         };
-        _abilities.AddThemeConstantOverride("separation", 4);
+        _abilities.AddThemeConstantOverride("separation", 2);
         abilityRow.AddChild(_abilities);
         box.AddChild(abilityRow);
 
@@ -794,9 +803,12 @@ public partial class GreyBoxBattle : Control
             MouseFilter = MouseFilterEnum.Ignore,
         });
 
-        var step = new Button { Text = "Step" };
-        step.Pressed += () => _bridge.StepOnce();
-        controls.AddChild(step);
+        if (BuildStamp.DevSession)
+        {
+            var step = new Button { Text = "Step" };
+            step.Pressed += () => _bridge.StepOnce();
+            controls.AddChild(step);
+        }
 
         _pause = new Button { Text = "Pause", ClipText = true };
         _pause.Pressed += () => _bridge.TogglePause();
@@ -806,9 +818,12 @@ public partial class GreyBoxBattle : Control
         _auto.Pressed += () => _bridge.ToggleAuto();
         controls.AddChild(ClipHost(_auto, 112, 0, HostFit.Shrink, HostFit.Fill));
 
-        var finish = new Button { Text = "To end" };
-        finish.Pressed += () => _bridge.RunToEnd();
-        controls.AddChild(finish);
+        if (BuildStamp.DevSession)
+        {
+            var finish = new Button { Text = "To end" };
+            finish.Pressed += () => _bridge.RunToEnd();
+            controls.AddChild(finish);
+        }
 
         var restart = new Button { Text = "Restart" };
         restart.Pressed += Restart;
@@ -898,6 +913,92 @@ public partial class GreyBoxBattle : Control
 
         string text = value.ToString();
         return text.Length >= width ? text : text.PadLeft(width);
+    }
+
+    private void BuildStampLabel()
+    {
+        _stamp = new Label
+        {
+            Name = "BuildStamp",
+            MouseFilter = MouseFilterEnum.Ignore,
+            HorizontalAlignment = HorizontalAlignment.Right,
+            VerticalAlignment = VerticalAlignment.Bottom,
+            Text = $"v{BuildStamp.Version}",
+        };
+        _stamp.AddThemeFontSizeOverride("font_size", 11);
+        _stamp.AddThemeColorOverride("font_color", new Color("8ea0b5"));
+        AddChild(_stamp);
+        _stamp.SetAnchorsPreset(LayoutPreset.BottomRight);
+        _stamp.OffsetLeft = -420;
+        _stamp.OffsetTop = -22;
+        _stamp.OffsetRight = -8;
+        _stamp.OffsetBottom = -4;
+    }
+
+    private void CheckAbilityNames()
+    {
+        if (_abilityNamesChecked || _abilities.Size.X < 64)
+        {
+            return;
+        }
+
+        _abilityNamesChecked = true;
+        const int separation = 2;
+        const float pad = 4f;
+        Font font = ThemeDB.FallbackFont;
+        float row = _abilities.Size.X;
+        for (int id = 0; id < HeroRoster.Count; id++)
+        {
+            HeroState hero = HeroRoster.Create(id, 0);
+            int count = hero.Kit.Length;
+            if (count < 1)
+            {
+                continue;
+            }
+
+            float slot = (row - separation * (count - 1)) / count;
+            float nameWidth = font.GetStringSize(hero.Name, HorizontalAlignment.Left, -1, 12).X;
+            if (nameWidth > 136f && _tightAbilities.Add(hero.Name))
+            {
+                _layoutLockErrors.Append(hero.Name)
+                    .Append(" name ")
+                    .Append(Mathf.RoundToInt(nameWidth))
+                    .Append('\n');
+            }
+
+            for (int i = 0; i < count; i++)
+            {
+                string name = AbilityCatalog.Get(hero.Kit[i]).Name;
+                float width = font.GetStringSize(name, HorizontalAlignment.Left, -1, AbilityFont).X;
+                if (width <= slot - pad || !_tightAbilities.Add(name))
+                {
+                    continue;
+                }
+
+                _layoutLockErrors.Append(name)
+                    .Append(" text ")
+                    .Append(Mathf.RoundToInt(width))
+                    .Append(" slot ")
+                    .Append(Mathf.RoundToInt(slot - pad))
+                    .Append('\n');
+            }
+        }
+    }
+
+    private static StyleBoxFlat AbilityButtonStyle(Color color)
+    {
+        return new StyleBoxFlat
+        {
+            BgColor = color,
+            ContentMarginLeft = 2,
+            ContentMarginRight = 2,
+            ContentMarginTop = 2,
+            ContentMarginBottom = 2,
+            CornerRadiusTopLeft = 2,
+            CornerRadiusTopRight = 2,
+            CornerRadiusBottomRight = 2,
+            CornerRadiusBottomLeft = 2,
+        };
     }
 
     private static StyleBox Pad(StyleBox style, int x, int y)
@@ -1060,7 +1161,7 @@ public partial class GreyBoxBattle : Control
         _abilityActor = -1;
         _picker.Visible = false;
         _overlay.Visible = false;
-        SetArenaView(false);
+        SetArenaView(PlaytestSettings.View3d);
         _bridge.LoadFloorFight();
     }
 
@@ -1072,7 +1173,7 @@ public partial class GreyBoxBattle : Control
         _abilityActor = -1;
         _picker.Visible = false;
         _overlay.Visible = false;
-        SetArenaView(true);
+        SetArenaView(LayoutLockRequested(out _, out _) || PlaytestSettings.View3d);
         _bridge.StartBoss(_bridge.PartyIds);
     }
 
@@ -1221,11 +1322,6 @@ public partial class GreyBoxBattle : Control
         EnsureAbilities(sim);
         UpdateAbilityDetail();
 
-        if (_view3d && !_bridge.BossOnly)
-        {
-            SetArenaView(false);
-        }
-
         bool ended = sim.Outcome != FightOutcome.Ongoing;
         string paused = sim.Paused ? "PAUSED " : "running";
         const string frenzySlot = "   Frenzy +0000bp";
@@ -1243,8 +1339,13 @@ public partial class GreyBoxBattle : Control
         _banner.Text = $"Project Resonance  ·  {viewName}  ·  {sim.Boss.Name}";
         if (_viewToggle != null)
         {
-            _viewToggle.Visible = _bridge.BossOnly;
+            _viewToggle.Visible = true;
             _viewToggle.Text = _view3d ? "Grey-box" : "3D arena";
+        }
+
+        if (_stamp != null)
+        {
+            _stamp.Text = $"v{BuildStamp.Version}   seed {_bridge.Seed}";
         }
         _resonance.Text = ResonanceReadout.Summarize(sim);
         _order.Text = OrderText(sim);
@@ -1363,12 +1464,17 @@ public partial class GreyBoxBattle : Control
             int id = abilityId;
             var button = new Button
             {
-                Text = ability.MpCost > 0 ? $"{ability.Name}  ({ability.MpCost} MP)" : ability.Name,
-                Alignment = HorizontalAlignment.Left,
-                ClipText = true,
-                TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis,
+                Text = ability.Name,
+                Alignment = HorizontalAlignment.Center,
+                ClipText = false,
+                TextOverrunBehavior = TextServer.OverrunBehavior.NoTrimming,
             };
-            button.AddThemeFontSizeOverride("font_size", 13);
+            button.AddThemeFontSizeOverride("font_size", AbilityFont);
+            button.AddThemeStyleboxOverride("normal", AbilityButtonStyle(new Color("1c2636")));
+            button.AddThemeStyleboxOverride("hover", AbilityButtonStyle(new Color("2a3850")));
+            button.AddThemeStyleboxOverride("pressed", AbilityButtonStyle(new Color("3a3220")));
+            button.AddThemeStyleboxOverride("focus", AbilityButtonStyle(new Color("2a3850")));
+            button.AddThemeStyleboxOverride("disabled", AbilityButtonStyle(new Color("1c2636")));
             button.MouseEntered += () =>
             {
                 _hoveredAbility = id;
