@@ -14,6 +14,9 @@ public partial class SimBridge : Node
     private bool _auto;
     private double _wait;
     private FloorRun? _floor;
+    private readonly List<string> _runLog = new();
+    private ulong _runStartedMs;
+    private bool _runLogged;
 
     [Signal]
     public delegate void LogLineEventHandler(string line);
@@ -85,10 +88,15 @@ public partial class SimBridge : Node
         }
 
         _wait = 0;
-        if (!Step())
+        int speed = PlaytestSettings.BattleSpeed;
+        for (int i = 0; i < speed; i++)
         {
-            _auto = false;
-            Publish();
+            if (!Step())
+            {
+                _auto = false;
+                Publish();
+                return;
+            }
         }
     }
 
@@ -143,6 +151,7 @@ public partial class SimBridge : Node
         InFloorFight = false;
         Seed = CarapaceEncounter.ShowcaseSeed;
         _floor = FloorRun.StartCustom(PartyIds, Seed);
+        BeginRunLog();
         EmitSignal(SignalName.FloorChanged);
     }
 
@@ -180,6 +189,11 @@ public partial class SimBridge : Node
 
     public void LeaveFloor()
     {
+        if (_floor != null && !_floor.Finished)
+        {
+            FinishRunLog("abandoned");
+        }
+
         _floor = null;
         InFloorFight = false;
         BossOnly = false;
@@ -206,6 +220,7 @@ public partial class SimBridge : Node
         BossOnly = false;
         Preset = _floor.Preset;
         Seed = _floor.FightSeed;
+        _runLog.Add($"-- {_floor.Current.Name} --");
         Swap(_floor.BeginFight());
         EmitSignal(SignalName.FloorChanged);
     }
@@ -219,6 +234,11 @@ public partial class SimBridge : Node
 
         _floor.Commit(_sim);
         InFloorFight = false;
+        if (_floor.Finished)
+        {
+            FinishRunLog(_floor.Cleared ? "cleared" : "wiped");
+        }
+
         EmitSignal(SignalName.FloorChanged);
     }
 
@@ -323,7 +343,61 @@ public partial class SimBridge : Node
         {
             var evt = events[_shown];
             _shown++;
-            EmitSignal(SignalName.LogLine, $"t={evt.Tick}  {evt.Text}");
+            string line = $"t={evt.Tick}  {evt.Text}";
+            _runLog.Add(line);
+            EmitSignal(SignalName.LogLine, line);
         }
+    }
+
+    /// <summary>
+    /// Plays the current floor to a result. Editor screenshots use this. Release builds do not.
+    /// </summary>
+    public void FastForwardFloor()
+    {
+        if (!BuildStamp.DevSession || _floor == null)
+        {
+            return;
+        }
+
+        while (_floor != null && !_floor.Finished)
+        {
+            if (_floor.Current.Kind == FloorRoomKind.Rest)
+            {
+                TakeFloorRest();
+                continue;
+            }
+
+            LoadFloorFight();
+            RunToEnd();
+            CommitFloorFight();
+        }
+    }
+
+    private void BeginRunLog()
+    {
+        _runLog.Clear();
+        _runLogged = false;
+        _runStartedMs = Time.GetTicksMsec();
+    }
+
+    private void FinishRunLog(string result)
+    {
+        if (_runLogged || _floor == null)
+        {
+            return;
+        }
+
+        _runLogged = true;
+        ulong now = Time.GetTicksMsec();
+        ulong duration = now >= _runStartedMs ? now - _runStartedMs : 0;
+        RunLog.WriteRun(
+            result,
+            _floor.Seed,
+            _floor.PartyLabel,
+            _floor.RoomsCleared,
+            FloorRun.RoomCount,
+            _floor.Ticks,
+            duration,
+            _runLog);
     }
 }

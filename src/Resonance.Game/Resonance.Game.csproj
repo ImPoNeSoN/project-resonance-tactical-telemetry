@@ -9,4 +9,8 @@
   <ItemGroup>
     <ProjectReference Include="..\Resonance.Sim\Resonance.Sim.csproj" />
   </ItemGroup>
+  <!-- EditorPlugin is not in the player assemblies. Export configurations drop the editor addon. -->
+  <ItemGroup Condition="'$(Configuration)' == 'ExportRelease' Or '$(Configuration)' == 'ExportDebug'">
+    <Compile Remove="addons/**/*.cs" />
+  </ItemGroup>
 </Project>

@@ -69,8 +69,11 @@ public partial class ArenaView : Node3D
         _bridge = GetNode<SimBridge>("/root/SimBridge");
         _bridge.LogLine += OnLog;
         _bridge.StateChanged += OnState;
-        _capture = OS.GetEnvironment("RESONANCE_ARENA_CAPTURE");
-        _galleryFilter = OS.GetEnvironment("RESONANCE_ARENA_GALLERY");
+        if (BuildStamp.DevSession)
+        {
+            _capture = OS.GetEnvironment("RESONANCE_ARENA_CAPTURE");
+            _galleryFilter = OS.GetEnvironment("RESONANCE_ARENA_GALLERY");
+        }
         if (_capture is "sequence" or "signatures" or "gallery")
         {
             try
